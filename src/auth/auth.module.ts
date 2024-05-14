@@ -5,9 +5,11 @@ import {UsersModule} from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { MailerModule } from '../mailer/mailer.module';
+import {SeedModule} from '../seeds/seed.module';
 
 @Module({
   imports: [
+    SeedModule,
     UsersModule,
     MailerModule,
     ConfigModule.forRoot({

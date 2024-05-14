@@ -7,7 +7,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import {} from './gaurd/auth.gaurd';
 import { MailerModule } from './mailer/mailer.module';
-import { ServiceModule } from './seeds/seed.module';
+import { SeedModule } from './seeds/seed.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -18,7 +18,7 @@ import { ServiceModule } from './seeds/seed.module';
     UsersModule,
     AuthModule,
     MailerModule,
-    ServiceModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService,],

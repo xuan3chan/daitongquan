@@ -1,7 +1,7 @@
-// src/roles/interfaces/role.interface.ts
+// interface 
+export interface ISpendingCategory {
+  name: string;
+  description: string;
+  userId: string;
+}
 
-export class seed {
-    id: number;
-    name: string;
-  }
-  

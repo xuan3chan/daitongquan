@@ -85,4 +85,9 @@ export class UsersService {
     });
     return newUser.save();
   }
+  //view profile lấy _id từ token
+ async viewProfileService(_id: string): Promise<User> {
+    return this.userModel.findOne({ _id }).select('-password').exec();
+}
+  
 }

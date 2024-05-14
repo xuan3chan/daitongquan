@@ -8,6 +8,7 @@ import { UsersService } from '../users/users.service';
 import { MailerService } from '../mailer/mailer.service';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
+import {SeedsService} from '../seeds/seeds.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private mailerService: MailerService,
+    private seedsService: SeedsService,
   ) {}
 
   async registerService(
@@ -35,6 +37,7 @@ export class AuthService {
         throw new BadRequestException(user.message);
       }
       const payload = {
+        _id : user._id,
         email: user.email,
         fullName: user.fullName,
         dateOfBirth: user.dateOfBirth,
@@ -44,6 +47,8 @@ export class AuthService {
         createdAt: user.createdAt,
         sub: user._id,
       };
+      //create default seed
+      await this.seedsService.createDefaultSpenCate(user._id);
       return {
         access_token: this.jwtService.sign(payload),
         refresh_token: createRefreshToken,
@@ -74,6 +79,7 @@ export class AuthService {
         throw new UnauthorizedException('Password is incorrect');
       }
       const payload = {
+        _id : user._id,
         email: user.email,
         fullName: user.fullName,
         dateOfBirth: user.dateOfBirth,
