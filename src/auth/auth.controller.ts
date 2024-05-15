@@ -20,12 +20,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto } from '../auth/dto/register.dto'
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refreshToken.dto';
-import { ForgotPasswordDto } from './dto/forgotPassword.dto';
-import { ResetPasswordDto } from './dto/resetPassword.dto';
 import { AuthGuard } from '../gaurd/auth.gaurd';
+import {RegisterDto,LoginDto,RefreshTokenDto,ForgotPasswordDto,ResetPasswordDto} from './dto/index';
 
 @ApiTags('authentication')
 @ApiBearerAuth()
@@ -33,12 +29,12 @@ import { AuthGuard } from '../gaurd/auth.gaurd';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiConsumes('application/json')
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({ description: 'register successfully' })
   @ApiBadRequestResponse({ description: 'Bad Request' })
   @Post('register')
-  async registerController(@Body() register: RegisterDto) {
+  async registerController(@Body() register:RegisterDto ) {
     return await this.authService.registerService(
       register.email,
       register.password,

@@ -6,9 +6,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { MailerModule } from '../mailer/mailer.module';
 import {SeedModule} from '../seeds/seed.module';
+import { AdminModule } from 'src/admin/admin.module';
 
 @Module({
   imports: [
+    AdminModule,
     SeedModule,
     UsersModule,
     MailerModule,

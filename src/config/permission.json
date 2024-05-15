@@ -1,0 +1,119 @@
+[
+  {
+    "id":0,
+   "namePermission": "Manager",
+   "action": "manage",
+   "subject": "all"
+ },
+  {
+     "id":1,
+    "namePermission": "ReadUser",
+    "action": "read",
+    "subject": "User"
+  },
+  { "id":2,
+    "namePermission": "CreateUser",
+    "action": "create",
+    "subject": "User"
+  },
+  { "id":3,
+    "namePermission": "UpdateUser",
+    "action": "update",
+    "subject": "User"
+  },
+  { "id":4,
+    "namePermission": "DeleteUser",
+    "action": "delete",
+    "subject": "User"
+  },
+  { "id":5,
+    "namePermission": "ReadRole",
+    "action": "read",
+    "subject": "Role"
+  },
+  { "id":6,
+    "namePermission": "CreateRole",
+    "action": "create",
+    "subject": "Role"
+  },
+  { "id":7,
+    "namePermission": "UpdateRole",
+    "action": "update",
+    "subject": "Role"
+  },
+  { "id":8,
+    "namePermission": "DeleteRole",
+    "action": "delete",
+    "subject": "Role"
+  },
+  { "id":9,
+  "namePermission": "UpdatePost",
+  "action": "update",
+  "subject": "Post"
+  },
+  { "id":10,
+  "namePermission": "DeletePost",
+  "action": "delete",
+  "subject": "Post"
+  },
+  { "id":11,
+  "namePermission": "ReadPost",
+  "action": "read",
+  "subject": "Post"
+  },
+  { "id":12,
+  "namePermission": "DeleteComment",
+  "action": "delete",
+  "subject": "Comment"
+  },
+  { "id":13,
+  "namePermission": "ReadComment",
+  "action": "read",
+  "subject": "Comment"
+  },
+  { "id":14,
+  "namePermission": "DeleteReplyComment",
+  "action": "delete",
+  "subject": "ReplyComment"
+  },
+  { "id":15,
+  "namePermission": "ReadReplyComment",
+  "action": "read",
+  "subject": "ReplyComment"
+  },
+  { "id":16,
+  "namePermission": "CreateRank",
+  "action": "create",
+  "subject": "Rank"
+  },
+  { "id":17,
+  "namePermission": "ReadRank",
+  "action": "read",
+  "subject": "Rank"
+  },
+  { "id":18,
+  "namePermission": "UpdateRank",
+  "action": "update",
+  "subject": "Rank"
+  },
+  { "id":19,
+  "namePermission": "DeleteRank",
+  "action": "delete",
+  "subject": "Rank"
+  },
+  { "id":20,
+  "namePermission": "UpdateReport",
+  "action": "update",
+  "subject": "Report"
+  },
+  { "id":21,
+  "namePermission": "DeleteReport",
+  "action": "delete",
+  "subject": "Report"
+  }
+  
+ 
+
+  
+  
+]
