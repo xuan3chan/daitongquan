@@ -6,6 +6,7 @@ import { Admin, AdminSchema } from './schema/admin.schema';
 import { ConfigModule } from '@nestjs/config';
 import { RoleModule } from 'src/role/role.module';
 import { Role, RoleSchema } from 'src/role/schema/role.schema';
+import {AbilityFactory} from '../abilities/abilities.factory';
 
 
 
@@ -19,7 +20,7 @@ import { Role, RoleSchema } from 'src/role/schema/role.schema';
     }),
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService,AbilityFactory],
   exports: [AdminService],
 })
 export class AdminModule {}

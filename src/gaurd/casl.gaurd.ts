@@ -1,39 +1,50 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AbilityFactory } from '../abilities/abilities.factory';
-import { User } from '../users/schema/user.schema';
-import { Admin } from '../admin/schema/admin.schema';
-import * as jwt from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 
 @Injectable()
-export class RolesGuard implements CanActivate {
+export class CaslGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private abilityFactory: AbilityFactory,
+    private jwtService: JwtService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean | never {
+  async canActivate(context: ExecutionContext): Promise<boolean | never> {
     const roles = this.reflector.get<string[]>('roles', context.getHandler());
     if (!roles) {
         return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const token = request.headers.authorization.split(' ')[1]; // Assuming the token is in the Authorization header
-    const decodedToken = jwt.decode(token) as jwt.JwtPayload; // Typecast decodedToken as JwtPayload
+    const token = this.extractTokenFromHeader(request);
+    if (!token) {
+      throw new UnauthorizedException('token not found');
+    }
 
-    const user: User | Admin = {
-        role: decodedToken.role as string, // Access role property from decodedToken and typecast as string
-    } as User | Admin; // Explicitly cast the user object
+    const payload = await this.jwtService.verifyAsync(token, {
+      secret: process.env.JWT_SECRET,
+    });
 
-    const ability = this.abilityFactory.createForUser(user);
+    request['user'] = payload;
+    const permissions = payload.role.map(role => role.permissionID);
+   console.log(permissions);
 
-    const hasRole = roles.some(role => ability.can(role, 'all'));
+    const ability = this.abilityFactory.createForUser(permissions);
 
-    if (!hasRole) {
+    const hasAbility = roles.some(role => ability.can(role, role));
+
+    if (!hasAbility) {
       throw new ForbiddenException('You do not have permission to perform this action');
     }
 
     return true;
+  }
+
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
   }
 }

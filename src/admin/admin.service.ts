@@ -34,7 +34,6 @@ export class AdminService {
       password: hashedPassword,
       role: findRole,
     });
-    console.log(admin);
     return admin.save();
   }
   async findOneAdminEmailService(email: string): Promise<Admin> {

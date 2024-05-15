@@ -1,9 +1,3 @@
-// // casl.decorator.ts
-// import { SetMetadata } from '@nestjs/common';
-// import { Ability } from '@casl/ability';
+import { SetMetadata } from '@nestjs/common';
 
-// export const CHECK_POLICIES_KEY = 'CHECK_POLICIES_KEY';
-
-// export type PolicyHandler = (ability: Ability) => boolean;
-
-// export const CheckPolicies = (...handlers: PolicyHandler[]) => SetMetadata(CHECK_POLICIES_KEY, handlers);
+export const Roles = (...roles: string[]) => SetMetadata('roles', roles);

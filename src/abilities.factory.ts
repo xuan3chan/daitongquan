@@ -21,25 +21,27 @@ export class AbilityFactory {
 
     return defineAbility((can, cannot) => {
       rolePermissions.forEach(({ action, subject }) => {
-        cannot(action, subject);
+        can(action, subject);
       });
     });
   }
 
- private getPermissionsForRole(permissionIDs: number[]) {
-  let allPermissions;
-  try {
-    const filePath = path.resolve(__dirname, '../permission.json');
-    const fileData = fs.readFileSync(filePath, 'utf-8');
-    allPermissions = JSON.parse(fileData);
-  } catch (error) {
-    throw new NotFoundException(error.message);
+  private getPermissionsForRole(permissionID: number) {
+    console.log(permissionID);
+    let allPermissions;
+    try {
+      const filePath = path.resolve(__dirname, './config/permission.json');
+      const fileData = fs.readFileSync(filePath, 'utf-8');
+      allPermissions = JSON.parse(fileData);
+
+      
+    } catch (error) {
+      throw new NotFoundException(error.message);
+    }
+
+    // Assuming each role has a specific set of permissions, you need to filter the permissions based on the permissionID
+    const rolePermissions = allPermissions.filter(permission => permission.permissionID === permissionID);
+
+    return rolePermissions;
   }
-
-  // Filter the permissions based on the permissionIDs
-  const rolePermissions = allPermissions.filter(permission => permissionIDs.includes(permission.id));
- 
-
-  return rolePermissions;
-}
 }
