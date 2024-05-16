@@ -26,7 +26,7 @@ export class AbilityFactory {
     console.log(permissionIDs);
     let allPermissions;
     try {
-      const filePath = path.resolve(__dirname, '../permission.json');
+      const filePath = path.resolve(__dirname, '../src/config/permission.json');
       const fileData = fs.readFileSync(filePath, 'utf-8');
       allPermissions = JSON.parse(fileData);
     } catch (error) {
