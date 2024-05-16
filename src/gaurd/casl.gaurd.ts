@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AbilityFactory } from '../abilities/abilities.factory';
 import { JwtService } from '@nestjs/jwt';
@@ -13,10 +19,10 @@ export class CaslGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean | never> {
-    const roles = this.reflector.get<string[]>('roles', context.getHandler());
-    if (!roles) {
-        return true;
-    }
+    const subject = this.reflector.get<string>('Subject', context.getHandler());
+    const action = this.reflector.get<string>('Action', context.getHandler());
+    // console.log(action);
+    // console.log(subject);
 
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
@@ -29,15 +35,17 @@ export class CaslGuard implements CanActivate {
     });
 
     request['user'] = payload;
-    const permissions = payload.role.map(role => role.permissionID);
-   console.log(permissions);
-
+    const permissions = payload.role.map((role) => Number(role.permissionID));
+    // console.log(permissions);
     const ability = this.abilityFactory.createForUser(permissions);
 
-    const hasAbility = roles.some(role => ability.can(role, role));
+    const checkAbility = ability.can(action, subject);
+    console.log(checkAbility);
 
-    if (!hasAbility) {
-      throw new ForbiddenException('You do not have permission to perform this action');
+    if (!checkAbility) {
+      throw new ForbiddenException(
+        'You do not have permission to perform this action',
+      );
     }
 
     return true;

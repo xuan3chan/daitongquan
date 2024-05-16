@@ -7,14 +7,21 @@
  },
   {
      "id":1,
-    "namePermission": "ReadUser",
+    "namePermission": "ReadAdmin",
     "action": "read",
-    "subject": "User"
+    "subject": "admin"
   },
   { "id":2,
-    "namePermission": "CreateUser",
+    "namePermission": "CreateAdmin",
     "action": "create",
-    "subject": "User"
+    "subject": "admin"
+  },
+  {
+  "id":3,
+  "namePermission": "DeleteAdmin",
+  "action": "delete",
+  "subject":"admin"
+
   },
   { "id":3,
     "namePermission": "UpdateUser",
