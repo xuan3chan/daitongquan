@@ -7,8 +7,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AbilityFactory } from '../abilities/abilities.factory';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtModule } from '@nestjs/jwt';
 import { Request } from 'express';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class CaslGuard implements CanActivate {
@@ -21,8 +22,6 @@ export class CaslGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean | never> {
     const subject = this.reflector.get<string>('Subject', context.getHandler());
     const action = this.reflector.get<string>('Action', context.getHandler());
-    // console.log(action);
-    // console.log(subject);
 
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
@@ -30,18 +29,25 @@ export class CaslGuard implements CanActivate {
       throw new UnauthorizedException('token not found');
     }
 
-    const payload = await this.jwtService.verifyAsync(token, {
-      secret: process.env.JWT_SECRET,
-    });
+    let payload;
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      request['user'] = payload;
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new UnauthorizedException('Token expired');
+      } else {
+        throw new UnauthorizedException('Invalid token');
+      }
+    }
 
-    request['user'] = payload;
     const permissions = payload.role.map((role) => Number(role.permissionID));
-    // console.log(permissions);
     const ability = this.abilityFactory.createForUser(permissions);
 
     const checkAbility = ability.can(action, subject);
     console.log(checkAbility);
-
     if (!checkAbility) {
       throw new ForbiddenException(
         'You do not have permission to perform this action',
