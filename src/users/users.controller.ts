@@ -23,12 +23,12 @@ export class UsersController {
     @ApiBadRequestResponse({description:'User not found'})
     @UseGuards(AuthGuard)
     @Get('view-profile')
-    async viewProfileController(@Req() request: Request): Promise<{ status: number; message: string; comple: any }> {
+    async viewProfileController(@Req() request: Request): Promise<{data: any }> {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>
     const decodedToken = jwt.decode(token) as JwtPayload;
     const userId = decodedToken._id;
-    const comple = await this.usersService.viewProfileService(userId);
-    return { status: 200, message: 'Success', comple };
+    const data = await this.usersService.viewProfileService(userId);
+    return {data} ;
 }
 
    
