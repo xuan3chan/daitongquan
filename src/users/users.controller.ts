@@ -91,16 +91,17 @@ export class UsersController {
     },
   })
   @UseInterceptors(FileInterceptor('avatar'))
+  @ApiOkResponse({ description: 'Update avatar success' })
+  @ApiBadRequestResponse({ description: 'bab Request' })
   @UseGuards(AuthGuard)
   async updateAvatarController(
     @Req() request: Request,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ message: string }> {
-      await this// const userId = this.getUserIdFromToken(request);
-      // await this.usersService.updateAvatarService(userId, file.path);
-      console.log(file);
-      // const uploadResult = await this.cloudinaryService.uploadAvatarService(file.path)
-      // console.log(uploadResult);
+    const userId = this.getUserIdFromToken(request);
+    const uploadResult = await this.cloudinaryService.uploadImageService(file);
+    await this.usersService.updateAvatarService(userId, uploadResult.url);
+    console.log('file', uploadResult);
     return { message: 'Avatar updated successfully' };
   }
 }

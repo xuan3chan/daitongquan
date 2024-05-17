@@ -2,10 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
+  constructor(
+    private cloudinaryService: CloudinaryService,
+    @InjectModel(User.name) private userModel: Model<User>
+  ) { }
   async findOneEmailOrUsernameService(account: string): Promise<User> {
     // tìm email hoac username 
     return this.userModel.findOne({
@@ -107,6 +112,12 @@ async updateUserProfileService(
     .exec();
 }
 async updateAvatarService(_id: string, avatar: string): Promise<User> {
+  // tim url avatar cũ
+  const user = await this.userModel.findOne({ _id }).exec();
+  const deleteAvatar = this.cloudinaryService.deleteImageService(user.avatar);
+  if (!deleteAvatar) {
+    return null;
+  }
   return this.userModel
     .findOneAndUpdate({ _id }, { avatar }, { new: true })
     .exec();
