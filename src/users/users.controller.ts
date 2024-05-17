@@ -5,24 +5,34 @@ import {
   Req,
   Put,
   Body,
+  Patch,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../gaurd/auth.gaurd';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { UpdateUserProfileDto } from './dto/updateUserProfile.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   private getUserIdFromToken(request: Request): string {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>
@@ -65,5 +75,32 @@ export class UsersController {
       gender,
     );
     return { message: 'User profile updated successfully' };
+  }
+
+  @Patch('update-avatar')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('avatar'))
+  @UseGuards(AuthGuard)
+  async updateAvatarController(
+    @Req() request: Request,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ message: string }> {
+      await this// const userId = this.getUserIdFromToken(request);
+      // await this.usersService.updateAvatarService(userId, file.path);
+      console.log(file);
+      // const uploadResult = await this.cloudinaryService.uploadAvatarService(file.path)
+      // console.log(uploadResult);
+    return { message: 'Avatar updated successfully' };
   }
 }

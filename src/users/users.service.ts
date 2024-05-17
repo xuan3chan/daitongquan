@@ -106,5 +106,9 @@ async updateUserProfileService(
     )
     .exec();
 }
-
+async updateAvatarService(_id: string, avatar: string): Promise<User> {
+  return this.userModel
+    .findOneAndUpdate({ _id }, { avatar }, { new: true })
+    .exec();
+}
 }

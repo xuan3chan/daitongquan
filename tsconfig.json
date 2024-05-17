@@ -16,6 +16,14 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "csl/lib": [
+        "libs/lib/src"
+      ],
+      "csl/lib/*": [
+        "libs/lib/src/*"
+      ]
+    }
   }
 }

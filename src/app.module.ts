@@ -9,8 +9,10 @@ import { MailerModule } from './mailer/mailer.module';
 import { SeedModule } from './seeds/seed.module';
 import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 @Module({
   imports: [
+    
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -22,6 +24,7 @@ import { AdminModule } from './admin/admin.module';
     SeedModule,
     RoleModule,
     AdminModule,
+    CloudinaryModule,
   ],
   controllers: [],
   providers: [],
