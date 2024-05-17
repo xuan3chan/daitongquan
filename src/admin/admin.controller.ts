@@ -3,7 +3,7 @@ import { AdminService } from './admin.service';
 import {CreateAdminDto} from './dto/createAdmin.dto';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
 import {CaslGuard} from '../gaurd/casl.gaurd';
-import {RoleGuard} from '../gaurd/role.gaurd';
+import {RoleGuard} from '../gaurd/member.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
 
 @ApiTags('admin')

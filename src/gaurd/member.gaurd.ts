@@ -14,9 +14,9 @@ export class RoleGuard extends AuthGuard {
       return false;
     }
     const request = context.switchToHttp().getRequest();
-    if (request.user && request.user.role === 'admin') {
+    if (request.user && request.user.role === 'member') {
       return true;
     }
-    throw new UnauthorizedException('Only admins are allowed');
+    throw new UnauthorizedException('Only member are allowed');
   }
 }

@@ -26,7 +26,7 @@ export class User extends Document {
   })
   role: string;
 
-  @Prop({ type: mongoose.Schema.Types.Date, reuired: false })
+  @Prop({ type: mongoose.Schema.Types.Date, default: null })
   dateOfBirth: Date;
 
   @Prop({

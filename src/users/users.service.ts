@@ -86,8 +86,25 @@ export class UsersService {
     return newUser.save();
   }
   //view profile lấy _id từ token
- async viewProfileService(_id: string): Promise<User> {
-    return this.userModel.findOne({ _id }).select('-password').exec();
+async viewProfileService(_id: string): Promise<User> {
+  return this.userModel.findOne({ _id }).select('-password').exec();
 }
-  
+
+async updateUserProfileService(
+  _id: string,
+  fullName?: string,
+  email?: string,
+  address?: string,
+  dateOfBirth?: Date,
+  gender?: string,
+): Promise<User> {
+  return this.userModel
+    .findOneAndUpdate(
+      { _id },
+      { fullName,email, address, dateOfBirth, gender },
+      { new: true }
+    )
+    .exec();
+}
+
 }
