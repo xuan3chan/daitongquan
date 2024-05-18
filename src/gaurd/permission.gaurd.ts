@@ -22,7 +22,6 @@ export class PermissionGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean | never> {
     const subject = this.reflector.get<string>('Subject', context.getHandler());
     const action = this.reflector.get<string>('Action', context.getHandler());
-    console.log(subject, action);
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
@@ -43,11 +42,13 @@ export class PermissionGuard implements CanActivate {
       }
     }
 
-const permissions = payload.role.flatMap((role) => role.permissionID.map(Number));    console.log(permissions);
+    const permissions = payload.role.flatMap((role) =>
+      role.permissionID.map(Number),
+    );
+    console.log(permissions);
     const ability = this.abilityFactory.createForUser(permissions);
     console.log(ability);
-const checkAbility = ability.can(action[0], subject[0]);
-    console.log(checkAbility);
+    const checkAbility = ability.can(action[0], subject[0]);
     if (!checkAbility) {
       throw new ForbiddenException(
         'You do not have permission to perform this action',

@@ -18,6 +18,7 @@ import {
   ApiConsumes,
   ApiOkResponse,
   ApiTags,
+  ApiQuery
 } from '@nestjs/swagger';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
@@ -26,6 +27,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
+import { Request } from 'express';
 
 
 @ApiTags('users')
@@ -110,6 +112,16 @@ export class UsersController {
     await this.usersService.updateAvatarService(userId, uploadResult.url);
     console.log('file', uploadResult);
     return { message: 'Avatar updated successfully' };
+  }
+
+  @Get('search')
+  @ApiOkResponse({ description: 'Search user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  @ApiQuery({ name: 'searchKey', required: true, type: String, description: 'The search key' })
+  async searchUserController(@Req() request: Request): Promise<{ data: any }> {
+    const searchKey = request.query.searchKey as string;
+    const data = await this.usersService.searchUserService(searchKey);
+    return { data };
   }
 
 }

@@ -39,6 +39,7 @@ export class AuthController {
       register.email,
       register.password,
       register.username,
+      register.fullname,
      
     );
   }

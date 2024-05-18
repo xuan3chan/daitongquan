@@ -25,6 +25,7 @@ export class AuthService {
     email: string,
     password: string,
     username: string,
+    fullname:string,
   ): Promise<{ access_token: string; refresh_token: string }> {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -33,6 +34,7 @@ export class AuthService {
         email,
         hashedPassword,
         username,
+        fullname,
         createRefreshToken,
       );
       if ('message' in user) {

@@ -15,6 +15,14 @@ export class RegisterDto {
     username: string;
 
     @ApiProperty({
+        description: 'Full name of user ',
+        example: 'xuanchimto'
+    })
+    @IsString()
+    @IsNotEmpty()
+    fullname: string;
+
+    @ApiProperty({
         description: 'Email of user ',
         example: 'xuanchimto@gmail.com'
     })
