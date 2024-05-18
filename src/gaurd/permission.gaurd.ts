@@ -12,7 +12,7 @@ import { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
 
 @Injectable()
-export class CaslGuard implements CanActivate {
+export class PermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private abilityFactory: AbilityFactory,
@@ -22,7 +22,7 @@ export class CaslGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean | never> {
     const subject = this.reflector.get<string>('Subject', context.getHandler());
     const action = this.reflector.get<string>('Action', context.getHandler());
-
+    console.log(subject, action);
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
@@ -43,10 +43,10 @@ export class CaslGuard implements CanActivate {
       }
     }
 
-    const permissions = payload.role.map((role) => Number(role.permissionID));
+const permissions = payload.role.flatMap((role) => role.permissionID.map(Number));    console.log(permissions);
     const ability = this.abilityFactory.createForUser(permissions);
-
-    const checkAbility = ability.can(action, subject);
+    console.log(ability);
+const checkAbility = ability.can(action[0], subject[0]);
     console.log(checkAbility);
     if (!checkAbility) {
       throw new ForbiddenException(

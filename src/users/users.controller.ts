@@ -24,6 +24,9 @@ import { JwtPayload } from 'jsonwebtoken';
 import { UpdateUserProfileDto } from './dto/updateUserProfile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import {PermissionGuard} from '../gaurd/permission.gaurd';
+import { Subject,Action } from 'src/decorator/casl.decorator';
+
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -40,7 +43,11 @@ export class UsersController {
     return decodedToken._id;
   }
 
+  @Action('read')
+  @Subject('user')
   @ApiOkResponse({ description: 'Get all users' })
+  @ApiBadRequestResponse({ description: 'bad request'})
+  @UseGuards(PermissionGuard)
   @Get()
   async findAllController() {
     return this.usersService.findAllService();
@@ -104,4 +111,5 @@ export class UsersController {
     console.log('file', uploadResult);
     return { message: 'Avatar updated successfully' };
   }
+
 }

@@ -21,13 +21,11 @@ export class AbilityFactory {
       });
     });
   }
-
   private getPermissionsForRole(permissionIDs: number[]) {
     console.log(permissionIDs);
     let allPermissions;
     try {
       const filePath = path.resolve('./src/config/permission.json');
-      console.log(filePath);
       const fileData = fs.readFileSync(filePath, 'utf-8');
       allPermissions = JSON.parse(fileData);
     } catch (error) {

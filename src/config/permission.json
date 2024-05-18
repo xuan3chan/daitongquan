@@ -1,120 +1,128 @@
 [
   {
-    "id":0,
-   "namePermission": "Manager",
-   "action": "manage",
-   "subject": "all"
- },
+    "id": 0,
+    "namePermission": "Manager",
+    "action": "manage",
+    "subject": "all"
+  },
   {
-     "id":1,
+    "id": 1,
     "namePermission": "ReadAdmin",
     "action": "read",
     "subject": "admin"
   },
-  { "id":2,
+  {
+    "id": 2,
     "namePermission": "CreateAdmin",
     "action": "create",
     "subject": "admin"
   },
   {
-  "id":3,
-  "namePermission": "DeleteAdmin",
-  "action": "delete",
-  "subject":"admin"
-
+    "id": 3,
+    "namePermission": "DeleteAdmin",
+    "action": "delete",
+    "subject": "admin"
   },
-  { "id":4,
+  {
+    "id": 4,
+    "namePermission": "readUser",
+    "action": "read",
+    "subject": "user"
+  },
+  {
+    "id": 5,
     "namePermission": "UpdateUser",
     "action": "update",
-    "subject": "aser"
+    "subject": "user"
   },
-  { "id":5,
+  {
+    "id": 6,
     "namePermission": "DeleteUser",
     "action": "delete",
-    "subject": "aser"
+    "subject": "user"
   },
-  { "id":6,
+  {
+    "id": 7,
     "namePermission": "ReadRole",
     "action": "read",
     "subject": "role"
   },
-  { "id":7,
+  {
+    "id": 8,
     "namePermission": "CreateRole",
     "action": "create",
     "subject": "role"
   },
-  { "id":8,
+  {
+    "id": 9,
     "namePermission": "UpdateRole",
     "action": "update",
     "subject": "role"
   },
-  { "id":9,
+  {
+    "id": 10,
     "namePermission": "DeleteRole",
     "action": "delete",
     "subject": "role"
   },
   {
-   "id":10,
+    "id": 11,
     "namePermission": "ReadRank",
     "action": "read",
-    "subject": "rank" 
-  }
-  ,
+    "subject": "rank"
+  },
   {
-    "id":11,
+    "id": 12,
     "namePermission": "CreateRank",
     "action": "create",
-    "subject": "rank" 
-  }
-  ,
+    "subject": "rank"
+  },
   {
-    "id":12,
+    "id": 13,
     "namePermission": "UpdateRank",
     "action": "update",
-    "subject": "rank" 
-  }
-  ,
+    "subject": "rank"
+  },
   {
-    "id":13,
+    "id": 14,
     "namePermission": "DeleteRank",
     "action": "delete",
-    "subject": "rank" 
+    "subject": "rank"
   },
   {
-    "id":14,
+    "id": 15,
     "namePermission": "ReadlistPost",
     "action": "read",
-    "subject": "rermission" 
+    "subject": "permission"
   },
   {
-   "id":15,
+    "id": 16,
     "namePermission": "ApprovePost",
     "action": "approve",
-    "subject": "rost" 
+    "subject": "post"
   },
   {
-    "id":16,
+    "id": 17,
     "namePermission": "DeletePost",
     "action": "delete",
-    "subject": "rost"
+    "subject": "post"
   },
   {
-    "id":17,
+    "id": 18,
     "namePermission": "ReadReport",
     "action": "read",
     "subject": "report"
   },
   {
-    "id":18,
+    "id": 19,
     "namePermission": "DeleteReport",
     "action": "delete",
     "subject": "report"
   },
   {
-    "id":19,
-    "namePermission": "Waring report",
-    "action": "waring",
+    "id": 20,
+    "namePermission": "WarningReport",
+    "action": "warning",
     "subject": "report"
   }
-
 ]
