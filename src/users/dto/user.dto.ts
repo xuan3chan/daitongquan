@@ -31,7 +31,7 @@ export class CreateUserDto {
     @IsString()
     @IsNotEmpty()
     @MaxLength(100)
-    fullName: string;
+    fullname: string;
 
     @ApiProperty({
         description: 'Date of birth of user ',

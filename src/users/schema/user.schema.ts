@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 export class User extends Document {
   [x: string]: any;
 
-  @Prop({ type: mongoose.Schema.Types.String, required: false })
+  @Prop({ type: mongoose.Schema.Types.String, required: false,default: null })
   fullName: string;
 
   @Prop({ type: mongoose.Schema.Types.String, required: true, unique: true })

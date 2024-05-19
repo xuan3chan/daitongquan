@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
+const Fuse = require('fuse.js');
 import { BadRequestException } from '@nestjs/common';
 export class UsersService {
   constructor(
@@ -127,24 +128,35 @@ export class UsersService {
       .findOneAndUpdate({ _id }, { avatar }, { new: true })
       .exec();
   }
+ 
+
   async searchUserService(searchKey: string): Promise<{ user: User[] }> {
     try {
-      const normalizedInput = removeAccents(searchKey);
-      const regex = new RegExp([...normalizedInput].join('.*'), 'i');
-
       const users = await this.userModel.find();
-      const matchedUsers = users.filter(
-        (user) =>
-          (user.username && regex.test(removeAccents(user.username))) ||
-          (user.email && regex.test(removeAccents(user.email))) ||
-          (user.fullName && regex.test(removeAccents(user.fullName))),
-      );
+  
+      const options = {
+        keys: ['username', 'email', 'fullName'],
+        includeScore: true,
+        findAllMatches: true,
+        threshold: 0.5, // Adjust this value to control the "fuzziness" of the search
+      };
+  
+      const fuse = new Fuse(users, options);
+      const result = fuse.search(searchKey);
+  
+      const matchedUsers = result.map(({ item }) => item);
+  
       if (matchedUsers.length === 0) {
-        throw new BadRequestException('No user found');
+        throw new NotFoundException('No user found');
       }
-      return { user: matchedUsers }; // Return the matched users
+  
+      return { user: matchedUsers };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Something went wrong');
     }
   }
+  
 }

@@ -20,7 +20,7 @@ export class AdminController {
   @HttpCode(201)
   @Post()
   async createAdmin(@Body()createAdminDto: CreateAdminDto) {
-    return this.adminService.createAdmin(createAdminDto.name,createAdminDto.email, createAdminDto.password, createAdminDto.roleId);
+    return this.adminService.createAdmin(createAdminDto.fullname,createAdminDto.email, createAdminDto.password, createAdminDto.roleId);
   }
   
 }

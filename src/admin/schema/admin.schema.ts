@@ -7,7 +7,7 @@ import { RoleDocument } from 'src/role/schema/role.schema';
 @Schema({timestamps: true})
 export class Admin extends Document {
   @Prop({ type: mongoose.Schema.Types.String, required: true })
-  name: string;
+  fullname: string;
 
   @Prop({ type: mongoose.Schema.Types.String, required: true })
   email: string;

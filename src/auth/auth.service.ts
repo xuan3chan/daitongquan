@@ -43,7 +43,7 @@ export class AuthService {
       const payload = {
         _id: user._id,
         email: user.email,
-        fullName: user.fullName,
+        fullname: user.fullname,
         dateOfBirth: user.dateOfBirth,
         avatar: user.avatar,
         address: user.address,
@@ -98,7 +98,7 @@ export class AuthService {
         returnedUser = {
           username: user.username,
           email: user.email,
-          fullName: user.fullName,
+          fullname: user.fullname,
           dateOfBirth: user.dateOfBirth,
           avatar: user.avatar,
           address: user.address,
@@ -115,11 +115,11 @@ export class AuthService {
         payload = {
           _id: admin._id,
           email: admin.email,
-          name: admin.name,
+          fullname: admin.fullname,
           role: admin.role,
         };
         returnedUser = {
-          name: admin.name,
+          fullname: admin.fullname,
           email: admin.email,
           role: admin.role,
           _id: admin._id,
@@ -172,7 +172,7 @@ export class AuthService {
         payload = {
           _id: admin._id,
           email: admin.email,
-          name: admin.name,
+          fullname: admin.fullname,
           role: admin.role,
         };
       }
@@ -188,9 +188,10 @@ export class AuthService {
   async logoutService(refreshToken: string): Promise<{ message: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin =
-        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin =await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      
       const accountHolder = user || admin;
+      console.log(accountHolder);
 
       if (!accountHolder) {
         throw new Error('refresh Token not found');

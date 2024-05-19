@@ -11,7 +11,7 @@ export class CreateAdminDto {
     @IsNotEmpty()
     @MinLength(3)
     @MaxLength(30)
-    name: string;
+    fullname: string;
 
     @ApiProperty({
         description: 'Email of the admin',

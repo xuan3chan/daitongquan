@@ -74,10 +74,10 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserProfileDto,
   ): Promise<{ message: string }> {
     const userId = this.getUserIdFromToken(request);
-    const { fullName, email, address, dateOfBirth, gender } = updateUserDto;
+    const { fullname, email, address, dateOfBirth, gender } = updateUserDto;
     await this.usersService.updateUserProfileService(
       userId,
-      fullName,
+      fullname,
       email,
       address,
       dateOfBirth,

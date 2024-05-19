@@ -11,7 +11,7 @@ export class UpdateUserProfileDto {
     @MaxLength(100)
     @MinLength(6,{message:'Full name must be at least 6 characters'})
     @IsOptional()
-    fullName?: string;
+    fullname?: string;
 
     @ApiProperty({
         description: 'Email of user ',

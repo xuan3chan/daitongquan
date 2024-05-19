@@ -13,7 +13,7 @@ export class AdminService {
   ) {}
 
   async createAdmin(
-    name: string,
+    fullname: string,
     email: string,
     password: string,
     roleId: string,
@@ -29,7 +29,7 @@ export class AdminService {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const admin = new this.adminModel({
-      name,
+      fullname,
       email,
       password: hashedPassword,
       role: findRole,
