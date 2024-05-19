@@ -103,7 +103,7 @@ export class UsersService {
 
   async updateUserProfileService(
     _id: string,
-    fullName?: string,
+    fullname?: string,
     email?: string,
     address?: string,
     dateOfBirth?: Date,
@@ -112,7 +112,7 @@ export class UsersService {
     return this.userModel
       .findOneAndUpdate(
         { _id },
-        { fullName, email, address, dateOfBirth, gender },
+        { fullname, email, address, dateOfBirth, gender },
         { new: true },
       )
       .exec();

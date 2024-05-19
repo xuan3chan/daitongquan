@@ -7,7 +7,7 @@ export class User extends Document {
   [x: string]: any;
 
   @Prop({ type: mongoose.Schema.Types.String, required: false,default: null })
-  fullName: string;
+  fullname: string;
 
   @Prop({ type: mongoose.Schema.Types.String, required: true, unique: true })
   email: string;
