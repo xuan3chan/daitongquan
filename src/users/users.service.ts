@@ -1,5 +1,4 @@
 import {
-  Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,8 +7,6 @@ import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
-const Fuse = require('fuse.js');
-import { BadRequestException } from '@nestjs/common';
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
@@ -138,32 +135,35 @@ export class UsersService {
       const users = await this.userModel.find();
       const preprocessString = (str: string) =>
         removeAccents(str).trim().toLowerCase();
-
+  
       // Preprocess the search key
       const preprocessedSearchKey = preprocessString(searchKey);
-
+  
       // Construct a case-insensitive regex pattern
       const regex = new RegExp(`\\b${preprocessedSearchKey}\\b`, 'i');
-
+  
       // Filter the users based on the regex
       const matchedUsers = users.filter((user) => {
         // Destructure and preprocess user data
-        const [username, fullname, email] = [
-          'username',
-          'fullname',
-          'email',
-        ].map((field) => preprocessString(user[field]));
-
+        const { username, fullname, email } = user;
+        const [preprocessedUsername, preprocessedFullname, preprocessedEmail] = [
+          username,
+          fullname,
+          email,
+        ].map((field) => preprocessString(field));
+  
         // Test regex pattern against user data
         return (
-          regex.test(username) || regex.test(fullname) || regex.test(email)
+          regex.test(preprocessedUsername) ||
+          regex.test(preprocessedFullname) ||
+          regex.test(preprocessedEmail)
         );
       });
-
+  
       if (matchedUsers.length === 0) {
         throw new NotFoundException('No user found');
       }
-
+  
       return { user: matchedUsers };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -173,4 +173,5 @@ export class UsersService {
       throw new InternalServerErrorException('Something went wrong');
     }
   }
+  
 }

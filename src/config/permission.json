@@ -98,7 +98,7 @@
   {
     "id": 16,
     "namePermission": "ApprovePost",
-    "action": "approve",
+    "action": "update",
     "subject": "post"
   },
   {
@@ -122,7 +122,7 @@
   {
     "id": 20,
     "namePermission": "WarningReport",
-    "action": "warning",
+    "action": "update",
     "subject": "report"
   }
 ]
