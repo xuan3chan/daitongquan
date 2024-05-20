@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
@@ -128,35 +132,45 @@ export class UsersService {
       .findOneAndUpdate({ _id }, { avatar }, { new: true })
       .exec();
   }
- 
 
   async searchUserService(searchKey: string): Promise<{ user: User[] }> {
     try {
       const users = await this.userModel.find();
-  
-      const options = {
-        keys: ['username', 'email', 'fullName'],
-        includeScore: true,
-        findAllMatches: true,
-        threshold: 0.5, // Adjust this value to control the "fuzziness" of the search
-      };
-  
-      const fuse = new Fuse(users, options);
-      const result = fuse.search(searchKey);
-  
-      const matchedUsers = result.map(({ item }) => item);
-  
+      const preprocessString = (str: string) =>
+        removeAccents(str).trim().toLowerCase();
+
+      // Preprocess the search key
+      const preprocessedSearchKey = preprocessString(searchKey);
+
+      // Construct a case-insensitive regex pattern
+      const regex = new RegExp(`\\b${preprocessedSearchKey}\\b`, 'i');
+
+      // Filter the users based on the regex
+      const matchedUsers = users.filter((user) => {
+        // Destructure and preprocess user data
+        const [username, fullname, email] = [
+          'username',
+          'fullname',
+          'email',
+        ].map((field) => preprocessString(user[field]));
+
+        // Test regex pattern against user data
+        return (
+          regex.test(username) || regex.test(fullname) || regex.test(email)
+        );
+      });
+
       if (matchedUsers.length === 0) {
         throw new NotFoundException('No user found');
       }
-  
+
       return { user: matchedUsers };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
       }
+      console.log(error);
       throw new InternalServerErrorException('Something went wrong');
     }
   }
-  
 }
