@@ -8,6 +8,8 @@ import {
   Patch,
   UseInterceptors,
   UploadedFile,
+  Delete,
+  HttpCode,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../gaurd/auth.gaurd';
@@ -23,11 +25,13 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { UpdateUserProfileDto } from './dto/updateUserProfile.dto';
+import { BlockUserDto } from './dto/blockUser.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
 import { Request } from 'express';
+import { DeleteUserDto } from './dto/deleteUser.dto';
 
 
 @ApiTags('users')
@@ -122,6 +126,29 @@ export class UsersController {
     const searchKey = request.query.searchKey as string;
     const data = await this.usersService.searchUserService(searchKey);
     return { data };
+  }
+
+  @UseGuards(PermissionGuard)
+  @Action('update')
+  @Subject('user')
+  @Patch('update-block-user')
+  @ApiOkResponse({ description: 'Block user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  async blockUserController(@Body() blockUserDto: BlockUserDto): Promise<{ message: string }> {
+    await this.usersService.blockUserService(blockUserDto._id,blockUserDto.isBlock);
+    return { message: 'update block user successfully' };
+  }
+
+  @UseGuards(PermissionGuard)
+  @Action('delete')
+  @Subject('user')
+  @Delete('delete-user')
+  @ApiOkResponse({ description: 'Delete user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  @HttpCode(200)
+  async deeleteUserController(@Body() deleteUserDto:DeleteUserDto): Promise<{ message: string }> {
+    await this.usersService.deleteUserService(deleteUserDto._id);
+    return { message: 'delete user successfully' };
   }
 
 }

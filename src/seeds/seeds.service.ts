@@ -1,26 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Seed } from './schema/seed.schema';
+import { SpendingCate } from '../spendingcate/schema/spendingcate.schema';
 
 @Injectable()
 export class SeedsService {
     constructor(
-        @InjectModel(Seed.name) private seedModel: Model<Seed>,
+        @InjectModel(SpendingCate.name) private seedModel: Model<SpendingCate>,
     ) {}
 
-   async createDefaultSpenCate(userId: string): Promise<Seed[]> {
+   async createDefaultSpenCate(userId: string): Promise<SpendingCate[]> {
     const categories = [
-        { name: 'Food', description: 'Food Category' },
-        { name: 'Relax', description: 'Relax Category' },
-        { name: 'Shopping', description: 'Shopping Category' },
-        { name: 'Chilling', description: 'Chilling Category' },
+        { name: 'Food', description: 'Food Category', icon: 'food' },
+        { name: 'Relax', description: 'Relax Category,',icon: 'relax' },
+        { name: 'Shopping', description: 'Shopping Category',icon: 'shopping' },
+        { name: 'Chilling', description: 'Chilling Category',icon: 'chilling' },
     ];
 
     const seeds = categories.map(category => {
         const newSeed = new this.seedModel({
             name: category.name,
             description: category.description,
+            icon: category.icon,
             userId: userId,
         });
         return newSeed.save();

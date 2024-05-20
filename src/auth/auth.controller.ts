@@ -70,7 +70,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'logout successfully' })
   @ApiBadRequestResponse({ description: 'Bad Request' })
-  @Delete('logout')
+  @Patch('logout')
   async logoutController(
     @Body() refreshToken: RefreshTokenDto,
   ): Promise<{ message: string }> {
@@ -101,4 +101,6 @@ export class AuthController {
       statusCode: 201, // Replace with the appropriate status code
     };
   }
+  
+
 }

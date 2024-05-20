@@ -51,6 +51,8 @@ export class User extends Document {
     default: 'active',
   })
   status: string;
+  @Prop({ type: mongoose.Schema.Types.Boolean, default: false })
+  isBlock: boolean;
 
   @Prop({ type: mongoose.Schema.Types.String, default: null })
   refreshToken: string;

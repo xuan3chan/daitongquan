@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { SeedsService } from './seeds.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { Seed, SeedSchema } from './schema/seed.schema';
+import { SpendingCate, SpendingCateSchema } from '../spendingcate/schema/spendingcate.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Seed.name, schema: SeedSchema }]),
+    MongooseModule.forFeature([{ name: SpendingCate.name, schema: SpendingCateSchema }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

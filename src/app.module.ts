@@ -10,6 +10,7 @@ import { SeedModule } from './seeds/seed.module';
 import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { SpendingcateModule } from './spendingcate/spendingcate.module';
 @Module({
   imports: [
     
@@ -25,6 +26,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     RoleModule,
     AdminModule,
     CloudinaryModule,
+    SpendingcateModule,
   ],
   controllers: [],
   providers: [],

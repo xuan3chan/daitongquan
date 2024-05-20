@@ -7,10 +7,12 @@ import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
+import { SpendingcateService } from '../spendingcate/spendingcate.service';
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
     @InjectModel(User.name) private userModel: Model<User>,
+    private spendingcateService: SpendingcateService,
   ) {}
   async findOneEmailOrUsernameService(account: string): Promise<User> {
     // tìm email hoac username
@@ -135,23 +137,20 @@ export class UsersService {
       const users = await this.userModel.find();
       const preprocessString = (str: string) =>
         removeAccents(str).trim().toLowerCase();
-  
+
       // Preprocess the search key
       const preprocessedSearchKey = preprocessString(searchKey);
-  
+
       // Construct a case-insensitive regex pattern
       const regex = new RegExp(`\\b${preprocessedSearchKey}\\b`, 'i');
-  
+
       // Filter the users based on the regex
       const matchedUsers = users.filter((user) => {
         // Destructure and preprocess user data
         const { username, fullname, email } = user;
-        const [preprocessedUsername, preprocessedFullname, preprocessedEmail] = [
-          username,
-          fullname,
-          email,
-        ].map((field) => preprocessString(field));
-  
+        const [preprocessedUsername, preprocessedFullname, preprocessedEmail] =
+          [username, fullname, email].map((field) => preprocessString(field));
+
         // Test regex pattern against user data
         return (
           regex.test(preprocessedUsername) ||
@@ -159,11 +158,11 @@ export class UsersService {
           regex.test(preprocessedEmail)
         );
       });
-  
+
       if (matchedUsers.length === 0) {
         throw new NotFoundException('No user found');
       }
-  
+
       return { user: matchedUsers };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -173,5 +172,18 @@ export class UsersService {
       throw new InternalServerErrorException('Something went wrong');
     }
   }
-  
+  async blockUserService(_id: string, isBlock: boolean): Promise<User> {
+    //tim user và update trạng thái block theo isBlock
+    return this.userModel.findOneAndUpdate({ _id }, { isBlock }).exec();
+  }
+
+  async deleteUserService(_id: string): Promise<User> {
+    // Check if user exists
+    const user = await this.userModel.findById(_id).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.spendingcateService.deleteOfUser(_id);
+    return this.userModel.findOneAndDelete({ _id }).exec();
+  }
 }

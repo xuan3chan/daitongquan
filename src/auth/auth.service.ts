@@ -25,7 +25,7 @@ export class AuthService {
     email: string,
     password: string,
     username: string,
-    fullname:string,
+    fullname: string,
   ): Promise<{ access_token: string; refresh_token: string }> {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -77,6 +77,10 @@ export class AuthService {
 
       if (!(await bcrypt.compare(password, accountHolder.password))) {
         throw new UnauthorizedException('Password is incorrect');
+      }
+
+      if (accountHolder.isBlock) {
+        throw new UnauthorizedException('Account is blocked');
       }
 
       const createRefreshToken = randomBytes(32).toString('hex');
@@ -140,12 +144,14 @@ export class AuthService {
   ): Promise<{ access_token: string; refreshToken: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin =
-        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin =await this.adminService.findOneAdminRefreshTokenService(refreshToken);
       const accountHolder = user || admin;
 
       if (!accountHolder) {
         throw new Error('refresh Token not found');
+      }
+      if (accountHolder.isBlock) {
+        throw new UnauthorizedException('Account is blocked');
       }
 
       const createRefreshToken = randomBytes(32).toString('hex');
@@ -161,6 +167,7 @@ export class AuthService {
         payload = {
           _id: user._id,
           role: user.role,
+          isBlock: user.isBlock,
           sub: user._id,
         };
       } else if (admin) {
@@ -171,6 +178,7 @@ export class AuthService {
 
         payload = {
           _id: admin._id,
+          isBlock: admin.isBlock,
           email: admin.email,
           fullname: admin.fullname,
           role: admin.role,
@@ -188,8 +196,9 @@ export class AuthService {
   async logoutService(refreshToken: string): Promise<{ message: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin =await this.adminService.findOneAdminRefreshTokenService(refreshToken);
-      
+      const admin =
+        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+
       const accountHolder = user || admin;
       console.log(accountHolder);
 

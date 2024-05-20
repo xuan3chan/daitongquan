@@ -15,8 +15,12 @@ export class Admin extends Document {
   @Prop({ type: mongoose.Schema.Types.String, required: true })
   password: string;
 
+  @Prop({ type: mongoose.Schema.Types.Boolean, default: false })
+  isBlock: boolean;
+
   @Prop({ type: mongoose.Schema.Types.Array, ref: 'roles' }) // Changed type to ObjectId and ref to 'Role'
   role: RoleDocument[];
+
   @Prop({ type: mongoose.Schema.Types.String,default: null })
   refreshToken: string;
 }
