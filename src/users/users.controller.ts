@@ -54,7 +54,7 @@ export class UsersController {
   @ApiOkResponse({ description: 'Get all users' })
   @ApiBadRequestResponse({ description: 'bad request'})
   @UseGuards(PermissionGuard)
-  @Get()
+  @Get('list-users')
   async findAllController() {
     return this.usersService.findAllService();
   }
@@ -146,7 +146,7 @@ export class UsersController {
   @ApiOkResponse({ description: 'Delete user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
   @HttpCode(200)
-  async deeleteUserController(@Body() deleteUserDto:DeleteUserDto): Promise<{ message: string }> {
+  async deleteUserController(@Body() deleteUserDto:DeleteUserDto): Promise<{ message: string }> {
     await this.usersService.deleteUserService(deleteUserDto._id);
     return { message: 'delete user successfully' };
   }
