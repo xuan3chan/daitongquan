@@ -34,10 +34,9 @@ export class CreateAdminDto {
     @ApiProperty(
         {
             description: 'Role of the admin',
-            example: '66445e3ad052f97add5912c1'
+            example: '["66445e3ad052f97add5912c1","66445e3ad052f97add5912c1"]'
         }
     )
-    @IsMongoId()
     @IsNotEmpty()
     roleId: string;
 }

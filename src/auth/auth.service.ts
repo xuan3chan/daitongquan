@@ -10,6 +10,7 @@ import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { SeedsService } from '../seeds/seeds.service';
 import { AdminService } from '../admin/admin.service';
+import { RoleService } from '../role/role.service';
 
 @Injectable()
 export class AuthService {
@@ -19,13 +20,15 @@ export class AuthService {
     private mailerService: MailerService,
     private seedsService: SeedsService,
     private adminService: AdminService,
+    private roleService: RoleService,
   ) {}
 
   async registerService(
     email: string,
     password: string,
     username: string,
-    fullname: string,
+    firstname: string,
+    lastname: string,
   ): Promise<{ access_token: string; refresh_token: string }> {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -34,7 +37,8 @@ export class AuthService {
         email,
         hashedPassword,
         username,
-        fullname,
+        firstname,
+        lastname,
         createRefreshToken,
       );
       if ('message' in user) {
@@ -68,11 +72,10 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string; refreshToken: string; user: any }> {
     try {
-      const user =
-        await this.usersService.findOneEmailOrUsernameService(account);
+      const user =await this.usersService.findOneEmailOrUsernameService(account);
       const admin = await this.adminService.findOneAdminEmailService(account);
       const accountHolder = user || admin;
-
+      console.log(accountHolder);
       if (!accountHolder) {
         throw new UnauthorizedException('Account not found');
       }
@@ -113,6 +116,7 @@ export class AuthService {
           _id: user._id,
         };
       } else if (admin) {
+        const roles = await this.roleService.findRoleService(admin.role);
         await this.adminService.updateRefreshTokenService(
           account,
           createRefreshToken,
@@ -122,12 +126,12 @@ export class AuthService {
           _id: admin._id,
           email: admin.email,
           fullname: admin.fullname,
-          role: admin.role,
+          role: roles,
         };
         returnedUser = {
           fullname: admin.fullname,
           email: admin.email,
-          role: admin.role,
+          role: roles,
           _id: admin._id,
         };
       }
@@ -147,7 +151,7 @@ export class AuthService {
   ): Promise<{ access_token: string; refreshToken: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin =await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin = await this.adminService.findOneAdminRefreshTokenService(refreshToken);
       const accountHolder = user || admin;
 
       if (!accountHolder) {
@@ -174,6 +178,7 @@ export class AuthService {
           sub: user._id,
         };
       } else if (admin) {
+        const roles = await this.roleService.findRoleService(admin.role);
         await this.adminService.updateRefreshTokenService(
           admin.email,
           createRefreshToken,
@@ -184,7 +189,7 @@ export class AuthService {
           isBlock: admin.isBlock,
           email: admin.email,
           fullname: admin.fullname,
-          role: admin.role,
+          role: roles,
         };
       }
 
@@ -199,8 +204,7 @@ export class AuthService {
   async logoutService(refreshToken: string): Promise<{ message: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin =
-        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin = await this.adminService.findOneAdminRefreshTokenService(refreshToken);
 
       const accountHolder = user || admin;
       console.log(accountHolder);

@@ -6,8 +6,11 @@ import mongoose from 'mongoose';
 export class User extends Document {
   [x: string]: any;
 
-  @Prop({ type: mongoose.Schema.Types.String, required: false,default: null })
-  fullname: string;
+  @Prop({ type: mongoose.Schema.Types.String, required: true })
+  firstname: string;
+  
+  @Prop({ type: mongoose.Schema.Types.String, required: true })
+  lastname: string;
 
   @Prop({ type: mongoose.Schema.Types.String, required: true, unique: true })
   email: string;
@@ -15,8 +18,20 @@ export class User extends Document {
   @Prop({ type: mongoose.Schema.Types.String, required: true })
   password: string;
 
-  @Prop({ type: mongoose.Schema.Types.String, default: null })
+  @Prop({ type: mongoose.Schema.Types.String })
   address: string;
+  
+  @Prop({ type: mongoose.Schema.Types.String })
+  phone: string;
+  
+  @Prop({ type: mongoose.Schema.Types.String})
+  nickname: string;
+
+  @Prop({ type: mongoose.Schema.Types.String})
+  description: string;
+
+  @Prop({ type: mongoose.Schema.Types.Array})
+  hyperlink: string[];
 
   @Prop({
     type: mongoose.Schema.Types.String,
@@ -26,7 +41,7 @@ export class User extends Document {
   })
   role: string;
 
-  @Prop({ type: mongoose.Schema.Types.Date, default: null })
+  @Prop({ type: mongoose.Schema.Types.Date})
   dateOfBirth: Date;
 
   @Prop({
@@ -60,7 +75,7 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.String,reuired: true,unique: true})
   username: string;
 
-  @Prop({type: mongoose.Schema.Types.String,default: null,enum:['Nam','Nữ']})
+  @Prop({type: mongoose.Schema.Types.String,enum:['Nam','Nữ']})
   gender: string;
 
   @Prop({type: mongoose.Schema.Types.ObjectId,default: null})

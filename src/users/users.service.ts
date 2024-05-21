@@ -55,10 +55,15 @@ export class UsersService {
     return this.userModel.find().exec();
   }
   async updateRefreshTokenService(
-    email: string,
+    account: string,
     refreshToken: string,
   ): Promise<User> {
-    return this.userModel.findOneAndUpdate({ email }, { refreshToken }).exec();
+    return this.userModel
+      .findOneAndUpdate(
+        { $or: [{ email: account }, { username: account }] },
+        { refreshToken },
+      )
+      .exec();
   }
   async updateCodeService(
     email: string,
@@ -79,7 +84,8 @@ export class UsersService {
     email: String,
     password: String,
     username: String,
-    fullname: String,
+    firstname: String,
+    lastname: String,
     refeshToken: string,
   ): Promise<User | { message: string }> {
     const userExist = await this.userModel
@@ -94,7 +100,8 @@ export class UsersService {
       email,
       password,
       username,
-      fullname,
+      firstname,
+      lastname,
       refreshToken: refeshToken,
     });
     return newUser.save();
@@ -106,16 +113,32 @@ export class UsersService {
 
   async updateUserProfileService(
     _id: string,
-    fullname?: string,
+    firstname?: string,
+    lastname?: string,
     email?: string,
-    address?: string,
     dateOfBirth?: Date,
+    address?: string,
     gender?: string,
+    phone?: string,
+    nickname?: string,
+    description?: string,
+    hyperlink?: string[],
   ): Promise<User> {
     return this.userModel
       .findOneAndUpdate(
         { _id },
-        { fullname, email, address, dateOfBirth, gender },
+        {
+          firstname,
+          lastname,
+          email,
+          dateOfBirth,
+          address,
+          gender,
+          phone,
+          nickname,
+          description,
+          hyperlink,
+        },
         { new: true },
       )
       .exec();

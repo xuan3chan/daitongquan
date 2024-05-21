@@ -19,7 +19,7 @@ export class Admin extends Document {
   isBlock: boolean;
 
   @Prop({ type: mongoose.Schema.Types.Array, ref: 'roles' }) // Changed type to ObjectId and ref to 'Role'
-  role: RoleDocument[];
+  role: string[];
 
   @Prop({ type: mongoose.Schema.Types.String,default: null })
   refreshToken: string;

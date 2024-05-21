@@ -44,6 +44,9 @@ export class RoleService {
     role.permissionID = permissionID;
     return role.save();
   }
+async findRoleService(ids: string[]): Promise<Role[]> {
+    return this.roleModel.find({ _id: { $in: ids } }).exec();
+}
 
   async viewlistRoleService(): Promise<Role[]> {
     return this.roleModel.find().exec();

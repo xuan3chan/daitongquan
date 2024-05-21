@@ -7,9 +7,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AbilityFactory } from '../abilities/abilities.factory';
-import { JwtService, JwtModule } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
+
+const TOKEN_NOT_FOUND_MESSAGE = 'Token not found';
+const TOKEN_EXPIRED_MESSAGE = 'Token expired';
+const INVALID_TOKEN_MESSAGE = 'Invalid token';
+const NO_PERMISSION_MESSAGE = 'You do not have permission to perform this action';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -25,34 +30,31 @@ export class PermissionGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException('token not found');
+      throw new UnauthorizedException(TOKEN_NOT_FOUND_MESSAGE);
     }
 
     let payload;
     try {
-      payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      payload = await this.jwtService.verifyAsync(token);
       request['user'] = payload;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new UnauthorizedException('Token expired');
+        throw new UnauthorizedException(TOKEN_EXPIRED_MESSAGE);
       } else {
-        throw new UnauthorizedException('Invalid token');
+        throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
       }
     }
 
     const permissions = payload.role.flatMap((role) =>
       role.permissionID.map(Number),
     );
-    console.log(permissions);
+    if (!permissions) {
+      throw new ForbiddenException(NO_PERMISSION_MESSAGE);
+    }
     const ability = this.abilityFactory.createForUser(permissions);
-    console.log(ability);
     const checkAbility = ability.can(action[0], subject[0]);
     if (!checkAbility) {
-      throw new ForbiddenException(
-        'You do not have permission to perform this action',
-      );
+      throw new ForbiddenException(NO_PERMISSION_MESSAGE);
     }
 
     return true;

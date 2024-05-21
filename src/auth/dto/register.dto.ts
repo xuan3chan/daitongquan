@@ -15,12 +15,20 @@ export class RegisterDto {
     username: string;
 
     @ApiProperty({
-        description: 'Full name of user ',
-        example: 'xuanchimto'
+        description: 'firstname of user',
+        example: 'Nguyên Lê Minh'
     })
     @IsString()
     @IsNotEmpty()
-    fullname: string;
+    firstname: string;
+
+    @ApiProperty({
+        description: 'Full name of user ',
+        example: 'Xuân'
+    })
+    @IsString()
+    @IsNotEmpty()
+    lastname: string;
 
     @ApiProperty({
         description: 'Email of user ',

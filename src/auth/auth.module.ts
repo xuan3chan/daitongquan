@@ -7,9 +7,11 @@ import { ConfigModule } from '@nestjs/config';
 import { MailerModule } from '../mailer/mailer.module';
 import {SeedModule} from '../seeds/seed.module';
 import { AdminModule } from 'src/admin/admin.module';
+import { RoleModule } from 'src/role/role.module';
 
 @Module({
   imports: [
+    RoleModule,
     AdminModule,
     SeedModule,
     UsersModule,
