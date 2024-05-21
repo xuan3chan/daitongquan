@@ -196,7 +196,6 @@ return this.userModel
       if (error instanceof NotFoundException) {
         throw error;
       }
-      console.log(error);
       throw new InternalServerErrorException('Something went wrong');
     }
   }

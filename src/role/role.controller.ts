@@ -6,11 +6,13 @@ import {
   Post,
   Put,
   Get,
+  Delete,
   UseGuards,
 } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/createrole.dto';
 import { UpdateRoleDto } from './dto/updaterole.dto';
+import { DeleteRoleDto } from './dto/deleterole.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -66,5 +68,15 @@ export class RoleController {
     const data = await this.roleService.viewlistRoleService();
     return { data };
   }
-
+  
+  @UseGuards(PermissionGuard)
+  @Action('delete')
+  @Subject('role')
+  @Delete()
+  @ApiOkResponse({ description: 'Delete user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  @HttpCode(200)
+  async deleteRoleController(@Body() deleteRoleDto: DeleteRoleDto) {
+    return this.roleService.deleteRoleService(deleteRoleDto.id);
+  }
 }

@@ -24,14 +24,13 @@ import {
 } from '@nestjs/swagger';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import { UpdateUserProfileDto } from './dto/updateUserProfile.dto';
-import { BlockUserDto } from './dto/blockUser.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
 import { Request } from 'express';
-import { DeleteUserDto } from './dto/deleteUser.dto';
+import {DeleteUserDto, CreateUserDto, BlockUserDto, UpdateUserProfileDto } from './dto/index';
+
 
 
 @ApiTags('users')
@@ -53,7 +52,7 @@ export class UsersController {
   @Subject('user')
   @ApiOkResponse({ description: 'Get all users' })
   @ApiBadRequestResponse({ description: 'bad request'})
-  // @UseGuards(PermissionGuard)
+  @UseGuards(PermissionGuard)
   @Get('list-users')
   async findAllController() {
     return this.usersService.listUserService();
@@ -156,4 +155,7 @@ export class UsersController {
     return { message: 'delete user successfully' };
   }
 
+
+  
+    
 }

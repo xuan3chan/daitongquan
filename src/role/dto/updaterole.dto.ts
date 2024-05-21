@@ -11,6 +11,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   ArrayMinSize,
+  IsOptional,
 } from 'class-validator';
 
 export class UpdateRoleDto {
@@ -19,7 +20,7 @@ export class UpdateRoleDto {
     example: '60e1d0b5d8f1f40015e4e8b0',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(40)
   _id: string;
   @ApiProperty({
@@ -27,7 +28,7 @@ export class UpdateRoleDto {
     example: 'admin',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(100)
   name: string;
 
@@ -37,7 +38,7 @@ export class UpdateRoleDto {
   })
   @IsNotEmpty()
   @IsArray()
-  @ArrayNotEmpty()
+  @IsOptional()
   @ArrayMinSize(1)
   @IsNumber({}, { each: true })
   permissionID: number[];

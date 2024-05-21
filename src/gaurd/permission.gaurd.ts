@@ -14,7 +14,8 @@ import * as jwt from 'jsonwebtoken';
 const TOKEN_NOT_FOUND_MESSAGE = 'Token not found';
 const TOKEN_EXPIRED_MESSAGE = 'Token expired';
 const INVALID_TOKEN_MESSAGE = 'Invalid token';
-const NO_PERMISSION_MESSAGE = 'You do not have permission to perform this action';
+const NO_PERMISSION_MESSAGE =
+  'You do not have permission to perform this action';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -33,7 +34,7 @@ export class PermissionGuard implements CanActivate {
       throw new UnauthorizedException(TOKEN_NOT_FOUND_MESSAGE);
     }
 
-    let payload;
+    let payload: any;
     try {
       payload = await this.jwtService.verifyAsync(token);
       request['user'] = payload;
@@ -44,10 +45,14 @@ export class PermissionGuard implements CanActivate {
         throw new UnauthorizedException(INVALID_TOKEN_MESSAGE);
       }
     }
+    try {
+      var permissions = payload.role.flatMap((role) =>
+        role.permissionID.map(Number),
+      );
+    } catch (error) {
+      throw new ForbiddenException(NO_PERMISSION_MESSAGE);
+    }
 
-    const permissions = payload.role.flatMap((role) =>
-      role.permissionID.map(Number),
-    );
     if (!permissions) {
       throw new ForbiddenException(NO_PERMISSION_MESSAGE);
     }

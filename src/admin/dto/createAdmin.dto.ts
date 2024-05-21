@@ -28,7 +28,6 @@ export class CreateAdminDto {
     @IsString()
     @IsNotEmpty()
     @MinLength(6)
-    @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/, {message: 'Password too weak'})
     password: string;
 
     @ApiProperty(
@@ -38,5 +37,6 @@ export class CreateAdminDto {
         }
     )
     @IsNotEmpty()
-    roleId: string;
+    @IsMongoId({ each: true })
+    roleId: string[];
 }

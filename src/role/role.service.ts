@@ -22,33 +22,42 @@ export class RoleService {
     return newRole.save();
   }
 
-  async updateRoleService(
-    id: string,
-    name: string,
-    permissionID: number[],
-  ): Promise<Role> {
-    // Find the role by id
-    const role = await this.roleModel.findById(id).exec();
-    if (!role) {
-      throw new BadRequestException('Role not exists');
-    }
-    // Check for duplicate role name only if the new name is different from the current name
-    if (role.name !== name) {
-      const roleDuplicate = await this.roleModel.findOne({ name }).exec();
-
-      if (roleDuplicate) {
-        throw new BadRequestException('Role already exists');
-      }
-      role.name = name;
-    }
-    role.permissionID = permissionID;
-    return role.save();
+ async updateRoleService(
+  id: string,
+  name: string,
+  permissionID: number[],
+): Promise<Role> {
+  // Check for duplicate role name
+  const roleDuplicate = await this.roleModel.findOne({ name }).exec();
+  if (roleDuplicate && roleDuplicate._id.toString() !== id) {
+    throw new BadRequestException('Role already exists');
   }
-async findRoleService(ids: string[]): Promise<Role[]> {
-    return this.roleModel.find({ _id: { $in: ids } }).exec();
+  // Update the role
+  const role = await this.roleModel.findByIdAndUpdate(
+    id,
+    { $set: { name, permissionID } },
+    { new: true, runValidators: true },
+  ).exec();
+
+  if (!role) {
+    throw new BadRequestException('Role not exists');
+  }
+
+  return role;
 }
+  async findRoleService(ids: string[]): Promise<Role[]> {
+    return this.roleModel.find({ _id: { $in: ids } }).exec();
+  }
 
   async viewlistRoleService(): Promise<Role[]> {
     return this.roleModel.find().exec();
+  }
+  async deleteRoleService(id: string): Promise<{message:string}>{
+    try {
+      await this.roleModel.findByIdAndDelete(id).exec();
+      return {message: 'Role deleted successfully'};
+    } catch (error) {
+      throw new BadRequestException('Role not exists');
+    }
   }
 }

@@ -25,102 +25,108 @@
   },
   {
     "id": 4,
+    "namePermission": "UpdateAdmin",
+    "action": "update",
+    "subject": "admin"
+  },
+  {
+    "id": 5,
     "namePermission": "readUser",
     "action": "read",
     "subject": "user"
   },
   {
-    "id": 5,
+    "id": 6,
     "namePermission": "UpdateUser",
     "action": "update",
     "subject": "user"
   },
   {
-    "id": 6,
+    "id": 7,
     "namePermission": "DeleteUser",
     "action": "delete",
     "subject": "user"
   },
   {
-    "id": 7,
+    "id": 8,
     "namePermission": "ReadRole",
     "action": "read",
     "subject": "role"
   },
   {
-    "id": 8,
+    "id": 9,
     "namePermission": "CreateRole",
     "action": "create",
     "subject": "role"
   },
   {
-    "id": 9,
+    "id": 10,
     "namePermission": "UpdateRole",
     "action": "update",
     "subject": "role"
   },
   {
-    "id": 10,
+    "id": 11,
     "namePermission": "DeleteRole",
     "action": "delete",
     "subject": "role"
   },
   {
-    "id": 11,
+    "id": 12,
     "namePermission": "ReadRank",
     "action": "read",
     "subject": "rank"
   },
   {
-    "id": 12,
+    "id": 13,
     "namePermission": "CreateRank",
     "action": "create",
     "subject": "rank"
   },
   {
-    "id": 13,
+    "id": 14,
     "namePermission": "UpdateRank",
     "action": "update",
     "subject": "rank"
   },
   {
-    "id": 14,
+    "id": 15,
     "namePermission": "DeleteRank",
     "action": "delete",
     "subject": "rank"
   },
   {
-    "id": 15,
+    "id": 16,
     "namePermission": "ReadlistPost",
     "action": "read",
     "subject": "permission"
   },
   {
-    "id": 16,
+    "id": 17,
     "namePermission": "ApprovePost",
     "action": "update",
     "subject": "post"
   },
   {
-    "id": 17,
+    "id": 18,
     "namePermission": "DeletePost",
     "action": "delete",
     "subject": "post"
   },
   {
-    "id": 18,
+    "id": 19,
     "namePermission": "ReadReport",
     "action": "read",
     "subject": "report"
   },
   {
-    "id": 19,
+    "id": 20,
     "namePermission": "DeleteReport",
     "action": "delete",
     "subject": "report"
   },
   {
-    "id": 20,
+    "id": 21,
     "namePermission": "WarningReport",
     "action": "update",
     "subject": "report"
