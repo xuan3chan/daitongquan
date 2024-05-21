@@ -53,10 +53,10 @@ export class UsersController {
   @Subject('user')
   @ApiOkResponse({ description: 'Get all users' })
   @ApiBadRequestResponse({ description: 'bad request'})
-  @UseGuards(PermissionGuard)
+  // @UseGuards(PermissionGuard)
   @Get('list-users')
   async findAllController() {
-    return this.usersService.findAllService();
+    return this.usersService.listUserService();
   }
 
   @ApiOkResponse({ description: 'Get user by id' })

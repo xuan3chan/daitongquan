@@ -51,8 +51,11 @@ export class UsersService {
     user.authCode = null;
     return user.save();
   }
-  async findAllService(): Promise<User[]> {
-    return this.userModel.find().exec();
+  async listUserService(): Promise<User[]> {
+   return this.userModel
+  .find()
+  .select('firstname avatar lastname email dateOfBirth address gender phone nickname description hyperlink createdAt')
+  .exec();
   }
   async updateRefreshTokenService(
     account: string,
@@ -108,8 +111,10 @@ export class UsersService {
   }
   //view profile lấy _id từ token
   async viewProfileService(_id: string): Promise<User> {
-    return this.userModel.findOne({ _id }).select('-password').exec();
-  }
+return this.userModel
+  .findOne({ _id })
+  .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone ')
+  .exec();  }
 
   async updateUserProfileService(
     _id: string,

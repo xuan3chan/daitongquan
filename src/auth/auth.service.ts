@@ -45,15 +45,19 @@ export class AuthService {
         throw new BadRequestException(user.message);
       }
       const payload = {
-        _id: user._id,
         email: user.email,
-        fullname: user.fullname,
-        dateOfBirth: user.dateOfBirth,
-        avatar: user.avatar,
-        address: user.address,
         role: user.role,
-        createdAt: user.createdAt,
-        sub: user._id,
+        _id: user._id,
+        avatar: user.avatar,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        address: user.address,
+        dateOfBirth: user.dateOfBirth,
+        description: user.description,
+        gender: user.gender,
+        hyperlink: user.hyperlink,
+        nickname: user.nickname,
+        phone: user.phone
       };
       //create default seed
       await this.seedsService.createDefaultSpenCate(user._id);
@@ -75,7 +79,6 @@ export class AuthService {
       const user =await this.usersService.findOneEmailOrUsernameService(account);
       const admin = await this.adminService.findOneAdminEmailService(account);
       const accountHolder = user || admin;
-      console.log(accountHolder);
       if (!accountHolder) {
         throw new UnauthorizedException('Account not found');
       }
@@ -90,8 +93,8 @@ export class AuthService {
 
       const createRefreshToken = randomBytes(32).toString('hex');
 
-      let payload;
-      let returnedUser;
+      let payload : any;
+      let returnedUser : any;
 
       if (user) {
         await this.usersService.updateRefreshTokenService(
@@ -104,16 +107,21 @@ export class AuthService {
           role: user.role,
           sub: user._id,
         };
+        
         returnedUser = {
-          username: user.username,
           email: user.email,
-          fullname: user.fullname,
-          dateOfBirth: user.dateOfBirth,
-          avatar: user.avatar,
-          address: user.address,
           role: user.role,
-          createdAt: user.createdAt,
           _id: user._id,
+          avatar: user.avatar,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          address: user.address,
+          dateOfBirth: user.dateOfBirth,
+          description: user.description,
+          gender: user.gender,
+          hyperlink: user.hyperlink,
+          nickname: user.nickname,
+          phone: user.phone
         };
       } else if (admin) {
         const roles = await this.roleService.findRoleService(admin.role);
@@ -207,7 +215,6 @@ export class AuthService {
       const admin = await this.adminService.findOneAdminRefreshTokenService(refreshToken);
 
       const accountHolder = user || admin;
-      console.log(accountHolder);
 
       if (!accountHolder) {
         throw new Error('refresh Token not found');
