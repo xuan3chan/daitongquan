@@ -111,4 +111,14 @@ export class AdminService {
       return adminObject;
     });
   }
+  async blockAdminService(id: string, isBlock: boolean): Promise<any> {
+    await this.adminModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { isBlock } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    return { message: 'Block admin success' };
+    }
 }

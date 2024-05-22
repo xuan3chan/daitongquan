@@ -15,7 +15,7 @@ const TOKEN_NOT_FOUND_MESSAGE = 'Token not found';
 const TOKEN_EXPIRED_MESSAGE = 'Token expired';
 const INVALID_TOKEN_MESSAGE = 'Invalid token';
 const NO_PERMISSION_MESSAGE =
-  'You do not have permission to perform this action';
+  'You do not have permission to perform this action, or you are blocked. pls contact the master admin.';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -58,7 +58,7 @@ export class PermissionGuard implements CanActivate {
     }
     const ability = this.abilityFactory.createForUser(permissions);
     const checkAbility = ability.can(action[0], subject[0]);
-    if (!checkAbility) {
+    if (!checkAbility||payload.isBlock===true) {
       throw new ForbiddenException(NO_PERMISSION_MESSAGE);
     }
 

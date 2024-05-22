@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import {CreateAdminDto} from './dto/createAdmin.dto';
 import {UpdateAdminDto} from './dto/updateAdmin.dto';
 import {DeleteAdminDto} from './dto/deleteAdmin.dto'; 
+import {BlockAdminDto} from './dto/blockAdmin.dto';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
@@ -54,5 +55,14 @@ export class AdminController {
   async listAdminController() {
     return this.adminService.listAdminService();
   }
-  
+  @Action('block')
+  @Subject('admin')
+  @UseGuards(PermissionGuard)
+  @ApiOkResponse({description: 'Admin blocked successfully'})
+  @ApiBadRequestResponse({description: 'bad request'})
+  @HttpCode(200)
+  @Patch('update-block')
+  async blockAdminController(@Body() blockAdminDto: BlockAdminDto) {
+    return this.adminService.blockAdminService(blockAdminDto.id, blockAdminDto.isBlocked);
+  }
 }
