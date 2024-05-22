@@ -105,6 +105,7 @@ export class AuthService {
         payload = {
           _id: user._id,
           role: user.role,
+          isBlock: user.isBlock,
           sub: user._id,
         };
         
@@ -124,7 +125,7 @@ export class AuthService {
           phone: user.phone
         };
       } else if (admin) {
-        const roles = await this.roleService.findRoleService(admin.role);
+        const roles = await this.roleService.findRoleService(admin.role.map(String));
         await this.adminService.updateRefreshTokenService(
           account,
           createRefreshToken,
@@ -186,7 +187,7 @@ export class AuthService {
           sub: user._id,
         };
       } else if (admin) {
-        const roles = await this.roleService.findRoleService(admin.role);
+        const roles = await this.roleService.findRoleService(admin.role.map(String)); // Convert ObjectId array to string array
         await this.adminService.updateRefreshTokenService(
           admin.email,
           createRefreshToken,

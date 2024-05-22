@@ -36,7 +36,6 @@ export class User extends Document {
   @Prop({
     type: mongoose.Schema.Types.String,
     default: 'member',
-    enum: ['member','admin'],
     required: true,
   })
   role: string;

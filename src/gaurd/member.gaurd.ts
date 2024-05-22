@@ -7,16 +7,21 @@ import {
 import { AuthGuard } from './auth.gaurd';
 
 @Injectable()
-export class RoleGuard extends AuthGuard {
+export class MemberGuard extends AuthGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const canActivate = await super.canActivate(context);
-    if (!canActivate) {
-      return false;
+    try {
+      const canActivate = await super.canActivate(context);
+      if (!canActivate) {
+        throw new UnauthorizedException('Invalid token');
+      }
+    } catch (error) {
+      throw new UnauthorizedException('Token not found or invalid');
     }
+
     const request = context.switchToHttp().getRequest();
-    if (request.user && request.user.role === 'member' &&request.user.isBlock === false) {
+    if (request.user && request.user.role === 'member' && request.user.isBlock === false) {
       return true;
     }
-    throw new UnauthorizedException('Only member are allowed OR you are blocked');
+    throw new UnauthorizedException('Only members are allowed OR you are blocked');
   }
 }
