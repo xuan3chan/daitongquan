@@ -1,4 +1,4 @@
-import { Body,Post, Controller, Req, UseGuards, Put, Delete, Get } from '@nestjs/common';
+import { Body,Post, Controller, Req, UseGuards, Put, Delete, Get, Param } from '@nestjs/common';
 import { SpendingcateService } from './spendingcate.service';
 import { CreateSpendingCateDto } from './dto/CreateSpendingCate.dto';
 import * as jwt from 'jsonwebtoken';
@@ -50,13 +50,14 @@ export class SpendingcateController {
       updateSpendingCateDto.icon,
     );
   }
-  @Delete()
+  @Delete(':spendingCateId')
   @UseGuards(MemberGuard)
   async deleteSpendingCateController(
     @Req() request: Request,
-    @Body() deleteSpendingCateDto: DeleteSpendingCateDto): Promise<any> {
+    @Param('spendingCateId') spendingCateId: string,
+  ): Promise<any> {
    const userId = this.getUserIdFromToken(request);
-    return this.spendingcateService.deleteSpendingCateService(userId, deleteSpendingCateDto.spendingCateId);
+    return this.spendingcateService.deleteSpendingCateService(userId, spendingCateId);
   }
   @Get()
   @UseGuards(MemberGuard)

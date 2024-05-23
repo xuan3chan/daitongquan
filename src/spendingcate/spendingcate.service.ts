@@ -80,16 +80,24 @@ export class SpendingcateService {
     return updatedSpendingCate;
   }
 
-async deleteSpendingLimitIdService(spendingLimitId: string): Promise<any> {
-  const result = await this.spendingCateModel.updateMany(
-    { spendingLimitId },
-    { spendingLimitId: null },
-  );
+  async deleteSpendingLimitIdService(spendingLimitId: string): Promise<any> {
+    const result = await this.spendingCateModel.updateMany(
+      { spendingLimitId },
+      { spendingLimitId: null },
+    );
 
-  if (result.modifiedCount === 0) {
-    throw new NotFoundException(`No SpendingCate with spendingLimitId ${spendingLimitId} found`);
+    if (result.modifiedCount === 0) {
+      throw new NotFoundException(
+        `No SpendingCate with spendingLimitId ${spendingLimitId} found`,
+      );
+    }
+
+    return result;
   }
-
-  return result;
-}
+  async findOneCateService(
+    userId: string,
+    spendingCateId: string,
+  ): Promise<SpendingCate> {
+    return this.spendingCateModel.findOne({ userId, _id: spendingCateId });
+  }
 }

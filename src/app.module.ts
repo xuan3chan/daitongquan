@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SpendingcateModule } from './spendingcate/spendingcate.module';
 import { SpendinglimitModule } from './spendinglimit/spendinglimit.module';
+import { SpendingnoteModule } from './spendingnote/spendingnote.module';
 @Module({
   imports: [
     
@@ -29,6 +30,7 @@ import { SpendinglimitModule } from './spendinglimit/spendinglimit.module';
     CloudinaryModule,
     SpendingcateModule,
     SpendinglimitModule,
+    SpendingnoteModule,
   ],
   controllers: [],
   providers: [],

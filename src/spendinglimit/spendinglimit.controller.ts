@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { SpendinglimitService } from './spendinglimit.service';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CreateSpendingLimitDto } from './dto/CreateSpendingLimit.dto';
@@ -39,9 +39,16 @@ export class SpendinglimitController {
     );
   }
 
-  @Delete()
-  async deleteSpendingLimitController(@Body() dto:DeleteSpendingLimitDto): Promise<any> {
-    return this.spendinglimitService.deleteSpendingLimitService(dto.spendingLimitId);
+  @Delete(':spendingLimitId')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Spending limit deleted' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @HttpCode(200)
+  async deleteSpendingLimitController(
+    @Param('spendingLimitId') spendingLimitId: string,
+    
+  ): Promise<any> {
+    return this.spendinglimitService.deleteSpendingLimitService(spendingLimitId);
   }
 
   
