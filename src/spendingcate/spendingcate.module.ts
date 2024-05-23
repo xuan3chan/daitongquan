@@ -4,7 +4,6 @@ import { SpendingcateController } from './spendingcate.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { SpendingCate, SpendingCateSchema } from './schema/spendingcate.schema';
-
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: SpendingCate.name, schema: SpendingCateSchema }]),
@@ -13,6 +12,7 @@ import { SpendingCate, SpendingCateSchema } from './schema/spendingcate.schema';
       envFilePath: '.env',
     }),
   ],
+
   controllers: [SpendingcateController],
   providers: [SpendingcateService],
   exports: [SpendingcateService],

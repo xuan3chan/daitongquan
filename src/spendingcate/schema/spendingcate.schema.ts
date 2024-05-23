@@ -10,14 +10,17 @@ export class SpendingCate extends Document implements ISpendingCategory{
     @Prop({ type: String, required: true })
     name: string;
 
-    @Prop({ type: String, required: false })
+    @Prop({ type: mongoose.Schema.Types.String, required: false })
     description: string;
 
-    @Prop({ type: String, required: true })
+    @Prop({ type: mongoose.Schema.Types.String, required: true })
     icon: string;
     
     @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
     userId: string;
+
+    @Prop({ type: mongoose.Schema.Types.ObjectId, required: false,default:null })
+    spendingLimitId: string;
 }
 
 

@@ -11,6 +11,7 @@ import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SpendingcateModule } from './spendingcate/spendingcate.module';
+import { SpendinglimitModule } from './spendinglimit/spendinglimit.module';
 @Module({
   imports: [
     
@@ -27,6 +28,7 @@ import { SpendingcateModule } from './spendingcate/spendingcate.module';
     AdminModule,
     CloudinaryModule,
     SpendingcateModule,
+    SpendinglimitModule,
   ],
   controllers: [],
   providers: [],
