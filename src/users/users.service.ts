@@ -165,13 +165,10 @@ return this.userModel
       const users = await this.userModel.find();
       const preprocessString = (str: string) =>
         removeAccents(str).trim().toLowerCase();
-
       // Preprocess the search key
       const preprocessedSearchKey = preprocessString(searchKey);
-
       // Construct a case-insensitive regex pattern
       const regex = new RegExp(`\\b${preprocessedSearchKey}\\b`, 'i');
-
       // Filter the users based on the regex
       const matchedUsers = users.filter((user) => {
         // Destructure and preprocess user data
@@ -186,11 +183,9 @@ return this.userModel
           regex.test(preprocessedEmail)
         );
       });
-
       if (matchedUsers.length === 0) {
         throw new NotFoundException('No user found');
       }
-
       return { user: matchedUsers };
     } catch (error) {
       if (error instanceof NotFoundException) {
