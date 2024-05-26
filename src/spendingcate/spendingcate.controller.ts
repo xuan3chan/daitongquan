@@ -1,5 +1,5 @@
 import { Body,Post, Controller, Req, UseGuards, Put, Delete, Get, Param } from '@nestjs/common';
-import { SpendingcateService } from './spendingcate.service';
+import { SpendingCateService } from './spendingcate.service';
 import { CreateSpendingCateDto } from './dto/CreateSpendingCate.dto';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
@@ -12,7 +12,7 @@ import { DeleteSpendingCateDto } from './dto/DeleteSpendingCate.dto';
 @ApiBearerAuth()
 @Controller('spendingcate')
 export class SpendingcateController {
-  constructor(private readonly spendingcateService: SpendingcateService) {}
+  constructor(private readonly spendingcateService: SpendingCateService) {}
   
   private getUserIdFromToken(request: Request): string {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>

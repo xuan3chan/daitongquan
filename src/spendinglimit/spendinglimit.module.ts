@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { SpendinglimitService } from './spendinglimit.service';
+import { SpendingLimitService } from './spendinglimit.service';
 import { SpendinglimitController } from './spendinglimit.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { SpendingLimit, SpendingLimitSchema } from './schema/spendinglimit.schema';
-import { SpendingcateService } from 'src/spendingcate/spendingcate.service';
-import { SpendingcateModule } from 'src/spendingcate/spendingcate.module';
+import { SpendingCateService } from 'src/spendingcate/spendingcate.service';
+import { SpendingCateModule } from 'src/spendingcate/spendingcate.module';
 
 
 @Module({
@@ -15,10 +15,10 @@ import { SpendingcateModule } from 'src/spendingcate/spendingcate.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    SpendingcateModule
+    SpendingCateModule
   ],
   controllers: [SpendinglimitController],
-  providers: [SpendinglimitService],
-  exports: [SpendinglimitService],
+  providers: [SpendingLimitService],
+  exports: [SpendingLimitService],
 })
-export class SpendinglimitModule {}
+export class SpendingLimitModule {}

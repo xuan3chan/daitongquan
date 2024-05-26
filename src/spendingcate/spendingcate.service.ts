@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { SpendingCate } from './schema/spendingcate.schema';
 
 @Injectable()
-export class SpendingcateService {
+export class SpendingCateService {
   constructor(
     @InjectModel(SpendingCate.name)
     private spendingCateModel: Model<SpendingCate>,
@@ -100,4 +100,5 @@ export class SpendingcateService {
   ): Promise<SpendingCate> {
     return this.spendingCateModel.findOne({ userId, _id: spendingCateId });
   }
+
 }

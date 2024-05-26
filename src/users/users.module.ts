@@ -6,13 +6,13 @@ import { User, UserSchema } from './schema/user.schema';
 import { ConfigModule } from '@nestjs/config';
 import {CloudinaryModule} from '../cloudinary/cloudinary.module';
 import {AbilityFactory} from '../abilities/abilities.factory';
-import { SpendingcateModule } from 'src/spendingcate/spendingcate.module';
+import { SpendingCateModule } from 'src/spendingcate/spendingcate.module';
 import { AdminModule } from 'src/admin/admin.module';
 
 @Module({
   imports: [
     AdminModule,
-    SpendingcateModule,
+    SpendingCateModule,
     CloudinaryModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     ConfigModule.forRoot({

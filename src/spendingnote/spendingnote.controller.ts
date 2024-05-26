@@ -11,7 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SpendingnoteService } from './spendingnote.service';
+import { SpendingNoteService } from './spendingnote.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -33,7 +33,7 @@ import { Request } from 'express'; // Import the Request module from 'express'
 @ApiBearerAuth()
 @Controller('spendingnote')
 export class SpendingnoteController {
-  constructor(private readonly spendingnoteService: SpendingnoteService) {}
+  constructor(private readonly spendingnoteService: SpendingNoteService) {}
 
   private getUserIdFromToken(request: Request): string {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>

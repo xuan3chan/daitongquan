@@ -7,12 +7,12 @@ import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
-import { SpendingcateService } from '../spendingcate/spendingcate.service';
+import { SpendingCateService } from '../spendingcate/spendingcate.service';
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
     @InjectModel(User.name) private userModel: Model<User>,
-    private spendingcateService: SpendingcateService,
+    private spendingcateService: SpendingCateService,
   ) {}
   async findOneEmailOrUsernameService(account: string): Promise<User> {
     // tìm email hoac username

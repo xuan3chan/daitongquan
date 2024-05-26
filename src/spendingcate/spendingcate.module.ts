@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SpendingcateService } from './spendingcate.service';
+import { SpendingCateService } from './spendingcate.service';
 import { SpendingcateController } from './spendingcate.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
@@ -14,7 +14,7 @@ import { SpendingCate, SpendingCateSchema } from './schema/spendingcate.schema';
   ],
 
   controllers: [SpendingcateController],
-  providers: [SpendingcateService],
-  exports: [SpendingcateService],
+  providers: [SpendingCateService],
+  exports: [SpendingCateService],
 })
-export class SpendingcateModule {}
+export class SpendingCateModule {}

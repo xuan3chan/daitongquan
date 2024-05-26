@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
-import { SpendinglimitService } from './spendinglimit.service';
+import { SpendingLimitService } from './spendinglimit.service';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CreateSpendingLimitDto } from './dto/CreateSpendingLimit.dto';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
@@ -10,7 +10,7 @@ import { DeleteSpendingLimitDto } from './dto/DeleteSpendingLimit.dto';
 @ApiBearerAuth()
 @Controller('spendinglimit')
 export class SpendinglimitController {
-  constructor(private readonly spendinglimitService: SpendinglimitService) {}
+  constructor(private readonly spendinglimitService: SpendingLimitService) {}
 
   @UseGuards(MemberGuard)
   @ApiCreatedResponse({ description: 'Spending limit created' })

@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SpendingLimit } from './schema/spendinglimit.schema';
-import {SpendingcateService} from '../spendingcate/spendingcate.service';
+import {SpendingCateService} from '../spendingcate/spendingcate.service';
 
 @Injectable()
-export class SpendinglimitService {
+export class SpendingLimitService {
     constructor(
         @InjectModel(SpendingLimit.name)
         private spendingLimitModel: Model<SpendingLimit>,
-        private spendingcateService: SpendingcateService
+        private spendingcateService: SpendingCateService
     ) {}
 
     async createSpendingLimitService(spendingCateId:string,budget: number): Promise<SpendingLimit> {
