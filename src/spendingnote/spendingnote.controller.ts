@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
 import { UpdateSpendingNoteDto } from './dto/updateSpendingNote.dto';
 import { DeleteSpendingNoteDto } from './dto/DeleteSpendingNote.dto';
+import { FilterSpendingNoteDto } from './dto/FilterSpendingNote.dto';
 import { Request } from 'express'; // Import the Request module from 'express'
 @ApiTags('spending note')
 @ApiBearerAuth()
@@ -147,4 +149,16 @@ export class SpendingnoteController {
     const userId = this.getUserIdFromToken(req);
     return this.spendingnoteService.getSpendingsNoteByCateService(spendingCateId, userId);
   }
+
+@Get('filter-by-date')
+@UseGuards(MemberGuard)
+@HttpCode(200)
+async filterSpendingNoteController(
+  @Req() req: Request,
+  @Query() dto: FilterSpendingNoteDto,
+) {
+  const userId = this.getUserIdFromToken(req);
+  return this.spendingnoteService.filterSpendingNoteService(dto.startDate, dto.endDate, userId);
+}
+
 }

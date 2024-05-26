@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SpendingNote } from './schema/spendingnote.schema';
@@ -78,7 +82,10 @@ export class SpendingnoteService {
     await this.spendingNoteModel.deleteOne({ _id: spendingNoteId, userId });
     return { message: 'Delete note successfully' };
   }
-  async deleteManySpendingNoteService(spendingNoteId: string[],userId:string): Promise<any> {
+  async deleteManySpendingNoteService(
+    spendingNoteId: string[],
+    userId: string,
+  ): Promise<any> {
     const spendingNote = await this.spendingNoteModel.find({
       _id: { $in: spendingNoteId },
       userId,
@@ -92,7 +99,10 @@ export class SpendingnoteService {
   async listSpendingNoteService(userId: string): Promise<SpendingNote[]> {
     return this.spendingNoteModel.find({ userId });
   }
- async searchSpendingNoteService(searchKey: string, userId: string): Promise<{ spendingNotes: SpendingNote[] }> {
+  async searchSpendingNoteService(
+    searchKey: string,
+    userId: string,
+  ): Promise<{ spendingNotes: SpendingNote[] }> {
     try {
       const spendingNotes = await this.spendingNoteModel.find({ userId });
       const preprocessString = (str: string) =>
@@ -105,14 +115,12 @@ export class SpendingnoteService {
       const matchedSpendingNotes = spendingNotes.filter((note) => {
         // Destructure and preprocess note data
         const { title = '', content = '' } = note;
-        const [preprocessedTitle, preprocessedContent] =
-          [title, content].map((field) => preprocessString(field));
+        const [preprocessedTitle, preprocessedContent] = [title, content].map(
+          (field) => preprocessString(field),
+        );
 
         // Test regex pattern against note data
-        return (
-          regex.test(preprocessedTitle) ||
-          regex.test(preprocessedContent)
-        );
+        return regex.test(preprocessedTitle) || regex.test(preprocessedContent);
       });
       if (matchedSpendingNotes.length === 0) {
         throw new NotFoundException('No spending note found');
@@ -129,7 +137,38 @@ export class SpendingnoteService {
     spendingCateId: string,
     userId: string,
   ): Promise<SpendingNote[]> {
-    return this.spendingNoteModel.find({ spendingCateId: spendingCateId, userId });
+    return this.spendingNoteModel.find({
+      spendingCateId: spendingCateId,
+      userId,
+    });
+  }
+async filterSpendingNoteService(
+    startDate: Date | string,
+    endDate: Date | string,
+    userId: string,
+): Promise<SpendingNote[]> {
+    // Ensure startDate and endDate are Date objects
+    startDate = new Date(startDate);
+    endDate = new Date(endDate);
+
+    // Check if dates are valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Invalid startDate or endDate');
     }
-    //
+
+    // Convert dates to UTC
+    const start = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
+    const end = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59));
+
+    const spendingNotes = await this.spendingNoteModel.find({
+        createdAt: { $gte: start, $lte: end },
+        userId,
+    });
+
+    if (spendingNotes.length === 0) {
+        throw new NotFoundException('No spending notes found for the given date range and user ID');
+    }
+
+    return spendingNotes;
+}
 }

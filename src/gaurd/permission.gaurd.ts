@@ -10,6 +10,7 @@ import { AbilityFactory } from '../abilities/abilities.factory';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
+import {AdminService} from '../admin/admin.service';
 
 const TOKEN_NOT_FOUND_MESSAGE = 'Token not found';
 const TOKEN_EXPIRED_MESSAGE = 'Token expired';
@@ -23,6 +24,7 @@ export class PermissionGuard implements CanActivate {
     private reflector: Reflector,
     private abilityFactory: AbilityFactory,
     private jwtService: JwtService,
+    private adminService: AdminService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean | never> {
@@ -46,7 +48,7 @@ export class PermissionGuard implements CanActivate {
       }
     }
     try {
-      var permissions = payload.role.flatMap((role) =>
+      var permissions = payload.role.flatMap((role: { permissionID: any[]; }) =>
         role.permissionID.map(Number),
       );
     } catch (error) {
@@ -58,7 +60,9 @@ export class PermissionGuard implements CanActivate {
     }
     const ability = this.abilityFactory.createForUser(permissions);
     const checkAbility = ability.can(action[0], subject[0]);
-    if (!checkAbility||payload.isBlock===true) {
+    const checkBlock = await this.adminService.findOneAdminService(payload._id);
+    
+    if (!checkAbility||checkBlock.isBlock === true) {
       throw new ForbiddenException(NO_PERMISSION_MESSAGE);
     }
 

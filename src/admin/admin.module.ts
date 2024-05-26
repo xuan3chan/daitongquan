@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -12,7 +12,7 @@ import {AbilityFactory} from '../abilities/abilities.factory';
 
 @Module({
   imports: [
-    RoleModule,
+    forwardRef(() => RoleModule),
     MongooseModule.forFeature([{ name: Admin.name, schema: AdminSchema },{ name: Role.name, schema: RoleSchema }]),
     ConfigModule.forRoot({
       isGlobal: true,

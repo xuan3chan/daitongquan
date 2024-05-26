@@ -121,4 +121,7 @@ export class AdminService {
       .exec();
     return { message: 'Block admin success' };
     }
+    async findOneAdminService(id: string): Promise<Admin> {
+      return this.adminModel.findById(id).exec();
+    }
 }

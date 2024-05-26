@@ -80,7 +80,7 @@ export class MailerService {
         <p style="margin-bottom: 15px; color: #fff">
           If you did not request a password reset, please ignore this email or
           reply to let us know. This password reset is only valid for the next
-          30 minutes.
+          5 minutes.
         </p>
 
         <p style="color: #fff">Thank you, DaiQuanGia Support Team</p>

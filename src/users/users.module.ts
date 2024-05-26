@@ -7,9 +7,11 @@ import { ConfigModule } from '@nestjs/config';
 import {CloudinaryModule} from '../cloudinary/cloudinary.module';
 import {AbilityFactory} from '../abilities/abilities.factory';
 import { SpendingcateModule } from 'src/spendingcate/spendingcate.module';
+import { AdminModule } from 'src/admin/admin.module';
 
 @Module({
   imports: [
+    AdminModule,
     SpendingcateModule,
     CloudinaryModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
