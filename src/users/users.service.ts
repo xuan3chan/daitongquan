@@ -113,7 +113,7 @@ export class UsersService {
   async viewProfileService(_id: string): Promise<User> {
 return this.userModel
   .findOne({ _id })
-  .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone ')
+  .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt ')
   .exec();  }
 
   async updateUserProfileService(
