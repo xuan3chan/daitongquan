@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -27,7 +28,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
 import { UpdateSpendingNoteDto } from './dto/updateSpendingNote.dto';
 import { DeleteSpendingNoteDto } from './dto/DeleteSpendingNote.dto';
-import { FilterSpendingNoteDto } from './dto/FilterSpendingNote.dto';
+import { QueryDateSpendingNoteDto } from './dto/FilterSpendingNote.dto';
 import { Request } from 'express'; // Import the Request module from 'express'
 @ApiTags('spending note')
 @ApiBearerAuth()
@@ -129,13 +130,21 @@ export class SpendingnoteController {
   @HttpCode(200)
   @ApiOkResponse({ description: 'Spending note found' })
   @ApiBadRequestResponse({ description: 'Bad request' })
-  @ApiQuery({ name: 'searchKey', required: true, type: String, description: 'The search key' })
+  @ApiQuery({
+    name: 'searchKey',
+    required: true,
+    type: String,
+    description: 'The search key',
+  })
   async searchSpendingNoteController(@Req() req: Request) {
     const userId = this.getUserIdFromToken(req);
     const searchKey = req.query.searchKey as string;
-    return this.spendingnoteService.searchSpendingNoteService(searchKey, userId);
+    return this.spendingnoteService.searchSpendingNoteService(
+      searchKey,
+      userId,
+    );
   }
-  
+
   @Get('get-by-cate/:spendingCateId')
   @UseGuards(MemberGuard)
   @HttpCode(200)
@@ -147,18 +156,81 @@ export class SpendingnoteController {
   ) {
     console.log(spendingCateId);
     const userId = this.getUserIdFromToken(req);
-    return this.spendingnoteService.getSpendingsNoteByCateService(spendingCateId, userId);
+    return this.spendingnoteService.getSpendingsNoteByCateService(
+      spendingCateId,
+      userId,
+    );
   }
 
-@Get('filter-by-date')
-@UseGuards(MemberGuard)
-@HttpCode(200)
-async filterSpendingNoteController(
-  @Req() req: Request,
-  @Query() dto: FilterSpendingNoteDto,
-) {
-  const userId = this.getUserIdFromToken(req);
-  return this.spendingnoteService.filterSpendingNoteService(dto.startDate, dto.endDate, userId);
-}
+  @Get('filter-by-date')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  async filterSpendingNoteController(
+    @Req() req: Request,
+    @Query() dto: QueryDateSpendingNoteDto,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.filterSpendingNoteService(
+      dto.startDate,
+      dto.endDate,
+      userId,
+    );
+  }
 
+  @Get('statistic-option-day')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Statistic spending note of day' })
+  @ApiOkResponse({ description: 'Statistic spending note of day' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async statisticSpendingNoteOfDayController(
+    @Req() req: Request,
+    @Query() dto: QueryDateSpendingNoteDto,
+  ) {
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.statisticSpendingNoteOptionService(
+      userId,
+      startDate,
+      endDate,
+    );
+  }
+  
+  @Get('statistic-option-month')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Statistic spending note of month' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async statisticSpendingNoteOfMonthController(
+    @Req() req: Request,
+    @Query('month') month: number,
+    @Query('year') year: number,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.statisticSpendingNoteOfMonthService(
+      userId,
+      month,
+      year,
+    );
+  }
+
+  @Get('statistic-option-year')
+  @UseGuards(MemberGuard)
+  async statisticSpendingNoteOfYearController(
+    @Req() req: Request,
+    @Query('year') year: number,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.statisticSpendingNoteOfYearService(
+      userId,
+      year,
+    );
+  }
+  
 }

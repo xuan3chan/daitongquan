@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsDate, IsNotEmpty } from 'class-validator';
 
-export class FilterSpendingNoteDto {
+export class QueryDateSpendingNoteDto {
   @ApiProperty({
     description: 'Start date ',
     example: '2024-05-20'

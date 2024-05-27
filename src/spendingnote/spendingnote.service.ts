@@ -188,5 +188,104 @@ export class SpendingNoteService {
 
     return spendingNotes;
   }
-  // statistics  return total amount 
+  //return 24 total cost spending note of a day when user input date
+  async statisticSpendingNoteOptionService(
+    userId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    const start = new Date(
+      Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+      ),
+    );
+    const end = new Date(
+      Date.UTC(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        23,
+        59,
+        59,
+      ),
+    );
+    const spendingNotes = await this.spendingNoteModel.find({
+      spendingDate: { $gte: start, $lte: end },
+      userId,
+    });
+    let totalCost = 0;
+    const spendingDetails = spendingNotes.map((note) => {
+      totalCost += note.amount;
+      return {
+        title: note.title,
+        cost: note.amount,
+      };
+    });
+    return {
+      startDate: start,
+      endDate: end,
+      total: totalCost,
+      spending: spendingDetails,
+    };
+  }
+  async statisticSpendingNoteOfMonthService(
+    userId: string,
+    month: number,
+    year: number,
+  ) {
+    // Create Date objects for the start and end of the month
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+
+    // Find all spending notes for the user for the specified month
+    const spendingNotes = await this.spendingNoteModel.find({
+      spendingDate: { $gte: start, $lte: end },
+      userId,
+    });
+
+    // Calculate the total cost of all spending notes and prepare spending details
+    let totalCost = 0;
+    const spendingDetails = spendingNotes.map((note) => {
+      totalCost += note.amount;
+      return {
+        title: note.title,
+        cost: note.amount,
+        spendingDate: note.spendingDate,
+      };
+    });
+
+    // Return the start and end dates, total cost, and spending details
+    return { start, end, totalCost, spendingDetails };
+  }
+
+  async statisticSpendingNoteOfYearService(
+    userId: string,
+    year: number,
+  ) {
+    // Create Date objects for the start and end of the year
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+
+    // Find all spending notes for the user for the specified year
+    const spendingNotes = await this.spendingNoteModel.find({
+      spendingDate: { $gte: start, $lte: end },
+      userId,
+    });
+
+    // Calculate the total cost of all spending notes and prepare spending details
+    let totalCost = 0;
+    const spendingDetails = spendingNotes.map((note) => {
+      totalCost += note.amount;
+      return {
+        title: note.title,
+        cost: note.amount,
+        spendingDate: note.spendingDate,
+      };
+    });
+
+    // Return the start and end dates, total cost, and spending details
+    return { start, end, totalCost, spendingDetails };
+  }
 }
