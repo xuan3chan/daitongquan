@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { v2, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
 import * as streamifier from 'streamifier';
 @Injectable()
@@ -11,24 +11,37 @@ export class CloudinaryService {
     });
   }
 
-  async uploadImageService(
+async uploadImageService(
     file: Express.Multer.File,
-  ): Promise<UploadApiResponse | UploadApiErrorResponse> {
+): Promise<UploadApiResponse | UploadApiErrorResponse> {
     return new Promise((resolve, reject) => {
-      const uploadStream = v2.uploader.upload_stream(
-        { folder: 'daitongquan' },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        },
-      );
+        // Check if the file is an image
+        if (!file.mimetype.startsWith('image/')) {
+            reject(new BadRequestException('File is not an image.'));
+            return;
+        }
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+        // Check if the file size is less than 100MB
+        const fileSizeInMB = file.size / (1024 * 1024);
+        if (fileSizeInMB > 100) {
+            reject(new BadRequestException('File size exceeds the 100MB limit.'));
+            return;
+        }
+
+        const uploadStream = v2.uploader.upload_stream(
+            { folder: 'daitongquan' },
+            (error, result) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            },
+        );
+
+        streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
-  }
+}
   async deleteImageService(url: string) {
     // Extract the publicId from the URL
     //e.g. 'http://res.cloudinary.com/dtvhqvucg/image/upload/v1715938535/daitongquan/putnzqkzwviqwfuwlnfx.png'

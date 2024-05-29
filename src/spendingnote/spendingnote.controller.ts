@@ -233,4 +233,18 @@ export class SpendingnoteController {
     );
   }
   
+  @Get('statistic-option-cate')
+  @UseGuards(MemberGuard)
+  async statisticSpendingNoteByCateController(
+    @Req() req: Request,
+    @Query() dto: QueryDateSpendingNoteDto,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.statisticSpendingNoteByCateService(
+      userId,
+      dto.startDate,
+      dto.endDate,
+    );
+  }
+  
 }

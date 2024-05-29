@@ -8,6 +8,7 @@ import { Model } from 'mongoose';
 import { SpendingNote } from './schema/spendingnote.schema';
 import { SpendingCateService } from 'src/spendingcate/spendingcate.service';
 import { remove as removeAccents } from 'remove-accents';
+import { SpendingLimitService } from '../spendinglimit/spendinglimit.service';
 
 @Injectable()
 export class SpendingNoteService {
@@ -15,6 +16,7 @@ export class SpendingNoteService {
     @InjectModel(SpendingNote.name)
     private spendingNoteModel: Model<SpendingNote>,
     private spendingcateService: SpendingCateService,
+    private spendingLimitService: SpendingLimitService,
   ) {}
 
   async createSpendingNoteService(
@@ -260,10 +262,7 @@ export class SpendingNoteService {
     return { start, end, totalCost, spendingDetails };
   }
 
-  async statisticSpendingNoteOfYearService(
-    userId: string,
-    year: number,
-  ) {
+  async statisticSpendingNoteOfYearService(userId: string, year: number) {
     // Create Date objects for the start and end of the year
     const start = new Date(Date.UTC(year, 0, 1));
     const end = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
@@ -288,4 +287,96 @@ export class SpendingNoteService {
     // Return the start and end dates, total cost, and spending details
     return { start, end, totalCost, spendingDetails };
   }
-}
+  async statisticSpendingNoteByCateService(
+  userId: string,
+  startDate: Date | string,
+  endDate: Date | string,
+) {
+  // Ensure startDate and endDate are Date objects
+  startDate = startDate instanceof Date ? startDate : new Date(Date.parse(startDate));
+  endDate = endDate instanceof Date ? endDate : new Date(Date.parse(endDate));
+
+  const start = new Date(
+    Date.UTC(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+    ),
+  );
+  const end = new Date(
+    Date.UTC(
+      endDate.getFullYear(),
+      endDate.getMonth(),
+      endDate.getDate(),
+      23,
+      59,
+      59,
+    ),
+  );
+  const spendingNotes = await this.spendingNoteModel.find({
+    spendingDate: { $gte: start, $lte: end },
+    userId,
+  });
+
+  const spendingCateIdUnique = [...new Set(spendingNotes.map((note) => note.spendingCateId))];
+
+  const spendingDetails = await Promise.all(
+    spendingCateIdUnique.map(async (cateId) => {
+      let totalCost = 0;
+      const cateSpendingNotes = spendingNotes.filter((note) => {
+        const isMatch = note.spendingCateId === cateId;
+        if (isMatch) {
+          totalCost += note.amount;
+        }
+        return isMatch;
+      });
+
+      const infoCate = await this.spendingcateService.findOneCateService(
+        userId,
+        cateId,
+      );
+      const limitCate = await this.spendingLimitService.findSpendingLimitByIdService(
+        infoCate.spendingLimitId,
+      );
+      const percentHasUse = Math.min(
+        (totalCost / limitCate.budget) * 100,
+        100,
+      );
+
+      const spending = cateSpendingNotes.map((note) => ({
+        title: note.title,
+        cost: note.amount,
+        percentHasUse: (note.amount / limitCate.budget) * 100,
+      }));
+
+      return {
+        nameCate: infoCate.name,
+        percentHasUse,
+        budget: limitCate.budget,
+        spending,
+      };
+    }),
+  );
+
+  // Group spending details by category name
+  const groupedSpendingDetails = spendingDetails.reduce((acc, curr) => {
+    if (!acc.has(curr.nameCate)) {
+      acc.set(curr.nameCate, {
+        nameCate: curr.nameCate,
+        allOfPersentUse: 0,
+        budget: curr.budget,
+        spending: [],
+      });
+    }
+    const group = acc.get(curr.nameCate);
+    group.spending.push(...curr.spending);
+    group.allOfPersentUse += curr.percentHasUse;
+    return acc;
+  }, new Map());
+
+  return {
+    startDate: start,
+    endDate: end,
+    spending: Array.from(groupedSpendingDetails.values()),
+  };
+}}

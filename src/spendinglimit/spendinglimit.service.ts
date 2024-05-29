@@ -32,4 +32,7 @@ export class SpendingLimitService {
         await this.spendingLimitModel.deleteOne({ _id: spendingLimitId });
         return { message: 'Delete spending limit successfully' };
     }
+    async findSpendingLimitByIdService(spendingLimitId: string): Promise<SpendingLimit> {
+        return this.spendingLimitModel.findById(spendingLimitId);
+    }
 }
