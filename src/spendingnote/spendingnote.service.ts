@@ -288,95 +288,163 @@ export class SpendingNoteService {
     return { start, end, totalCost, spendingDetails };
   }
   async statisticSpendingNoteByCateService(
-  userId: string,
-  startDate: Date | string,
-  endDate: Date | string,
-) {
-  // Ensure startDate and endDate are Date objects
-  startDate = startDate instanceof Date ? startDate : new Date(Date.parse(startDate));
-  endDate = endDate instanceof Date ? endDate : new Date(Date.parse(endDate));
+    userId: string,
+    startDate: Date | string,
+    endDate: Date | string,
+  ) {
+    // Ensure startDate and endDate are Date objects
+    startDate =
+      startDate instanceof Date ? startDate : new Date(Date.parse(startDate));
+    endDate = endDate instanceof Date ? endDate : new Date(Date.parse(endDate));
 
-  const start = new Date(
-    Date.UTC(
-      startDate.getFullYear(),
-      startDate.getMonth(),
-      startDate.getDate(),
-    ),
-  );
-  const end = new Date(
-    Date.UTC(
-      endDate.getFullYear(),
-      endDate.getMonth(),
-      endDate.getDate(),
-      23,
-      59,
-      59,
-    ),
-  );
-  const spendingNotes = await this.spendingNoteModel.find({
-    spendingDate: { $gte: start, $lte: end },
-    userId,
-  });
+    const start = new Date(
+      Date.UTC(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+      ),
+    );
+    const end = new Date(
+      Date.UTC(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        23,
+        59,
+        59,
+      ),
+    );
+    const spendingNotes = await this.spendingNoteModel.find({
+      spendingDate: { $gte: start, $lte: end },
+      userId,
+    });
 
-  const spendingCateIdUnique = [...new Set(spendingNotes.map((note) => note.spendingCateId))];
+    const spendingCateIdUnique = [
+      ...new Set(spendingNotes.map((note) => note.spendingCateId)),
+    ];
 
-  const spendingDetails = await Promise.all(
-    spendingCateIdUnique.map(async (cateId) => {
-      let totalCost = 0;
-      const cateSpendingNotes = spendingNotes.filter((note) => {
-        const isMatch = note.spendingCateId === cateId;
-        if (isMatch) {
-          totalCost += note.amount;
-        }
-        return isMatch;
-      });
+    const spendingDetails = await Promise.all(
+      spendingCateIdUnique.map(async (cateId) => {
+        let totalCost = 0;
+        const cateSpendingNotes = spendingNotes.filter((note) => {
+          const isMatch = note.spendingCateId === cateId;
+          if (isMatch) {
+            totalCost += note.amount;
+          }
+          return isMatch;
+        });
 
+        const infoCate = await this.spendingcateService.findOneCateService(
+          userId,
+          cateId,
+        );
+        const limitCate =
+          await this.spendingLimitService.findSpendingLimitByIdService(
+            infoCate.spendingLimitId,
+          );
+        const percentHasUse = Math.min(
+          (totalCost / limitCate.budget) * 100,
+          100,
+        );
+
+        const spending = cateSpendingNotes.map((note) => ({
+          title: note.title,
+          cost: note.amount,
+          percentHasUse: (note.amount / limitCate.budget) * 100,
+        }));
+
+        return {
+          nameCate: infoCate.name,
+          percentHasUse,
+          budget: limitCate.budget,
+          spending,
+        };
+      }),
+    );
+
+    // Group spending details by category name
+    const groupedSpendingDetails = spendingDetails.reduce((acc, curr) => {
+      if (!acc.has(curr.nameCate)) {
+        acc.set(curr.nameCate, {
+          nameCate: curr.nameCate,
+          allOfPersentUse: 0,
+          budget: curr.budget,
+          spending: [],
+        });
+      }
+      const group = acc.get(curr.nameCate);
+      group.spending.push(...curr.spending);
+      group.allOfPersentUse += curr.percentHasUse;
+      return acc;
+    }, new Map());
+
+    return {
+      startDate: start,
+      endDate: end,
+      spending: Array.from(groupedSpendingDetails.values()),
+    };
+  }
+  //return message and budget limit,budget has use of cate when out of budget
+  async notifySpendingNoteService(
+    userId: string,
+  ): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
+    const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
+
+    const processedCategories = new Map<string, any>(); // Map to track processed categories
+
+    for (const note of spendingNotes) {
+      const { spendingCateId } = note;
       const infoCate = await this.spendingcateService.findOneCateService(
         userId,
-        cateId,
+        spendingCateId,
       );
-      const limitCate = await this.spendingLimitService.findSpendingLimitByIdService(
-        infoCate.spendingLimitId,
-      );
-      const percentHasUse = Math.min(
-        (totalCost / limitCate.budget) * 100,
-        100,
-      );
+      const limitCate =
+        await this.spendingLimitService.findSpendingLimitByIdService(
+          infoCate.spendingLimitId,
+        );
 
-      const spending = cateSpendingNotes.map((note) => ({
-        title: note.title,
-        cost: note.amount,
-        percentHasUse: (note.amount / limitCate.budget) * 100,
-      }));
+      if (!infoCate || !limitCate) {
+        throw new NotFoundException('Category or limit not found');
+      }
 
-      return {
-        nameCate: infoCate.name,
-        percentHasUse,
-        budget: limitCate.budget,
-        spending,
-      };
-    }),
-  );
-
-  // Group spending details by category name
-  const groupedSpendingDetails = spendingDetails.reduce((acc, curr) => {
-    if (!acc.has(curr.nameCate)) {
-      acc.set(curr.nameCate, {
-        nameCate: curr.nameCate,
-        allOfPersentUse: 0,
-        budget: curr.budget,
-        spending: [],
-      });
+      let category = processedCategories.get(infoCate.name);
+      if (!category) {
+        const totalCost = await this.getTotalSpendingForCategory(
+          userId,
+          spendingCateId,
+        );
+        category = {
+          nameCate: infoCate.name,
+          budget: limitCate.budget,
+          budgetUsed: totalCost,
+        };
+        processedCategories.set(infoCate.name, category);
+      }
     }
-    const group = acc.get(curr.nameCate);
-    group.spending.push(...curr.spending);
-    group.allOfPersentUse += curr.percentHasUse;
-    return acc;
-  }, new Map());
 
-  return {
-    startDate: start,
-    endDate: end,
-    spending: Array.from(groupedSpendingDetails.values()),
-  };
-}}
+    const outOfBudgetCategories = Array.from(
+      processedCategories.values(),
+    ).filter((category) => category.budgetUsed >= category.budget);
+
+    if (outOfBudgetCategories.length === 0) {
+      return { message: 'All of your spending notes are within budget' };
+    }
+    return {
+      message: 'You have categories that have reached or exceeded the budget',
+      outOfBudgetCategories,
+    };
+  }
+
+  private async getTotalSpendingForCategory(
+    userId: string,
+    categoryId: string,
+  ): Promise<number> {
+    const categorySpendingNotes = await this.spendingNoteModel
+      .find({ userId, spendingCateId: categoryId })
+      .lean();
+    return categorySpendingNotes.reduce(
+      (total, note) => total + note.amount,
+      0,
+    );
+  }
+}

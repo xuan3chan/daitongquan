@@ -235,6 +235,9 @@ export class SpendingnoteController {
   
   @Get('statistic-option-cate')
   @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Statistic spending note by category' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
   async statisticSpendingNoteByCateController(
     @Req() req: Request,
     @Query() dto: QueryDateSpendingNoteDto,
@@ -245,6 +248,18 @@ export class SpendingnoteController {
       dto.startDate,
       dto.endDate,
     );
+  }
+  
+  @Get('notify-out-of-money')
+  @UseGuards(MemberGuard)
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @ApiOkResponse({ description: 'Notify spending note' })
+  @HttpCode(200)
+  async notifySpendingNoteController(
+    @Req() req: Request,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.notifySpendingNoteService(userId);
   }
   
 }
