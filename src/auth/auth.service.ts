@@ -123,7 +123,8 @@ export class AuthService {
           gender: user.gender,
           hyperlink: user.hyperlink,
           nickname: user.nickname,
-          phone: user.phone
+          phone: user.phone,
+          allbudget: user.allBudget,
         };
       } else if (admin) {
         const roles = await this.roleService.findRoleService(admin.role.map(String));

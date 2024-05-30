@@ -13,7 +13,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { CategoryModule } from './category/category.module';
 import { SpendingLimitModule } from './spendinglimit/spendinglimit.module';
 import { SpendingNoteModule } from './spendingnote/spendingnote.module';
-import { IncomeModule } from './income/income.module';
+import { IncomenoteModule } from './incomenote/incomenote.module';
 @Module({
   imports: [
     
@@ -32,7 +32,7 @@ import { IncomeModule } from './income/income.module';
     CategoryModule,
     SpendingLimitModule,
     SpendingNoteModule,
-    IncomeModule,
+    IncomenoteModule,
   ],
   controllers: [],
   providers: [],

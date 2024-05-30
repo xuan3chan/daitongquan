@@ -3,7 +3,7 @@ import { Document,HydratedDocument } from 'mongoose';
 import mongoose from 'mongoose';
 
 @Schema({timestamps: true})
-export class SpendingNote extends Document {
+export class IncomeNote extends Document {
 
         @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
         cateId: string;
@@ -18,13 +18,13 @@ export class SpendingNote extends Document {
         content: string;
 
         @Prop({ type: mongoose.Schema.Types.Date, required: true })
-        spendingDate: Date;
+        incomeDate: Date;
 
         @Prop({ type: mongoose.Schema.Types.String,enum:['banking','cash'],defaut:'cash', required: true })
-        paymentMethod: string;
+        method: string;
 
         @Prop({ type: mongoose.Schema.Types.Number })
         amount: number;
 }
-export type SpendingNoteDocument = HydratedDocument<SpendingNote>;
-export const SpendingNoteSchema = SchemaFactory.createForClass(SpendingNote);
+export type IncomeNoteDocument = HydratedDocument<IncomeNote>;
+export const IncomeNoteSchema = SchemaFactory.createForClass(IncomeNote);

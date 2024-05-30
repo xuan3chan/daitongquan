@@ -20,7 +20,7 @@ export class SpendingNoteService {
   ) {}
 
   async createSpendingNoteService(
-    spendingCateId: string,
+    CateId: string,
     userId: string,
     title: string,
     spendingDate: Date,
@@ -30,13 +30,13 @@ export class SpendingNoteService {
   ): Promise<SpendingNote> {
     const checkExist = await this.CategoryService.findOneCateService(
       userId,
-      spendingCateId,
+      CateId,
     );
     if (!checkExist) {
       throw new NotFoundException('Category not found');
     }
     const newSpendingNote = new this.spendingNoteModel({
-      spendingCateId,
+      CateId,
       title,
       userId,
       spendingDate,
@@ -48,7 +48,7 @@ export class SpendingNoteService {
   }
 
   async updateSpendingNoteService(
-    spendingNteId: string,
+    CateId: string,
     userId: string,
     title?: string,
     spendingDate?: Date,
@@ -58,14 +58,14 @@ export class SpendingNoteService {
     spendingCateId?: string,
   ): Promise<SpendingNote> {
     const checkExist = await this.spendingNoteModel.findOne({
-      _id: spendingNteId,
+      _id: CateId,
       userId,
     });
     if (!checkExist) {
       throw new NotFoundException('Note not found');
     }
     return this.spendingNoteModel.findOneAndUpdate(
-      { _id: spendingNteId, userId },
+      { _id: CateId, userId },
       { title, spendingDate, paymentMethod, amount, content, spendingCateId },
       { new: true },
     );
@@ -319,15 +319,15 @@ export class SpendingNoteService {
       userId,
     });
 
-    const spendingCateIdUnique = [
-      ...new Set(spendingNotes.map((note) => note.spendingCateId)),
+    const cateIdUnique = [
+      ...new Set(spendingNotes.map((note) => note.cateId)),
     ];
 
     const spendingDetails = await Promise.all(
-      spendingCateIdUnique.map(async (cateId) => {
+      cateIdUnique.map(async (cateId) => {
         let totalCost = 0;
         const cateSpendingNotes = spendingNotes.filter((note) => {
-          const isMatch = note.spendingCateId === cateId;
+          const isMatch = note.cateId === cateId;
           if (isMatch) {
             totalCost += note.amount;
           }
@@ -393,10 +393,10 @@ export class SpendingNoteService {
     const processedCategories = new Map<string, any>(); // Map to track processed categories
 
     for (const note of spendingNotes) {
-      const { spendingCateId } = note;
+      const { cateId } = note;
       const infoCate = await this.CategoryService.findOneCateService(
         userId,
-        spendingCateId,
+        cateId,
       );
       const limitCate =
         await this.spendingLimitService.findSpendingLimitByIdService(
@@ -411,7 +411,7 @@ export class SpendingNoteService {
       if (!category) {
         const totalCost = await this.getTotalSpendingForCategory(
           userId,
-          spendingCateId,
+          cateId,
         );
         category = {
           nameCate: infoCate.name,
