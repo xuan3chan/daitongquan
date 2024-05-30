@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsOptional } from "class-validator";
 
-export class UpdateSpendingCateDto {
+export class UpdateCateDto {
 
     @ApiProperty({
         description: 'Spending category id ',
@@ -9,7 +9,7 @@ export class UpdateSpendingCateDto {
     })
     @IsString()
     @IsNotEmpty()
-    spendingCateId: string;
+    CateId: string;
     
     @ApiProperty({
         description: 'Name of spending category ',

@@ -4,13 +4,13 @@ import { SpendingnoteController } from './spendingnote.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { SpendingNote, SpendingNoteSchema } from './schema/spendingnote.schema';
-import { SpendingCateModule } from 'src/spendingcate/spendingcate.module';
+import { CategoryModule } from 'src/category/category.module';
 import { SpendingLimitModule } from 'src/spendinglimit/spendinglimit.module';
 
 @Module({
   imports: [
     SpendingLimitModule,
-    SpendingCateModule,
+    CategoryModule,
     MongooseModule.forFeature([{ name:SpendingNote.name , schema:SpendingNoteSchema  }]),
     ConfigModule.forRoot({
       isGlobal: true,

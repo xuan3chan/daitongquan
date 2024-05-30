@@ -4,8 +4,8 @@ import { SpendinglimitController } from './spendinglimit.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { SpendingLimit, SpendingLimitSchema } from './schema/spendinglimit.schema';
-import { SpendingCateService } from 'src/spendingcate/spendingcate.service';
-import { SpendingCateModule } from 'src/spendingcate/spendingcate.module';
+
+import { CategoryModule } from 'src/category/category.module';
 
 
 @Module({
@@ -15,7 +15,7 @@ import { SpendingCateModule } from 'src/spendingcate/spendingcate.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    SpendingCateModule
+    CategoryModule
   ],
   controllers: [SpendinglimitController],
   providers: [SpendingLimitService],

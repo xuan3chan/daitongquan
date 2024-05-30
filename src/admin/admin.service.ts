@@ -124,4 +124,7 @@ export class AdminService {
     async findOneAdminService(id: string): Promise<Admin> {
       return this.adminModel.findById(id).exec();
     }
+   async findOneAdminbyIdRoleService(id: string): Promise<Admin> {
+    return this.adminModel.findOne({ role: id }).exec();
+}
 }

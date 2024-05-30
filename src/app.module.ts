@@ -10,10 +10,10 @@ import { SeedModule } from './seeds/seed.module';
 import { RoleModule } from './role/role.module';
 import { AdminModule } from './admin/admin.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
-import { SpendingCateModule } from './spendingcate/spendingcate.module';
+import { CategoryModule } from './category/category.module';
 import { SpendingLimitModule } from './spendinglimit/spendinglimit.module';
 import { SpendingNoteModule } from './spendingnote/spendingnote.module';
-import { StatisticsModule } from './statistics/statistics.module';
+import { IncomeModule } from './income/income.module';
 @Module({
   imports: [
     
@@ -29,10 +29,10 @@ import { StatisticsModule } from './statistics/statistics.module';
     RoleModule,
     AdminModule,
     CloudinaryModule,
-    SpendingCateModule,
+    CategoryModule,
     SpendingLimitModule,
     SpendingNoteModule,
-    StatisticsModule,
+    IncomeModule,
   ],
   controllers: [],
   providers: [],

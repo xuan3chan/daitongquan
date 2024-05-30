@@ -7,12 +7,12 @@ import { Model } from 'mongoose';
 import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
-import { SpendingCateService } from '../spendingcate/spendingcate.service';
+import { CategoryService } from '../category/category.service';
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
     @InjectModel(User.name) private userModel: Model<User>,
-    private spendingcateService: SpendingCateService,
+    private categoryService: CategoryService,
   ) {}
   async findOneEmailOrUsernameService(account: string): Promise<User> {
     // tìm email hoac username
@@ -205,7 +205,7 @@ return this.userModel
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    await this.spendingcateService.deleteOfUser(_id);
+    await this.categoryService.deleteOfUser(_id);
     return this.userModel.findOneAndDelete({ _id }).exec();
   }
 }

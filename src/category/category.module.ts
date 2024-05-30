@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { SeedsService } from './seeds.service';
+import { CategoryService } from './category.service';
+import { CategoryController } from './category.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { Category, CategorySchema } from '../category/schema/category.schema';
-
+import { Category, CategorySchema } from './schema/category.schema';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Category.name, schema: CategorySchema }]),
@@ -12,7 +12,9 @@ import { Category, CategorySchema } from '../category/schema/category.schema';
       envFilePath: '.env',
     }),
   ],
-  providers: [SeedsService],
-  exports: [SeedsService],
+
+  controllers: [CategoryController],
+  providers: [CategoryService],
+  exports: [CategoryService],
 })
-export class SeedModule {}
+export class CategoryModule {}

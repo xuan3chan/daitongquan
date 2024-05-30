@@ -61,6 +61,7 @@ export class AuthService {
       };
       //create default seed
       await this.seedsService.createDefaultSpenCate(user._id);
+      await this.seedsService.createDefaultIncomeCate(user._id);
       return {
         access_token: this.jwtService.sign(payload),
         refresh_token: createRefreshToken,

@@ -6,7 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SpendingNote } from './schema/spendingnote.schema';
-import { SpendingCateService } from 'src/spendingcate/spendingcate.service';
+import { CategoryService } from 'src/category/category.service';
 import { remove as removeAccents } from 'remove-accents';
 import { SpendingLimitService } from '../spendinglimit/spendinglimit.service';
 
@@ -15,7 +15,7 @@ export class SpendingNoteService {
   constructor(
     @InjectModel(SpendingNote.name)
     private spendingNoteModel: Model<SpendingNote>,
-    private spendingcateService: SpendingCateService,
+    private CategoryService: CategoryService,
     private spendingLimitService: SpendingLimitService,
   ) {}
 
@@ -28,7 +28,7 @@ export class SpendingNoteService {
     amount: number,
     content?: string,
   ): Promise<SpendingNote> {
-    const checkExist = await this.spendingcateService.findOneCateService(
+    const checkExist = await this.CategoryService.findOneCateService(
       userId,
       spendingCateId,
     );
@@ -334,7 +334,7 @@ export class SpendingNoteService {
           return isMatch;
         });
 
-        const infoCate = await this.spendingcateService.findOneCateService(
+        const infoCate = await this.CategoryService.findOneCateService(
           userId,
           cateId,
         );
@@ -394,7 +394,7 @@ export class SpendingNoteService {
 
     for (const note of spendingNotes) {
       const { spendingCateId } = note;
-      const infoCate = await this.spendingcateService.findOneCateService(
+      const infoCate = await this.CategoryService.findOneCateService(
         userId,
         spendingCateId,
       );

@@ -2,21 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SpendingLimit } from './schema/spendinglimit.schema';
-import {SpendingCateService} from '../spendingcate/spendingcate.service';
+import {CategoryService} from '../category/category.service';
 
 @Injectable()
 export class SpendingLimitService {
     constructor(
         @InjectModel(SpendingLimit.name)
         private spendingLimitModel: Model<SpendingLimit>,
-        private spendingcateService: SpendingCateService
+        private categoryService: CategoryService
     ) {}
 
     async createSpendingLimitService(spendingCateId:string,budget: number): Promise<SpendingLimit> {
         const newSpendingLimit = new this.spendingLimitModel({
             budget
         });
-        await this.spendingcateService.updateSpendingLimitIdService(spendingCateId,newSpendingLimit._id)
+        await this.categoryService.updateSpendingLimitIdService(spendingCateId,newSpendingLimit._id)
         return newSpendingLimit.save();
     }
     
@@ -28,7 +28,7 @@ export class SpendingLimitService {
         );
     }
     async deleteSpendingLimitService(spendingLimitId: string): Promise<any> {
-        await this.spendingcateService.deleteSpendingLimitIdService(spendingLimitId)
+        await this.categoryService.deleteSpendingLimitIdService(spendingLimitId)
         await this.spendingLimitModel.deleteOne({ _id: spendingLimitId });
         return { message: 'Delete spending limit successfully' };
     }
