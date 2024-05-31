@@ -20,7 +20,7 @@ import {AbilityFactory} from '../abilities/abilities.factory';
     }),
   ],
   controllers: [AdminController],
-  providers: [AdminService,AbilityFactory],
+  providers: [AdminService,AbilityFactory,],
   exports: [AdminService],
 })
 export class AdminModule {}

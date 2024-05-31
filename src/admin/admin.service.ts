@@ -10,6 +10,7 @@ export class AdminService {
   constructor(
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Role.name) private roleModel: Model<Role>,
+  
   ) {}
 
   async createAdminService(
@@ -105,12 +106,18 @@ export class AdminService {
       throw new BadRequestException('Admin not exists');
     }
   }
-  async listAdminService(): Promise<Admin[]> {
-    const admins = await this.adminModel.find().exec();
+async listAdminService(): Promise<(Admin & { role: Role[] })[]> {
+    const admins = await this.adminModel.find().select('-password -createdAt -updatedAt -refreshToken').exec();
+    const roleIds = admins.reduce((ids, admin) => [...ids, ...admin.role], []);
+    const roles = await this.roleModel.find({ _id: { $in: roleIds } }).select('-permissionID').exec();
     return admins.map((admin) => {
-      const adminObject = admin.toObject();
-      delete adminObject.password;
-      return adminObject;
+      const role = roles.filter((role) =>
+        admin.role.includes(role._id.toString()),
+      );
+      return {
+        ...admin.toObject(),
+        role,
+      } as Admin & { role: Role[] }; // Explicitly cast the returned value to the correct type
     });
   }
   async blockAdminService(id: string, isBlock: boolean): Promise<any> {
