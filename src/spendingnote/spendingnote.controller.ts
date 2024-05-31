@@ -53,7 +53,7 @@ export class SpendingnoteController {
   ): Promise<any> {
     const userId = this.getUserIdFromToken(req);
     return this.spendingnoteService.createSpendingNoteService(
-      dto.spendingCateId,
+      dto.cateId,
       userId,
       dto.title,
       dto.spendingDate,
@@ -81,7 +81,7 @@ export class SpendingnoteController {
       dto.paymentMethod,
       dto.amount,
       dto.content,
-      dto.spendingCateId,
+      dto.cateId,
     );
   }
 
@@ -163,6 +163,7 @@ export class SpendingnoteController {
   }
 
   @Get('filter-by-date')
+  @ApiOperation({ summary: 'Filter spending note by date create' })
   @UseGuards(MemberGuard)
   @HttpCode(200)
   async filterSpendingNoteController(
@@ -180,8 +181,8 @@ export class SpendingnoteController {
   @Get('statistic-option-day')
   @UseGuards(MemberGuard)
   @HttpCode(200)
-  @ApiOperation({ summary: 'Statistic spending note of day' })
-  @ApiOkResponse({ description: 'Statistic spending note of day' })
+  @ApiOperation({ summary: 'Statistic spending note of day spending' })
+  @ApiOkResponse({ description: 'Statistic spending note of day spending' })
   @ApiBadRequestResponse({ description: 'Bad request' })
   async statisticSpendingNoteOfDayController(
     @Req() req: Request,

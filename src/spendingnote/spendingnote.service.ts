@@ -20,7 +20,7 @@ export class SpendingNoteService {
   ) {}
 
   async createSpendingNoteService(
-    CateId: string,
+    cateId: string,
     userId: string,
     title: string,
     spendingDate: Date,
@@ -30,13 +30,13 @@ export class SpendingNoteService {
   ): Promise<SpendingNote> {
     const checkExist = await this.CategoryService.findOneCateService(
       userId,
-      CateId,
+      cateId,
     );
     if (!checkExist) {
       throw new NotFoundException('Category not found');
     }
     const newSpendingNote = new this.spendingNoteModel({
-      CateId,
+      cateId,
       title,
       userId,
       spendingDate,
@@ -48,25 +48,25 @@ export class SpendingNoteService {
   }
 
   async updateSpendingNoteService(
-    CateId: string,
+    spendingNoteId: string,
     userId: string,
     title?: string,
     spendingDate?: Date,
     paymentMethod?: string,
     amount?: number,
     content?: string,
-    spendingCateId?: string,
+    cateId?: string,
   ): Promise<SpendingNote> {
     const checkExist = await this.spendingNoteModel.findOne({
-      _id: CateId,
+      _id: spendingNoteId,
       userId,
     });
     if (!checkExist) {
       throw new NotFoundException('Note not found');
     }
     return this.spendingNoteModel.findOneAndUpdate(
-      { _id: CateId, userId },
-      { title, spendingDate, paymentMethod, amount, content, spendingCateId },
+      { _id: spendingNoteId, userId },
+      { title, spendingDate, paymentMethod, amount, content, cateId },
       { new: true },
     );
   }
@@ -98,9 +98,11 @@ export class SpendingNoteService {
     await this.spendingNoteModel.deleteMany({ _id: { $in: spendingNoteId } });
     return { message: 'Delete note successfully' };
   }
-  async listSpendingNoteService(userId: string): Promise<SpendingNote[]> {
-    return this.spendingNoteModel.find({ userId });
-  }
+  async listSpendingNoteService(userId: string): Promise<{ totalAmount: number, spendingNotes: SpendingNote[] }> {
+    const spendingNotes = await this.spendingNoteModel.find({ userId });
+    const totalAmount = spendingNotes.reduce((acc, note) => acc + note.amount, 0);
+    return { totalAmount, spendingNotes };
+}
   async searchSpendingNoteService(
     searchKey: string,
     userId: string,
@@ -157,7 +159,6 @@ export class SpendingNoteService {
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       throw new Error('Invalid startDate or endDate');
     }
-
     // Convert dates to UTC
     const start = new Date(
       Date.UTC(

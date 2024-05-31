@@ -3,13 +3,7 @@ import { IsDateString, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } f
 
 export class UpdateIncomeNoteDto {
 
-    @ApiProperty({
-        description: 'Income note id ',
-        example: '64d123j231223221'
-    })
-    @IsMongoId()
-    @IsNotEmpty()
-    incomeNoteId: string;
+
     @ApiProperty({
         description: 'category id ',
         example: '64d123j231223221'

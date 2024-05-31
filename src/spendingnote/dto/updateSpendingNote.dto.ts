@@ -17,7 +17,7 @@ export class UpdateSpendingNoteDto {
     })
     @IsMongoId()
     @IsOptional()
-    spendingCateId: string
+    cateId: string
 
     @ApiProperty({
         description: 'Title of spending note ',

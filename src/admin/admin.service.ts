@@ -37,37 +37,39 @@ export class AdminService {
     return admin.save();
   }
   async updateAdminService(
-  id: string,
-  fullname?: string,
-  email?: string,
-  password?: string,
-  roleId?: string[],
-): Promise<Admin> {
-  const admin = await this.adminModel.findById(id).exec();
-  if (!admin) {
-    throw new BadRequestException('Admin not exists');
-  }
-  if (email) {
-    const duplicate = await this.adminModel.findOne({ email }).exec();
-    if (duplicate && duplicate._id.toString() !== id) {
-      throw new BadRequestException('Admin already exists');
+    id: string,
+    fullname?: string,
+    email?: string,
+    password?: string,
+    roleId?: string[],
+  ): Promise<Admin> {
+    const admin = await this.adminModel.findById(id).exec();
+    if (!admin) {
+      throw new BadRequestException('Admin not exists');
     }
+    if (email) {
+      const duplicate = await this.adminModel.findOne({ email }).exec();
+      if (duplicate && duplicate._id.toString() !== id) {
+        throw new BadRequestException('Admin already exists');
+      }
+    }
+    if (password) {
+      password = await bcrypt.hash(password, 10);
+    }
+    if (roleId) {
+      const findRole = await this.roleModel
+        .find({ _id: { $in: roleId } })
+        .exec();
+      admin.role = findRole.map((role) => role._id.toString()); // Extract _id values as strings
+    }
+    return this.adminModel
+      .findByIdAndUpdate(
+        id,
+        { $set: { fullname, email, password, role: admin.role } },
+        { new: true, runValidators: true },
+      )
+      .exec();
   }
-  if (password) {
-    password = await bcrypt.hash(password, 10);
-  }
-  if (roleId) {
-    const findRole = await this.roleModel.find({ _id: { $in: roleId } }).exec();
-    admin.role = findRole.map(role => role._id.toString()); // Extract _id values as strings
-  }
-  return this.adminModel
-    .findByIdAndUpdate(
-      id,
-      { $set: { fullname, email, password, role: admin.role } },
-      { new: true, runValidators: true },
-    )
-    .exec();
-}
 
   async findOneAdminEmailService(email: string): Promise<Admin> {
     return this.adminModel.findOne({ email }).exec();
@@ -105,7 +107,7 @@ export class AdminService {
   }
   async listAdminService(): Promise<Admin[]> {
     const admins = await this.adminModel.find().exec();
-    return admins.map(admin => {
+    return admins.map((admin) => {
       const adminObject = admin.toObject();
       delete adminObject.password;
       return adminObject;
@@ -120,11 +122,11 @@ export class AdminService {
       )
       .exec();
     return { message: 'Block admin success' };
-    }
-    async findOneAdminService(id: string): Promise<Admin> {
-      return this.adminModel.findById(id).exec();
-    }
-   async findOneAdminbyIdRoleService(id: string): Promise<Admin> {
+  }
+  async findOneAdminService(id: string): Promise<Admin> {
+    return this.adminModel.findById(id).exec();
+  }
+  async findOneAdminbyIdRoleService(id: string): Promise<Admin> {
     return this.adminModel.findOne({ role: id }).exec();
-}
+  }
 }

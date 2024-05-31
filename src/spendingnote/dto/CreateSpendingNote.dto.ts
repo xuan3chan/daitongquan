@@ -9,7 +9,7 @@ export class CreateSpendingNoteDto {
     })
     @IsMongoId()
     @IsNotEmpty()
-    spendingCateId: string
+    cateId: string
 
     @ApiProperty({
         description: 'Title of spending note ',
