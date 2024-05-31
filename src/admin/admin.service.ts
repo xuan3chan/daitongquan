@@ -98,14 +98,17 @@ export class AdminService {
       refreshToken,
     });
   }
-  async deleteAdminService(id: string): Promise<{ message: string }> {
-    try {
-      await this.adminModel.findByIdAndDelete(id).exec();
-      return { message: 'Admin deleted successfully' };
-    } catch (error) {
+async deleteAdminService(id: string): Promise<{ message: string }> {
+    const admin = await this.adminModel.findById(id).exec();
+    if (!admin) {
       throw new BadRequestException('Admin not exists');
     }
-  }
+    if (admin.email === 'masterAdmin@gmail.com') {
+      throw new BadRequestException('Cannot delete master admin');
+    }
+    await this.adminModel.findByIdAndDelete(id).exec();
+    return { message: 'Admin deleted successfully' };
+}
 async listAdminService(): Promise<(Admin & { role: Role[] })[]> {
     const admins = await this.adminModel.find().select('-password -createdAt -updatedAt -refreshToken').exec();
     const roleIds = admins.reduce((ids, admin) => [...ids, ...admin.role], []);
