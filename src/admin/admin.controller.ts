@@ -63,6 +63,6 @@ export class AdminController {
   @HttpCode(200)
   @Patch('update-block')
   async blockAdminController(@Body() blockAdminDto: BlockAdminDto) {
-    return this.adminService.blockAdminService(blockAdminDto.id, blockAdminDto.isBlocked);
+    return this.adminService.blockAdminService(blockAdminDto.id, blockAdminDto.isBlock);
   }
 }

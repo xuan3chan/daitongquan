@@ -10,7 +10,6 @@ export class AdminService {
   constructor(
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Role.name) private roleModel: Model<Role>,
-  
   ) {}
 
   async createAdminService(
@@ -38,40 +37,39 @@ export class AdminService {
     return admin.save();
   }
   async updateAdminService(
-    id: string,
-    fullname?: string,
-    email?: string,
-    password?: string,
-    roleId?: string[],
-  ): Promise<Admin> {
-    const admin = await this.adminModel.findById(id).exec();
-    if (!admin) {
-      throw new BadRequestException('Admin not exists');
+  id: string,
+  fullname?: string,
+  email?: string,
+  password?: string,
+  roleId?: string[],
+): Promise<Admin> {
+  if (email) {
+    const duplicate = await this.adminModel.findOne({ email, _id: { $ne: id } }).exec();
+    if (duplicate) {
+      throw new BadRequestException('Admin already exists');
     }
-    if (email) {
-      const duplicate = await this.adminModel.findOne({ email }).exec();
-      if (duplicate && duplicate._id.toString() !== id) {
-        throw new BadRequestException('Admin already exists');
-      }
-    }
-    if (password) {
-      password = await bcrypt.hash(password, 10);
-    }
-    if (roleId) {
-      const findRole = await this.roleModel
-        .find({ _id: { $in: roleId } })
-        .exec();
-      admin.role = findRole.map((role) => role._id.toString()); // Extract _id values as strings
-    }
-    return this.adminModel
-      .findByIdAndUpdate(
-        id,
-        { $set: { fullname, email, password, role: admin.role } },
-        { new: true, runValidators: true },
-      )
-      .exec();
   }
-
+  if (password) {
+    password = await bcrypt.hash(password, 10);
+  }
+  if (roleId) {
+    const findRole = await this.roleModel
+      .find({ _id: { $in: roleId } })
+      .exec();
+    if (findRole.length !== roleId.length) {
+      throw new BadRequestException('Some roles were not found');
+    }
+    roleId = findRole.map((role) => role._id.toString()); // Extract _id values as strings
+  }
+  return this.adminModel
+    .findByIdAndUpdate(
+      id,
+      { $set: { fullname, email, password, role: roleId } },
+      { new: true, runValidators: true },
+    )
+    .orFail(new BadRequestException('Admin not exists'))
+    .exec();
+}
   async findOneAdminEmailService(email: string): Promise<Admin> {
     return this.adminModel.findOne({ email }).exec();
   }
@@ -98,7 +96,7 @@ export class AdminService {
       refreshToken,
     });
   }
-async deleteAdminService(id: string): Promise<{ message: string }> {
+  async deleteAdminService(id: string): Promise<{ message: string }> {
     const admin = await this.adminModel.findById(id).exec();
     if (!admin) {
       throw new BadRequestException('Admin not exists');
@@ -108,11 +106,17 @@ async deleteAdminService(id: string): Promise<{ message: string }> {
     }
     await this.adminModel.findByIdAndDelete(id).exec();
     return { message: 'Admin deleted successfully' };
-}
-async listAdminService(): Promise<(Admin & { role: Role[] })[]> {
-    const admins = await this.adminModel.find().select('-password -createdAt -updatedAt -refreshToken').exec();
+  }
+  async listAdminService(): Promise<(Admin & { role: Role[] })[]> {
+    const admins = await this.adminModel
+      .find()
+      .select('-password -createdAt -updatedAt -refreshToken')
+      .exec();
     const roleIds = admins.reduce((ids, admin) => [...ids, ...admin.role], []);
-    const roles = await this.roleModel.find({ _id: { $in: roleIds } }).select('-permissionID').exec();
+    const roles = await this.roleModel
+      .find({ _id: { $in: roleIds } })
+      .select('-permissionID')
+      .exec();
     return admins.map((admin) => {
       const role = roles.filter((role) =>
         admin.role.includes(role._id.toString()),

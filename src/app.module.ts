@@ -14,6 +14,8 @@ import { CategoryModule } from './category/category.module';
 import { SpendingLimitModule } from './spendinglimit/spendinglimit.module';
 import { SpendingNoteModule } from './spendingnote/spendingnote.module';
 import { IncomenoteModule } from './incomenote/incomenote.module';
+import { EncryptionModule } from './encryption/encryption.module';
+import { DebtModule } from './debt/debt.module';
 @Module({
   imports: [
     
@@ -33,6 +35,8 @@ import { IncomenoteModule } from './incomenote/incomenote.module';
     SpendingLimitModule,
     SpendingNoteModule,
     IncomenoteModule,
+    EncryptionModule,
+    DebtModule,
   ],
   controllers: [],
   providers: [],

@@ -16,6 +16,6 @@ export class BlockAdminDto {
         example: 'true'
     })
     @IsNotEmpty()
-    isBlocked: boolean;
+    isBlock: boolean;
   
 }

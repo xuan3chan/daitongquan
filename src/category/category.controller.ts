@@ -6,8 +6,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MemberGuard } from '../gaurd/member.gaurd';
 import { UpdateCateDto} from './dto/UpdateCate.dto';
-import {DeleteCateDto } from './dto/DeleteCate.dto';
-import { getActiveResourcesInfo } from 'process';
+
 
 @ApiTags('category')
 @ApiBearerAuth()
