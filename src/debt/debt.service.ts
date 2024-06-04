@@ -72,15 +72,29 @@ export class DebtService {
     return { massage: 'Debt deleted successfully' };
   }
 
-  async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
-    return this.debtModel.find({ userId, type: type });
-  }
+ async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
+  const debts = await this.debtModel.find({ userId, type: type });
+  return debts.map(debt => {
+    if (debt.isEncrypted) {
+      debt.debtor = this.encryptionService.decrypt(debt.debtor);
+      debt.creditor = this.encryptionService.decrypt(debt.creditor);
+      debt.description = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
+    }
+    return debt;
+  });
+}
 
-  async getDebtWhenDueService(userId: string): Promise<Debt[]> {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
-  }
+ async getDebtWhenDueService(userId: string, dueDate: Date): Promise<Debt[]> {
+  const debts = await this.debtModel.find({ userId, dueDate });
+  return debts.map(debt => {
+    if (debt.isEncrypted) {
+      debt.debtor = this.encryptionService.decrypt(debt.debtor);
+      debt.creditor = this.encryptionService.decrypt(debt.creditor);
+      debt.description = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
+    }
+    return debt;
+  });
+}
 
   async enableEncryptService(debtId: string, userId: string): Promise<Debt> {
     const debt = await this.debtModel.findOne({ _id: debtId, userId });
