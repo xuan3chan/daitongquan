@@ -131,24 +131,23 @@ export class DebtController {
     description: 'The record has been successfully updated.',
   })
   @ApiBadRequestResponse({ description: 'Bad Request' })
-  async enableEncryptController(
+ async enableEncryptController(
     @Req() request: Request,
     @Param('debtId') debtId: string,
-    @Body() dto:EnableEncryptDto
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.debtService.enableAndEncryptDebtService(debtId, userId,dto.encryptKey);
+    return this.debtService.enableEncryptService(debtId, userId);
   }
-  @Put('/disable-encrypt/:debtId')
-  @UseGuards(MemberGuard)
-  async disableEncryptController(
-    @Req() request: Request,
-    @Param('debtId') debtId: string,
-    @Body() dto:EnableEncryptDto
-  ): Promise<any> {
-    const userId = this.getUserIdFromToken(request);
-    return this.debtService.disableEncryptService(debtId, userId,dto.encryptKey);
-  }
+  // @Put('/disable-encrypt/:debtId')
+  // @UseGuards(MemberGuard)
+  // async disableEncryptController(
+  //   @Req() request: Request,
+  //   @Param('debtId') debtId: string,
+  //   @Body() dto:EnableEncryptDto
+  // ): Promise<any> {
+  //   const userId = this.getUserIdFromToken(request);
+  //   return this.debtService.disableEncryptService(debtId, userId,dto.encryptKey);
+  // }
 }
 
   

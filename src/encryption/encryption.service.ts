@@ -1,39 +1,31 @@
 // src/encryption/encryption.service.ts
 
 import { Injectable } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'crypto';
-import { promisify } from 'util';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class EncryptionService {
-  private readonly algorithm = 'aes-256-ctr';
+  private readonly privateKey: string;
+  private readonly publicKey: string;
 
-  private async generateKey(password: string): Promise<Buffer> {
-    return (await promisify(scrypt)(password, 'salt', 32)) as Buffer;
+  constructor() {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+    });
+
+    this.privateKey = privateKey.export({ type: 'pkcs1', format: 'pem' }).toString();
+    this.publicKey = publicKey.export({ type: 'spki', format: 'pem' }).toString(); // Convert Buffer to string
   }
 
-  async encrypt(text: string, password: string): Promise<{ iv: string, content: string }> {
-    const iv = randomBytes(16);
-    const key = await this.generateKey(password);
-    const cipher = createCipheriv(this.algorithm, key, iv);
-    const encryptedText = Buffer.concat([cipher.update(text), cipher.final()]);
-    return {
-      iv: iv.toString('hex'),
-      content: encryptedText.toString('hex')
-    };
+  encrypt(text: string): string {
+    const buffer = Buffer.from(text, 'utf8');
+    const encrypted = crypto.publicEncrypt(this.publicKey, buffer);
+    return encrypted.toString('base64');
   }
 
-  async decrypt(encrypted: { iv: string, content: string }, password: string): Promise<string> {
-  const iv = encrypted.iv ? Buffer.from(encrypted.iv, 'hex') : null;
-  if (iv && iv.length !== 16) {
-    throw new Error('Invalid initialization vector');
+  decrypt(encryptedText: string): string {
+    const buffer = Buffer.from(encryptedText, 'base64');
+    const decrypted = crypto.privateDecrypt(this.privateKey, buffer);
+    return decrypted.toString('utf8');
   }
-  const key = await this.generateKey(password);
-  const decipher = createDecipheriv(this.algorithm, key, iv || Buffer.alloc(16, 0));
-  const decryptedText = Buffer.concat([
-    decipher.update(Buffer.from(encrypted.content, 'hex')),
-    decipher.final()
-  ]);
-  return decryptedText.toString();
-}
 }

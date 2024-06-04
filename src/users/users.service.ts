@@ -160,40 +160,41 @@ return this.userModel
       .exec();
   }
 
-  async searchUserService(searchKey: string): Promise<{ user: User[] }> {
-    try {
-      const users = await this.userModel.find();
-      const preprocessString = (str: string) =>
-        removeAccents(str).trim().toLowerCase();
-      // Preprocess the search key
-      const preprocessedSearchKey = preprocessString(searchKey);
-      // Construct a case-insensitive regex pattern
-      const regex = new RegExp(`\\b${preprocessedSearchKey}\\b`, 'i');
-      // Filter the users based on the regex
-      const matchedUsers = users.filter((user) => {
-        // Destructure and preprocess user data
-        const { username, fullname, email } = user;
-        const [preprocessedUsername, preprocessedFullname, preprocessedEmail] =
-          [username, fullname, email].map((field) => preprocessString(field));
+ async searchUserService(searchKey: string): Promise<{ user: User[] }> {
+  try {
+    const users = await this.userModel.find();
+    const preprocessString = (str: string) =>
+      str ? removeAccents(str).trim().toLowerCase() : '';
+    // Preprocess the search key
+    const preprocessedSearchKey = preprocessString(searchKey);
+    // Construct a case-insensitive regex pattern without word boundaries
+    const regex = new RegExp(`${preprocessedSearchKey}`, 'i');
+    // Filter the users based on the regex
+    const matchedUsers = users.filter((user) => {
+      // Destructure and preprocess user data
+      const { username, firstname, lastname, email } = user;
+      const fullname = `${firstname} ${lastname}`;
+      const [preprocessedUsername, preprocessedFullname, preprocessedEmail] =
+        [username, fullname, email].map((field) => preprocessString(field));
 
-        // Test regex pattern against user data
-        return (
-          regex.test(preprocessedUsername) ||
-          regex.test(preprocessedFullname) ||
-          regex.test(preprocessedEmail)
-        );
-      });
-      if (matchedUsers.length === 0) {
-        throw new NotFoundException('No user found');
-      }
-      return { user: matchedUsers };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Something went wrong');
+      // Test regex pattern against user data
+      return (
+        regex.test(preprocessedUsername) ||
+        regex.test(preprocessedFullname) ||
+        regex.test(preprocessedEmail)
+      );
+    });
+    if (matchedUsers.length === 0) {
+      throw new NotFoundException('No user found');
     }
+    return { user: matchedUsers };
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    throw new InternalServerErrorException(error.message);
   }
+}
   async blockUserService(_id: string, isBlock: boolean): Promise<User> {
     //tim user và update trạng thái block theo isBlock
     return this.userModel.findOneAndUpdate({ _id }, { isBlock }).exec();

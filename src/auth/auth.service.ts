@@ -124,7 +124,6 @@ export class AuthService {
           hyperlink: user.hyperlink,
           nickname: user.nickname,
           phone: user.phone,
-          allbudget: user.allBudget,
         };
       } else if (admin) {
         const roles = await this.roleService.findRoleService(admin.role.map(String));

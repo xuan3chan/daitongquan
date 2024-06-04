@@ -82,87 +82,30 @@ export class DebtService {
     return this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
   }
 
-  async enableAndEncryptDebtService(
-    debtId: string,
-    userId: string,
-    encryptKey: string,
-  ): Promise<Debt> {
+  async enableEncryptService(debtId: string, userId: string): Promise<Debt> {
     const debt = await this.debtModel.findOne({ _id: debtId, userId });
     if (!debt) {
       throw new BadRequestException('Debt not found');
     }
 
-    const encryptedDebtor = await this.encryptionService.encrypt(
-      debt.debtor,
-      encryptKey,
-    );
-    const encryptedCreditor = await this.encryptionService.encrypt(
-      debt.creditor,
-      encryptKey,
-    );
-    let encryptedDescription: { content: any; iv?: string };
-    if (debt.description) {
-      encryptedDescription = await this.encryptionService.encrypt(
-        debt.description,
-        encryptKey,
-      );
+    // Kiểm tra xem đã được mã hóa chưa
+    if (debt.isEncrypted) {
+      throw new BadRequestException('Debt is already encrypted');
     }
 
-    debt.debtor = encryptedDebtor.content;
-    debt.creditor = encryptedCreditor.content;
-    debt.description = encryptedDescription
-      ? encryptedDescription.content
-      : undefined;
+    // Mã hóa thông tin
+    const encryptedDebtor = this.encryptionService.encrypt(debt.debtor);
+    const encryptedCreditor = this.encryptionService.encrypt(debt.creditor);
+    const encryptedDescription = debt.description ? this.encryptionService.encrypt(debt.description) : undefined;
+
+    // Cập nhật thông tin và cờ isEncrypted
+    debt.debtor = encryptedDebtor;
+    debt.creditor = encryptedCreditor;
+    debt.description = encryptedDescription;
     debt.isEncrypted = true;
-    debt.encryptKey = encryptKey;
+
+    // Lưu lại vào cơ sở dữ liệu
     return debt.save();
   }
-  async disableEncryptService(
-    debtId: string,
-    userId: string,
-    encryptKey: string,
-  ): Promise<Debt> {
-    // Retrieve the debt document
-    const debt = await this.debtModel.findOne({ _id: debtId, userId });
-    if (!debt) {
-      throw new BadRequestException('Debt not found');
-    }
-  
-    // Validate encryption key
-    if (debt.encryptKey !== encryptKey) {
-      throw new BadRequestException('Invalid encryption key');
-    }
-  
-    // Decrypt debtor and creditor information
-    const decryptedDebtor = await this.encryptionService.decrypt(
-      { iv: '', content: debt.debtor },
-      encryptKey,
-    );
-    const decryptedCreditor = await this.encryptionService.decrypt(
-      { iv: '', content: debt.creditor },
-      encryptKey,
-    );
-  
-    // Decrypt description if it exists
-    let decryptedDescription = '';
-    if (debt.description) {
-      decryptedDescription = await this.encryptionService.decrypt(
-        { iv: '', content: debt.description },
-        encryptKey,
-      );
-    }
-  
-    // Update debt object with decrypted data
-    debt.debtor = decryptedDebtor;
-    debt.creditor = decryptedCreditor;
-    debt.description = decryptedDescription;
-    debt.isEncrypted = false;
-    debt.encryptKey = '';
-  
-    // Save and return updated debt
-    return debt.save();
-  }
-  
-  
-  
+
 }

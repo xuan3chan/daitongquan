@@ -83,8 +83,6 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.Number,default: 0})
   rankScore: number;
 
-  @Prop({type: mongoose.Schema.Types.Number,default: 0})
-  allBudget: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
