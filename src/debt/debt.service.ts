@@ -117,5 +117,52 @@ export class DebtService {
     debt.encryptKey = encryptKey;
     return debt.save();
   }
-  //decrypt debt change save key
+  async disableEncryptService(
+    debtId: string,
+    userId: string,
+    encryptKey: string,
+  ): Promise<Debt> {
+    // Retrieve the debt document
+    const debt = await this.debtModel.findOne({ _id: debtId, userId });
+    if (!debt) {
+      throw new BadRequestException('Debt not found');
+    }
+  
+    // Validate encryption key
+    if (debt.encryptKey !== encryptKey) {
+      throw new BadRequestException('Invalid encryption key');
+    }
+  
+    // Decrypt debtor and creditor information
+    const decryptedDebtor = await this.encryptionService.decrypt(
+      { iv: '', content: debt.debtor },
+      encryptKey,
+    );
+    const decryptedCreditor = await this.encryptionService.decrypt(
+      { iv: '', content: debt.creditor },
+      encryptKey,
+    );
+  
+    // Decrypt description if it exists
+    let decryptedDescription = '';
+    if (debt.description) {
+      decryptedDescription = await this.encryptionService.decrypt(
+        { iv: '', content: debt.description },
+        encryptKey,
+      );
+    }
+  
+    // Update debt object with decrypted data
+    debt.debtor = decryptedDebtor;
+    debt.creditor = decryptedCreditor;
+    debt.description = decryptedDescription;
+    debt.isEncrypted = false;
+    debt.encryptKey = '';
+  
+    // Save and return updated debt
+    return debt.save();
+  }
+  
+  
+  
 }

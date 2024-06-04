@@ -54,7 +54,7 @@ export class UsersService {
   async listUserService(): Promise<User[]> {
    return this.userModel
   .find()
-  .select('firstname avatar lastname email dateOfBirth address gender phone nickname description hyperlink createdAt')
+  .select('firstname avatar lastname email dateOfBirth address gender phone nickname description hyperlink createdAt status isBlock')
   .exec();
   }
   async updateRefreshTokenService(

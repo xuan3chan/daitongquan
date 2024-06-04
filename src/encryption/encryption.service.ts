@@ -24,13 +24,16 @@ export class EncryptionService {
   }
 
   async decrypt(encrypted: { iv: string, content: string }, password: string): Promise<string> {
-    const iv = Buffer.from(encrypted.iv, 'hex');
-    const key = await this.generateKey(password);
-    const decipher = createDecipheriv(this.algorithm, key, iv);
-    const decryptedText = Buffer.concat([
-      decipher.update(Buffer.from(encrypted.content, 'hex')),
-      decipher.final()
-    ]);
-    return decryptedText.toString();
+  const iv = encrypted.iv ? Buffer.from(encrypted.iv, 'hex') : null;
+  if (iv && iv.length !== 16) {
+    throw new Error('Invalid initialization vector');
   }
+  const key = await this.generateKey(password);
+  const decipher = createDecipheriv(this.algorithm, key, iv || Buffer.alloc(16, 0));
+  const decryptedText = Buffer.concat([
+    decipher.update(Buffer.from(encrypted.content, 'hex')),
+    decipher.final()
+  ]);
+  return decryptedText.toString();
+}
 }

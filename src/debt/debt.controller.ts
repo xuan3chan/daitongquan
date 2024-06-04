@@ -138,4 +138,17 @@ export class DebtController {
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
     return this.debtService.enableAndEncryptDebtService(debtId, userId,dto.encryptKey);
-  }}
+  }
+  @Put('/disable-encrypt/:debtId')
+  @UseGuards(MemberGuard)
+  async disableEncryptController(
+    @Req() request: Request,
+    @Param('debtId') debtId: string,
+    @Body() dto:EnableEncryptDto
+  ): Promise<any> {
+    const userId = this.getUserIdFromToken(request);
+    return this.debtService.disableEncryptService(debtId, userId,dto.encryptKey);
+  }
+}
+
+  
