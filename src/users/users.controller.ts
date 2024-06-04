@@ -123,6 +123,9 @@ export class UsersController {
   }
 
   @Get('search')
+  @UseGuards(PermissionGuard)
+  @Action('read')
+  @Subject('user')
   @ApiOkResponse({ description: 'Search user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
   @ApiQuery({ name: 'searchKey', required: true, type: String, description: 'The search key' })

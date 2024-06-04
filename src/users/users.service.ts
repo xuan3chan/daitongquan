@@ -160,9 +160,10 @@ return this.userModel
       .exec();
   }
 
- async searchUserService(searchKey: string): Promise<{ user: User[] }> {
+async searchUserService(searchKey: string): Promise<{ user: User[] }> {
   try {
-    const users = await this.userModel.find();
+    // Exclude the password field
+    const users = await this.userModel.find({}, { password: 0 });
     const preprocessString = (str: string) =>
       str ? removeAccents(str).trim().toLowerCase() : '';
     // Preprocess the search key

@@ -108,4 +108,30 @@ export class DebtService {
     return debt.save();
   }
 
+  async disableEncryptService(debtId: string, userId: string): Promise<Debt> {
+    const debt = await this.debtModel.findOne({ _id: debtId, userId });
+    if (!debt) {
+      throw new BadRequestException('Debt not found');
+    }
+
+    // Kiểm tra xem đã được giải mã chưa
+    if (!debt.isEncrypted) {
+      throw new BadRequestException('Debt is already decrypted');
+    }
+
+    // Giải mã thông tin
+    const decryptedDebtor = this.encryptionService.decrypt(debt.debtor);
+    const decryptedCreditor = this.encryptionService.decrypt(debt.creditor);
+    const decryptedDescription = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
+
+    // Cập nhật thông tin và cờ isEncrypted
+    debt.debtor = decryptedDebtor;
+    debt.creditor = decryptedCreditor;
+    debt.description = decryptedDescription;
+    debt.isEncrypted = false;
+
+    // Lưu lại vào cơ sở dữ liệu
+    return debt.save();
+  }
+  async 
 }

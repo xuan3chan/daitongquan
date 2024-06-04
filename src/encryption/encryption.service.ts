@@ -1,7 +1,6 @@
-// src/encryption/encryption.service.ts
-
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 @Injectable()
 export class EncryptionService {
@@ -9,12 +8,17 @@ export class EncryptionService {
   private readonly publicKey: string;
 
   constructor() {
-    const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-    });
+    if (!fs.existsSync('private.pem') || !fs.existsSync('public.pem')) {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+      });
 
-    this.privateKey = privateKey.export({ type: 'pkcs1', format: 'pem' }).toString();
-    this.publicKey = publicKey.export({ type: 'spki', format: 'pem' }).toString(); // Convert Buffer to string
+      fs.writeFileSync('private.pem', privateKey.export({ type: 'pkcs1', format: 'pem' }));
+      fs.writeFileSync('public.pem', publicKey.export({ type: 'spki', format: 'pem' }));
+    }
+
+    this.privateKey = fs.readFileSync('private.pem', 'utf8');
+    this.publicKey = fs.readFileSync('public.pem', 'utf8');
   }
 
   encrypt(text: string): string {
