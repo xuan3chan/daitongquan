@@ -136,7 +136,7 @@ export class UsersController {
   }
 
   @UseGuards(PermissionGuard)
-  @Action('update')
+  @Action('block')
   @Subject('user')
   @Patch('update-block-user')
   @ApiOkResponse({ description: 'Block user success' })

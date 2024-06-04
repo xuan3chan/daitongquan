@@ -43,8 +43,8 @@
   },
   {
     "id": 7,
-    "namePermission": "UpdateUser",
-    "action": "update",
+    "namePermission": "blockUser",
+    "action": "block",
     "subject": "user"
   },
   {
