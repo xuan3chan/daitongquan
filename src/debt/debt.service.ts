@@ -84,8 +84,10 @@ export class DebtService {
   });
 }
 
- async getDebtWhenDueService(userId: string, dueDate: Date): Promise<Debt[]> {
-  const debts = await this.debtModel.find({ userId, dueDate });
+  async getDebtWhenDueService(userId: string): Promise<Debt[]> {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
   return debts.map(debt => {
     if (debt.isEncrypted) {
       debt.debtor = this.encryptionService.decrypt(debt.debtor);
