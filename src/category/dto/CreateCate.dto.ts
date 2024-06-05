@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize } from "class-validator";
+import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsEnum } from "class-validator";
 
 export class CreateCateDto {
 
@@ -15,6 +15,9 @@ export class CreateCateDto {
         description: 'Type of spending category ',
         example: 'income or spend'
     })
+    @IsString()
+    @IsNotEmpty()
+    @IsEnum(['income', 'spend'])
     type: string;
     @ApiProperty({
         description: 'Description of spending category ',
@@ -27,4 +30,13 @@ export class CreateCateDto {
         example: 'Food'
     })
     icon: string;
+
+    @ApiProperty({
+        description: 'Color of spending category ',
+        example: 'red'
+    })
+    @IsString()
+    @IsNotEmpty()
+    color: string;
+
 }

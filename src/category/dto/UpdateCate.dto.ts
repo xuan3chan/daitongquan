@@ -33,4 +33,12 @@ export class UpdateCateDto {
     })
     @IsOptional()
     icon: string;
+
+    @ApiProperty({
+        description: 'Color of spending category ',
+        example: 'red'
+    })
+    @IsString()
+    @IsOptional()
+    color: string;
 }
