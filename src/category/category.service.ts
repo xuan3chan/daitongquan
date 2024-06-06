@@ -21,6 +21,7 @@ export class CategoryService {
     description: string,
     icon: string,
     color: string,
+    status: string,
   ): Promise<Category> {
     const newCate = new this.CategoryModel({
       userId,
@@ -29,6 +30,7 @@ export class CategoryService {
       description,
       icon,
       color,
+      status,
     });
     return newCate.save();
   }
@@ -40,10 +42,11 @@ export class CategoryService {
     description?: string,
     icon?: string,
     color?: string,
+    status?: string,
   ): Promise<Category> {
     return this.CategoryModel.findOneAndUpdate(
       { userId, _id: spendingCateId },
-      { name, description, icon, color},
+      { name, description, icon, color,status},
       { new: true },
     );
   }

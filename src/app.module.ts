@@ -16,6 +16,7 @@ import { SpendingNoteModule } from './spendingnote/spendingnote.module';
 import { IncomenoteModule } from './incomenote/incomenote.module';
 import { EncryptionModule } from './encryption/encryption.module';
 import { DebtModule } from './debt/debt.module';
+import { ScheduleModule } from './schedule/schedule.module';
 @Module({
   imports: [
     
@@ -37,6 +38,7 @@ import { DebtModule } from './debt/debt.module';
     IncomenoteModule,
     EncryptionModule,
     DebtModule,
+    ScheduleModule,
   ],
   controllers: [],
   providers: [],

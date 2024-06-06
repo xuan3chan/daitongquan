@@ -24,8 +24,12 @@ export class Category extends Document implements ICategory{
 
     @Prop({ type: mongoose.Schema.Types.ObjectId, required: false})
     spendingLimitId: string;
+
     @Prop({ type: mongoose.Schema.Types.String, required: false, default: 'white'})
     color: string;
+    
+    @Prop({ type: mongoose.Schema.Types.String,enum:['show','hidden'], default: 'show'})
+    status:string
 }
 
 

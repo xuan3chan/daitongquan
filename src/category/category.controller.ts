@@ -34,6 +34,7 @@ export class CategoryController {
       createCateDto.description,
       createCateDto.icon,
       createCateDto.color,
+      createCateDto.status,
     );
   }
 
@@ -51,6 +52,7 @@ export class CategoryController {
       updateCateDto.description,
       updateCateDto.icon,
       updateCateDto.color,
+      updateCateDto.status,
     );
   }
   @Delete(':CateId')

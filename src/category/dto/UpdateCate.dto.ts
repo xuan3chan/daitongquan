@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsOptional } from "class-validator";
+import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsOptional, IsEnum } from "class-validator";
 
 export class UpdateCateDto {
 
@@ -41,4 +41,14 @@ export class UpdateCateDto {
     @IsString()
     @IsOptional()
     color: string;
+    
+    @ApiProperty({
+        description: 'Status of spending category ',
+        example: 'show or hidden'
+    })
+    @IsString()
+    @IsNotEmpty()
+    @IsOptional()
+    @IsEnum(['show', 'hidden'])
+    status:string
 }

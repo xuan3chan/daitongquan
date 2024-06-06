@@ -39,4 +39,13 @@ export class CreateCateDto {
     @IsNotEmpty()
     color: string;
 
+    @ApiProperty({
+        description: 'Status of spending category ',
+        example: 'show or hidden'
+    })
+    @IsString()
+    @IsNotEmpty()
+    @IsEnum(['show', 'hidden'])
+    status:string
+
 }
