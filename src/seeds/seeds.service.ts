@@ -11,10 +11,10 @@ export class SeedsService {
 
     async createDefaultSpenCate(userId: string): Promise<Category[]> {
         const categories = [
-            { name: 'Food', description: 'Food Category',type:'spend', icon: 'food' },
-            { name: 'Relax', description: 'Relax Category,',type:'spend',icon: 'relax' },
-            { name: 'Shopping', description: 'Shopping Category',type:'spend',icon: 'shopping' },
-            { name: 'Chilling', description: 'Chilling Category',type:'spend',icon: 'chilling' },
+            { name: 'Food', description: 'Food Category',type:'spend', icon: 'mdi:food-outline',color:'#FF0000' },
+            { name: 'Relax', description: 'Relax Category,',type:'spend',icon: 'mingcute:happy-line',color:'#006769' },
+            { name: 'Shopping', description: 'Shopping Category',type:'spend',icon: 'mingcute:shopping-bag-1-line',color:'#FFBF00' },
+            { name: 'Chilling', description: 'Chilling Category',type:'spend',icon: 'abler:mood-happy',color:'#3572EF' },
         ];
 
         return this.createCategories(categories, userId);
@@ -22,10 +22,10 @@ export class SeedsService {
 
     async createDefaultIncomeCate(userId: string): Promise<Category[]> {
         const categories = [
-            { name: 'Salary', description: 'Salary Category',type:'income', icon: 'salary' },
-            { name: 'Gift', description: 'Gift Category',type:'income', icon: 'gift' },
-            { name: 'Award', description: 'Award Category',type:'income', icon: 'award' },
-            { name: 'Bonus', description: 'Bonus Category',type:'income', icon: 'bonus' },
+            { name: 'Salary', description: 'Salary Category',type:'income', icon: 'fluent-emoji-high-contrast:money-bag',color:'#808836' },
+            { name: 'Gift', description: 'Gift Category',type:'income', icon: 'teenyicons:gift-outline,',color:'#D2649A' },
+            { name: 'Award', description: 'Award Category',type:'income', icon: 'healthicons:award-trophy-outline',color:'#FEB941' },
+            { name: 'Bonus', description: 'Bonus Category',type:'income', icon: 'solar:dollar-outline',color:'#808836' },
         ];
 
         return this.createCategories(categories, userId);

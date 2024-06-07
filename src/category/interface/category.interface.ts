@@ -4,6 +4,7 @@ export interface ICategory {
   description: string;
   type: string;
   icon: string;
+  color:string;
   spendingLimitId: string
   userId: string;
 }
