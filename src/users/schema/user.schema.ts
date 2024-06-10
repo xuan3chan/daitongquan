@@ -80,6 +80,9 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.ObjectId,default: null})
   rankID: string;
 
+  @Prop({type: mongoose.Schema.Types.String,})
+  encryptKey: string;
+
   @Prop({type: mongoose.Schema.Types.Number,default: 0})
   rankScore: number;
 

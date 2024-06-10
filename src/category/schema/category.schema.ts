@@ -5,7 +5,7 @@ import * as mongoose from 'mongoose';
 
 
 
-@Schema({ collection: 'spendingcate'})
+@Schema({ collection: 'categories'})
 export class Category extends Document implements ICategory{
     @Prop({ type: String, required: true })
     name: string;

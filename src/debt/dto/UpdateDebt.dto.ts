@@ -35,7 +35,7 @@ export class UpdateDebtDto {
   @IsEnum(['active', 'paid', 'overdue'])
   status: string;
 
-  @ApiProperty({ example: 'lending_debt', enum: ['lending_debt', 'borrowing_debt'], description: 'Type of the debt' })
+  @ApiProperty({ example: 'lending_debt or borrowing_debt', enum: ['lending_debt', 'borrowing_debt'], description: 'Type of the debt' })
   @IsString()
   @IsNotEmpty()
   @IsOptional()

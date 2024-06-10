@@ -107,6 +107,7 @@ export class AuthService {
           _id: user._id,
           role: user.role,
           isBlock: user.isBlock,
+          encryptKey: user.encryptKey,
           sub: user._id,
         };
         
@@ -121,7 +122,6 @@ export class AuthService {
           dateOfBirth: user.dateOfBirth,
           description: user.description,
           gender: user.gender,
-          hyperlink: user.hyperlink,
           nickname: user.nickname,
           phone: user.phone,
         };

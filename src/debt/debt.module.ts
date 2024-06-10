@@ -5,9 +5,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { DebtSchema } from './schema/debt.schema';
 import { EncryptionModule } from 'src/encryption/encryption.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
+    UsersModule,
     EncryptionModule,
     MongooseModule.forFeature([{ name: 'Debt', schema: DebtSchema}]),
     ConfigModule.forRoot({

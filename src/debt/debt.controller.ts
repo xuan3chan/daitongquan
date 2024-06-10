@@ -21,7 +21,6 @@ import {
 import { MemberGuard } from '../gaurd/member.gaurd';
 import { CreateDebtDto } from './dto/CreateDebt.dto';
 import { UpdateDebtDto } from './dto/UpdateDebt.dto';
-import { EnableEncryptDto } from './dto/CreateEncrypt.dto';
 
 @ApiTags('debt')
 @ApiBearerAuth()
@@ -136,7 +135,7 @@ export class DebtController {
     @Param('debtId') debtId: string,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.debtService.enableEncryptService(debtId, userId);
+    return this.debtService.enableEncryptionService(debtId, userId);
   }
   @Put('/disable-encrypt/:debtId')
   @UseGuards(MemberGuard)
@@ -145,7 +144,7 @@ export class DebtController {
     @Param('debtId') debtId: string,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.debtService.disableEncryptService(debtId, userId);
+    return this.debtService.disableEncryptionService(debtId, userId);
   }
 
 }

@@ -1,14 +1,16 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Debt, DebtDocument } from './schema/debt.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { EncryptionService } from '../encryption/encryption.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class DebtService {
   constructor(
     @InjectModel(Debt.name) private debtModel: Model<DebtDocument>,
     private readonly encryptionService: EncryptionService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createDebtService(
@@ -21,10 +23,10 @@ export class DebtService {
     dueDate: Date,
     description?: string,
   ): Promise<Debt> {
-    //date must be in the future or today
     if (dueDate && dueDate < new Date()) {
       throw new BadRequestException('Due date must be in the future or today');
     }
+
     const newDebt = new this.debtModel({
       debtor,
       creditor,
@@ -35,6 +37,7 @@ export class DebtService {
       type,
       dueDate,
     });
+
     return newDebt.save();
   }
 
@@ -64,90 +67,81 @@ export class DebtService {
     return debt.save();
   }
 
-  async deleteDebtService(debtId: string, userId: string): Promise<any> {
+  async deleteDebtService(debtId: string, userId: string): Promise<{ message: string }> {
     const debt = await this.debtModel.findOneAndDelete({ _id: debtId, userId });
     if (!debt) {
       throw new BadRequestException('Debt not found');
     }
-    return { massage: 'Debt deleted successfully' };
+    return { message: 'Debt deleted successfully' };
   }
 
- async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
-  const debts = await this.debtModel.find({ userId, type: type });
-  return debts.map(debt => {
-    if (debt.isEncrypted) {
-      debt.debtor = this.encryptionService.decrypt(debt.debtor);
-      debt.creditor = this.encryptionService.decrypt(debt.creditor);
-      debt.description = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
-    }
+  private async decryptDebtData(debt: Debt, userId: string): Promise<Debt> {
+    const findUser = await this.usersService.findPasswordService(userId);
+    const encryptedKey = findUser.encryptKey;
+    const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+
+    debt.isEncrypted = false;
+    debt.debtor = this.encryptionService.decryptData(debt.debtor, decryptedKey);
+    debt.creditor = this.encryptionService.decryptData(debt.creditor, decryptedKey);
+    debt.description = debt.description
+      ? this.encryptionService.decryptData(debt.description, decryptedKey)
+      : undefined;
+
     return debt;
-  });
-}
+  }
+
+  async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
+    const debts = await this.debtModel.find({ userId, type });
+    const findUser = await this.usersService.findPasswordService(userId);
+
+    const decryptedDebts = await Promise.all(
+      debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt))
+    );
+
+    return decryptedDebts;
+  }
 
   async getDebtWhenDueService(userId: string): Promise<Debt[]> {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
-  return debts.map(debt => {
-    if (debt.isEncrypted) {
-      debt.debtor = this.encryptionService.decrypt(debt.debtor);
-      debt.creditor = this.encryptionService.decrypt(debt.creditor);
-      debt.description = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
-    }
-    return debt;
-  });
-}
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-  async enableEncryptService(debtId: string, userId: string): Promise<Debt> {
-    const debt = await this.debtModel.findOne({ _id: debtId, userId });
-    if (!debt) {
-      throw new BadRequestException('Debt not found');
+    const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
+    const findUser = await this.usersService.findPasswordService(userId);
+
+    return Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : Promise.resolve(debt))));
+  }
+
+  private async changeEncryptionState(debtId: string, userId: string, encrypt: boolean): Promise<Debt> {
+    const debt = await this.debtModel.findById(debtId);
+    if (!debt || debt.isEncrypted === encrypt) {
+      throw new BadRequestException(`Debt not found or already ${encrypt ? 'encrypted' : 'decrypted'}`);
     }
 
-    // Kiểm tra xem đã được mã hóa chưa
-    if (debt.isEncrypted) {
-      throw new BadRequestException('Debt is already encrypted');
-    }
+    const findUser = await this.usersService.findPasswordService(userId);
+    const encryptedKey = findUser.encryptKey;
+    const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
 
-    // Mã hóa thông tin
-    const encryptedDebtor = this.encryptionService.encrypt(debt.debtor);
-    const encryptedCreditor = this.encryptionService.encrypt(debt.creditor);
-    const encryptedDescription = debt.description ? this.encryptionService.encrypt(debt.description) : undefined;
+    debt.isEncrypted = encrypt;
+    debt.debtor = encrypt
+      ? this.encryptionService.encryptData(debt.debtor, decryptedKey)
+      : this.encryptionService.decryptData(debt.debtor, decryptedKey);
+    debt.creditor = encrypt
+      ? this.encryptionService.encryptData(debt.creditor, decryptedKey)
+      : this.encryptionService.decryptData(debt.creditor, decryptedKey);
+    debt.description = debt.description
+      ? encrypt
+        ? this.encryptionService.encryptData(debt.description, decryptedKey)
+        : this.encryptionService.decryptData(debt.description, decryptedKey)
+      : undefined;
 
-    // Cập nhật thông tin và cờ isEncrypted
-    debt.debtor = encryptedDebtor;
-    debt.creditor = encryptedCreditor;
-    debt.description = encryptedDescription;
-    debt.isEncrypted = true;
-
-    // Lưu lại vào cơ sở dữ liệu
     return debt.save();
   }
 
-  async disableEncryptService(debtId: string, userId: string): Promise<Debt> {
-    const debt = await this.debtModel.findOne({ _id: debtId, userId });
-    if (!debt) {
-      throw new BadRequestException('Debt not found');
-    }
-
-    // Kiểm tra xem đã được giải mã chưa
-    if (!debt.isEncrypted) {
-      throw new BadRequestException('Debt is already decrypted');
-    }
-
-    // Giải mã thông tin
-    const decryptedDebtor = this.encryptionService.decrypt(debt.debtor);
-    const decryptedCreditor = this.encryptionService.decrypt(debt.creditor);
-    const decryptedDescription = debt.description ? this.encryptionService.decrypt(debt.description) : undefined;
-
-    // Cập nhật thông tin và cờ isEncrypted
-    debt.debtor = decryptedDebtor;
-    debt.creditor = decryptedCreditor;
-    debt.description = decryptedDescription;
-    debt.isEncrypted = false;
-
-    // Lưu lại vào cơ sở dữ liệu
-    return debt.save();
+  async enableEncryptionService(debtId: string, userId: string): Promise<Debt> {
+    return this.changeEncryptionState(debtId, userId, true);
   }
-  
+
+  async disableEncryptionService(debtId: string, userId: string): Promise<Debt> {
+    return this.changeEncryptionState(debtId, userId, false);
+  }
 }

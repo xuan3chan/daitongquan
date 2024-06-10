@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -8,9 +8,11 @@ import {CloudinaryModule} from '../cloudinary/cloudinary.module';
 import {AbilityFactory} from '../abilities/abilities.factory';
 import { CategoryModule } from 'src/category/category.module';
 import { AdminModule } from 'src/admin/admin.module';
+import { EncryptionModule } from 'src/encryption/encryption.module';
 
 @Module({
   imports: [
+    forwardRef(() => EncryptionModule),
     AdminModule,
     CategoryModule,
     CloudinaryModule,
@@ -22,6 +24,6 @@ import { AdminModule } from 'src/admin/admin.module';
   ],
   controllers: [UsersController],
   providers: [UsersService,AbilityFactory],
-  exports: [UsersService,],
+  exports: [UsersService],
 })
 export class UsersModule { }

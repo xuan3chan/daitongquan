@@ -1,6 +1,9 @@
 import {
+  Inject,
+  Injectable,
   InternalServerErrorException,
   NotFoundException,
+  forwardRef
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -8,12 +11,18 @@ import { User } from './schema/user.schema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
 import { CategoryService } from '../category/category.service';
+import { EncryptionService } from '../encryption/encryption.service';
+
+@Injectable()
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
     @InjectModel(User.name) private userModel: Model<User>,
     private categoryService: CategoryService,
+    @Inject(forwardRef(() => EncryptionService))
+    private encryptionService: EncryptionService,
   ) {}
+
   async findOneEmailOrUsernameService(account: string): Promise<User> {
     // tìm email hoac username
     return this.userModel
@@ -101,12 +110,14 @@ export class UsersService {
     if (userExist) {
       return { message: 'Email or username already exists' };
     }
+    const createEncryptKey = this.encryptionService.createEncryptKey(password.toString());
     const newUser = new this.userModel({
       email,
       password,
       username,
       firstname,
       lastname,
+      encryptKey: createEncryptKey,
       refreshToken: refeshToken,
     });
     return newUser.save();
@@ -218,4 +229,9 @@ export class UsersService {
     await this.categoryService.deleteOfUser(_id);
     return this.userModel.findOneAndDelete({ _id }).exec();
   }
+
+async findPasswordService(userId: string): Promise<any> {
+  const user = await this.userModel.findOne({ _id: userId }).exec();
+  return user;
+}
 }
