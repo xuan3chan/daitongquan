@@ -99,7 +99,7 @@ export class ScheduleService {
     return this.scheduleModel.find({ userId });
   }
 
- async notifyScheduleService(userId: string, isLoop: boolean): Promise<any> {
+ async notifyScheduleService(userId: string): Promise<any> {
   const TIMEZONE_OFFSET_HOURS = 7;
   const NOTIFICATION_TIME_MINUTES = 15;
 
@@ -110,11 +110,11 @@ export class ScheduleService {
     nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
   );
 
-  const schedules = await this.scheduleModel.find({
-    userId,
-    isLoop,
-    startDateTime: { $gte: nowTime, $lte: notificationTime },
-  });
+ const schedules = await this.scheduleModel.find({
+  userId,
+  isLoop: true,
+  startDateTime: { $gte: nowTime, $lte: notificationTime },
+});
 
   return schedules;
 }
