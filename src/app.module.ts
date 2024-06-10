@@ -17,6 +17,7 @@ import { IncomenoteModule } from './incomenote/incomenote.module';
 import { EncryptionModule } from './encryption/encryption.module';
 import { DebtModule } from './debt/debt.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { AppController } from './app.controller';
 @Module({
   imports: [
     
@@ -40,7 +41,9 @@ import { ScheduleModule } from './schedule/schedule.module';
     DebtModule,
     ScheduleModule,
   ],
-  controllers: [],
+  controllers: [
+    AppController
+  ],
   providers: [],
 })
 export class AppModule {}
