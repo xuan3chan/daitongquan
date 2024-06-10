@@ -100,8 +100,32 @@ export class ScheduleService {
       .exec();
     return { message: 'Delete schedules successfully' };
   }
+
   async viewListScheduleService(userId: string): Promise<Schedule[]> {
-    return this.scheduleModel.find({ userId });
+    const schedule =  this.scheduleModel.find({ userId });
+    const findUser = await this.usersService.findUserByIdService(userId);
+    
+    return (await schedule).map((schedule) => {
+      if (schedule.isEncrypted) {
+        const encryptedKey = findUser.encryptKey;
+        const decryptedKey = this.encryptionService.decryptEncryptKey(
+          encryptedKey,
+          findUser.password,
+        );
+        schedule.title = this.encryptionService.decryptData(
+          schedule.title,
+          decryptedKey,
+        );
+        schedule.location = this.encryptionService.decryptData(
+          schedule.location,
+          decryptedKey,
+        );
+        schedule.note = schedule.note
+          ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+          : undefined;
+      }
+      return schedule;
+    });
   }
 
   async notifyScheduleService(userId: string): Promise<any> {
@@ -129,10 +153,9 @@ export class ScheduleService {
     userId:string,
 
   ):Promise<Schedule>{
-    const schedule = await this.scheduleModel.findOne({userId
-    ,_id:scheduleId});
-    if(!schedule){
-      throw new BadRequestException('Schedule not found');
+    const schedule = await this.scheduleModel.findOne({userId,_id:scheduleId});
+    if(!schedule || schedule.isEncrypted === true){
+      throw new BadRequestException('Schedule not found or already encrypted');
     }
     const findUser = await this.usersService.findUserByIdService(userId);
     if(!findUser){
@@ -149,4 +172,26 @@ export class ScheduleService {
     return schedule.save();
   }
 
+  async disableEncryptionService(
+    scheduleId:string,
+    userId:string,
+  ):Promise<Schedule>{
+    const schedule = await this.scheduleModel.findOne({userId,_id:scheduleId});
+    if(!schedule || schedule.isEncrypted === false){
+      throw new BadRequestException('Schedule not found or already decrypted');
+    }
+    const findUser = await this.usersService.findUserByIdService(userId);
+    if(!findUser){
+      throw new BadRequestException('User not found');
+    }
+    const encryptedKey = findUser.encryptKey;
+    const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+    schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+    schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+    schedule.note = schedule.note
+      ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+      : undefined;
+    schedule.isEncrypted = false;
+    return schedule.save();
+  }
 }

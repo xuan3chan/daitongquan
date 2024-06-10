@@ -142,4 +142,32 @@ export class ScheduleController {
     const userId = this.getUserIdFromToken(request);
     return this.scheduleService.notifyScheduleService(userId);
   }
+
+  @Put('/enable-encrypt/:scheduleId')
+  @UseGuards(MemberGuard)
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @ApiCreatedResponse({
+    description: 'The record has been successfully updated.',
+  })
+  async enableEncryptScheduleController(
+    @Param('scheduleId') scheduleId: string,
+    @Req() request: Request,
+  ): Promise<any> {
+    const userId = this.getUserIdFromToken(request);
+    return this.scheduleService.enableEncryptionService(scheduleId, userId);
+  }
+
+  @Put('/disable-encrypt/:scheduleId')
+  @UseGuards(MemberGuard)
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @ApiCreatedResponse({
+    description: 'The record has been successfully updated.',
+  })
+  async disableEncryptScheduleController(
+    @Param('scheduleId') scheduleId: string,
+    @Req() request: Request,
+  ): Promise<any> {
+    const userId = this.getUserIdFromToken(request);
+    return this.scheduleService.disableEncryptionService(scheduleId, userId);
+  }
 }
