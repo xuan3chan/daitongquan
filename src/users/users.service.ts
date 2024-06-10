@@ -56,6 +56,11 @@ export class UsersService {
     if (!user) {
       return null;
     }
+
+    const encryptKey = user.encryptKey;
+    const decryptKey = this.encryptionService.decryptEncryptKey(encryptKey,user.password)
+    const newEncryptKey = this.encryptionService.updateEncryptKey(newPassword,decryptKey);
+    user.encryptKey = newEncryptKey;
     user.password = newPassword;
     user.authCode = null;
     return user.save();

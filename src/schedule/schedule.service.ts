@@ -1,13 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Schedule, ScheduleDocument } from './schema/schedule.schema';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
+
 @Injectable()
 export class ScheduleService {
   constructor(
-    @InjectModel(Schedule.name) 
+    @InjectModel(Schedule.name)
     private scheduleModel: Model<Schedule>,
     private readonly encryptionService: EncryptionService,
     private readonly usersService: UsersService,
@@ -24,10 +25,9 @@ export class ScheduleService {
     isLoop: boolean,
   ): Promise<Schedule> {
     if (startDateTime > endDateTime) {
-      throw new BadRequestException(
-        'Start date time must be less than end date time',
-      );
+      throw new BadRequestException('Start date time must be less than end date time');
     }
+
     const newSchedule = new this.scheduleModel({
       userId,
       title,
@@ -38,8 +38,14 @@ export class ScheduleService {
       note,
       isLoop,
     });
-    return newSchedule.save();
+
+    try {
+      return await newSchedule.save();
+    } catch (error) {
+      throw new InternalServerErrorException('Error creating schedule');
+    }
   }
+
   async updateScheduleService(
     userId: string,
     scheduleId: string,
@@ -51,75 +57,72 @@ export class ScheduleService {
     note?: string,
     isLoop?: boolean,
   ): Promise<Schedule> {
-    const schedule = await this.scheduleModel.findOne({
-      userId,
-      _id: scheduleId,
-    });
+    const schedule = await this.scheduleModel.findOne({ userId, _id: scheduleId });
+
     if (!schedule) {
       throw new BadRequestException('Schedule not found');
     }
+
     if (startDateTime && endDateTime && startDateTime > endDateTime) {
-      throw new BadRequestException(
-        'Start date time must be less than end date time',
-      );
+      throw new BadRequestException('Start date time must be less than end date time');
     }
-    return this.scheduleModel.findOneAndUpdate(
-      { userId, _id: scheduleId },
-      { title, location, isAllDay, startDateTime, endDateTime, note, isLoop },
-      { new: true },
-    );
+
+    try {
+      return await this.scheduleModel.findOneAndUpdate(
+        { userId, _id: scheduleId },
+        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop },
+        { new: true },
+      );
+    } catch (error) {
+      throw new InternalServerErrorException('Error updating schedule');
+    }
   }
 
-  async deleteScheduleService(
-    userId: string,
-    scheduleId: string,
-  ): Promise<any> {
-    const schedule = await this.scheduleModel.findOne({
-      userId,
-      _id: scheduleId,
-    });
+  async deleteScheduleService(userId: string, scheduleId: string): Promise<any> {
+    const schedule = await this.scheduleModel.findOne({ userId, _id: scheduleId });
+
     if (!schedule) {
       throw new BadRequestException('Schedule not found');
     }
-    await this.scheduleModel.deleteOne({ userId, _id: scheduleId }).exec();
-    return { message: 'Delete schedule successfully' };
-  }
-  async deleteManyScheduleService(
-    userId: string,
-    scheduleIds: string[],
-  ): Promise<any> {
-    const schedules = await this.scheduleModel.find({
-      userId,
-      _id: { $in: scheduleIds },
-    });
-    if (!schedules.length) {
-      throw new BadRequestException('Schedule not found');
+
+    try {
+      await this.scheduleModel.deleteOne({ userId, _id: scheduleId }).exec();
+      return { message: 'Delete schedule successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException('Error deleting schedule');
     }
-    await this.scheduleModel
-      .deleteMany({ userId, _id: { $in: scheduleIds } })
-      .exec();
-    return { message: 'Delete schedules successfully' };
+  }
+
+  async deleteManyScheduleService(userId: string, scheduleIds: string[]): Promise<any> {
+    const schedules = await this.scheduleModel.find({ userId, _id: { $in: scheduleIds } });
+
+    if (!schedules.length) {
+      throw new BadRequestException('Schedules not found');
+    }
+
+    try {
+      await this.scheduleModel.deleteMany({ userId, _id: { $in: scheduleIds } }).exec();
+      return { message: 'Delete schedules successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException('Error deleting schedules');
+    }
   }
 
   async viewListScheduleService(userId: string): Promise<Schedule[]> {
-    const schedule =  this.scheduleModel.find({ userId });
+    const schedule = this.scheduleModel.find({ userId });
+
     const findUser = await this.usersService.findUserByIdService(userId);
-    
+    if (!findUser) {
+      throw new BadRequestException('User not found');
+    }
+
     return (await schedule).map((schedule) => {
       if (schedule.isEncrypted) {
         const encryptedKey = findUser.encryptKey;
-        const decryptedKey = this.encryptionService.decryptEncryptKey(
-          encryptedKey,
-          findUser.password,
-        );
-        schedule.title = this.encryptionService.decryptData(
-          schedule.title,
-          decryptedKey,
-        );
-        schedule.location = this.encryptionService.decryptData(
-          schedule.location,
-          decryptedKey,
-        );
+        const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+
+        schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+        schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
         schedule.note = schedule.note
           ? this.encryptionService.decryptData(schedule.note, decryptedKey)
           : undefined;
@@ -132,66 +135,77 @@ export class ScheduleService {
     const TIMEZONE_OFFSET_HOURS = 7;
     const NOTIFICATION_TIME_MINUTES = 15;
 
-    const nowTime = new Date(
-      new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
-    );
-    const notificationTime = new Date(
-      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
-    );
+    const nowTime = new Date(new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
+    const notificationTime = new Date(nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000);
 
-    const schedules = await this.scheduleModel.find({
-      userId,
-      isLoop: true,
-      startDateTime: { $gte: nowTime, $lte: notificationTime },
-    });
+    try {
+      const schedules = await this.scheduleModel.find({
+        userId,
+        isLoop: true,
+        startDateTime: { $gte: nowTime, $lte: notificationTime },
+      });
 
-    return schedules;
+      return schedules;
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching schedules for notification');
+    }
   }
 
-  async enableEncryptionService(
-    scheduleId:string,
-    userId:string,
+  async enableEncryptionService(scheduleId: string, userId: string): Promise<Schedule> {
+    const schedule = await this.scheduleModel.findOne({ userId, _id: scheduleId });
 
-  ):Promise<Schedule>{
-    const schedule = await this.scheduleModel.findOne({userId,_id:scheduleId});
-    if(!schedule || schedule.isEncrypted === true){
+    if (!schedule || schedule.isEncrypted) {
       throw new BadRequestException('Schedule not found or already encrypted');
     }
+
     const findUser = await this.usersService.findUserByIdService(userId);
-    if(!findUser){
+    if (!findUser) {
       throw new BadRequestException('User not found');
     }
+
     const encryptedKey = findUser.encryptKey;
     const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
-    schedule.title = this.encryptionService.encryptData(schedule.title, decryptedKey);
-    schedule.location = this.encryptionService.encryptData(schedule.location, decryptedKey);
-    schedule.note = schedule.note
-      ? this.encryptionService.encryptData(schedule.note, decryptedKey)
-      : undefined;
-    schedule.isEncrypted = true;
-    return schedule.save();
+
+    try {
+      schedule.title = this.encryptionService.encryptData(schedule.title, decryptedKey);
+      schedule.location = this.encryptionService.encryptData(schedule.location, decryptedKey);
+      schedule.note = schedule.note
+        ? this.encryptionService.encryptData(schedule.note, decryptedKey)
+        : undefined;
+      schedule.isEncrypted = true;
+
+      return await schedule.save();
+    } catch (error) {
+      throw new InternalServerErrorException('Error enabling encryption');
+    }
   }
 
-  async disableEncryptionService(
-    scheduleId:string,
-    userId:string,
-  ):Promise<Schedule>{
-    const schedule = await this.scheduleModel.findOne({userId,_id:scheduleId});
-    if(!schedule || schedule.isEncrypted === false){
+  async disableEncryptionService(scheduleId: string, userId: string): Promise<Schedule> {
+    const schedule = await this.scheduleModel.findOne({ userId, _id: scheduleId });
+
+    if (!schedule || !schedule.isEncrypted) {
       throw new BadRequestException('Schedule not found or already decrypted');
     }
+
     const findUser = await this.usersService.findUserByIdService(userId);
-    if(!findUser){
+    if (!findUser) {
       throw new BadRequestException('User not found');
     }
+
     const encryptedKey = findUser.encryptKey;
     const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
-    schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
-    schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-    schedule.note = schedule.note
-      ? this.encryptionService.decryptData(schedule.note, decryptedKey)
-      : undefined;
-    schedule.isEncrypted = false;
-    return schedule.save();
+
+    try {
+      schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+      schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+      schedule.note = schedule.note
+        ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+        : undefined;
+      schedule.isEncrypted = false;
+
+      return await schedule.save();
+    } catch (error) {
+      throw new InternalServerErrorException('Error disabling encryption');
+    }
   }
 }

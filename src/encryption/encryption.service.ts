@@ -23,6 +23,12 @@ export class EncryptionService {
     keyB = Buffer.concat([keyB, cipher.final()]);
     return keyB.toString(ENCODING);
   }
+updateEncryptKey(password: string, decryptedKey: string): string {
+    const cipher = this.createCipher(password);
+    let encryptedKey = cipher.update(Buffer.from(decryptedKey, ENCODING));
+    encryptedKey = Buffer.concat([encryptedKey, cipher.final()]);
+    return encryptedKey.toString(ENCODING);
+}
 
   decryptEncryptKey(encryptKey: string, password: string): string {
     const decipher = this.createDecipher(password);
