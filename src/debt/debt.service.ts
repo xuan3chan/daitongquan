@@ -76,7 +76,7 @@ export class DebtService {
   }
 
   private async decryptDebtData(debt: Debt, userId: string): Promise<Debt> {
-    const findUser = await this.usersService.findPasswordService(userId);
+    const findUser = await this.usersService.findUserByIdService(userId);
     const encryptedKey = findUser.encryptKey;
     const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
 
@@ -92,7 +92,7 @@ export class DebtService {
 
   async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
     const debts = await this.debtModel.find({ userId, type });
-    const findUser = await this.usersService.findPasswordService(userId);
+    const findUser = await this.usersService.findUserByIdService(userId);
 
     const decryptedDebts = await Promise.all(
       debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt))
@@ -106,7 +106,7 @@ export class DebtService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
-    const findUser = await this.usersService.findPasswordService(userId);
+    const findUser = await this.usersService.findUserByIdService(userId);
 
     return Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : Promise.resolve(debt))));
   }
@@ -117,7 +117,7 @@ export class DebtService {
       throw new BadRequestException(`Debt not found or already ${encrypt ? 'encrypted' : 'decrypted'}`);
     }
 
-    const findUser = await this.usersService.findPasswordService(userId);
+    const findUser = await this.usersService.findUserByIdService(userId);
     const encryptedKey = findUser.encryptKey;
     const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
 

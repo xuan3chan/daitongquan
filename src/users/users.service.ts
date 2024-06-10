@@ -230,7 +230,7 @@ export class UsersService {
     return this.userModel.findOneAndDelete({ _id }).exec();
   }
 
-async findPasswordService(userId: string): Promise<any> {
+async findUserByIdService(userId: string): Promise<any> {
   const user = await this.userModel.findOne({ _id: userId }).exec();
   return user;
 }

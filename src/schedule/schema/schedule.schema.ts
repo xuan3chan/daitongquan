@@ -35,6 +35,9 @@ export class Schedule {
 
   @Prop({ type: mongoose.Schema.Types.Boolean, required: false, default: false })
   isLoop: boolean;
+  
+  @Prop({ type: mongoose.Schema.Types.Boolean, required: false })
+  isEncrypted: boolean;
 }
 
 export type ScheduleDocument = HydratedDocument<Schedule>;
