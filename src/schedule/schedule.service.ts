@@ -99,18 +99,24 @@ export class ScheduleService {
     return this.scheduleModel.find({ userId });
   }
 
-async notifyScheduleService(userId: string): Promise<any> {
-    const TIMEZONE_OFFSET_HOURS = 7;
-    const NOTIFICATION_TIME_MINUTES = 15;
+ async notifyScheduleService(userId: string, isLoop: boolean): Promise<any> {
+  const TIMEZONE_OFFSET_HOURS = 7;
+  const NOTIFICATION_TIME_MINUTES = 15;
 
-    const nowTime = new Date(new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
-    const notificationTime = new Date(nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000);
+  const nowTime = new Date(
+    new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
+  );
+  const notificationTime = new Date(
+    nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
+  );
 
-    const schedules = await this.scheduleModel.find({
-      userId,
-      startDateTime: { $gte: nowTime, $lte: notificationTime },
-    });
+  const schedules = await this.scheduleModel.find({
+    userId,
+    isLoop,
+    startDateTime: { $gte: nowTime, $lte: notificationTime },
+  });
 
-    return schedules;
+  return schedules;
 }
+
 }
