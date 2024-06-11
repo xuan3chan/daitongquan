@@ -9,7 +9,7 @@ export class UpdateCateDto {
     })
     @IsString()
     @IsNotEmpty()
-    CateId: string;
+    cateId: string;
     
     @ApiProperty({
         description: 'Name of spending category ',

@@ -47,7 +47,7 @@ export class CategoryController {
     const userId = this.getUserIdFromToken(request);
     return this.categoryService.updateCateService(
       userId,
-      updateCateDto.CateId,
+      updateCateDto.cateId,
       updateCateDto.name,
       updateCateDto.description,
       updateCateDto.icon,

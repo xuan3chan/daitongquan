@@ -37,7 +37,7 @@ export class CategoryService {
 
   async updateCateService(
     userId: string,
-    spendingCateId?: string,
+    cateId?: string,
     name?: string,
     description?: string,
     icon?: string,
@@ -45,7 +45,7 @@ export class CategoryService {
     status?: string,
   ): Promise<Category> {
     return this.CategoryModel.findOneAndUpdate(
-      { userId, _id: spendingCateId },
+      { userId, _id: cateId },
       { name, description, icon, color,status},
       { new: true },
     );
@@ -53,16 +53,16 @@ export class CategoryService {
 
   async deleteCateService(
     userId: string,
-    spendingCateId: string,
+    cateId: string,
   ): Promise<any> {
     const cate = await this.CategoryModel.findOne({
       userId,
-      _id: spendingCateId,
+      _id: cateId,
     });
     if (!cate) {
       throw new NotFoundException('Category not found');
     }
-    await this.CategoryModel.deleteOne({ userId, _id: spendingCateId });
+    await this.CategoryModel.deleteOne({ userId, _id: cateId });
     return { message: 'Delete category successfully' };
   }
   async viewSpendingCateService(userId: string): Promise<Category[]> {
