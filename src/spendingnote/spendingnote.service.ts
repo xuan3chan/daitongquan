@@ -98,11 +98,16 @@ export class SpendingNoteService {
     await this.spendingNoteModel.deleteMany({ _id: { $in: spendingNoteId } });
     return { message: 'Delete note successfully' };
   }
-  async listSpendingNoteService(userId: string): Promise<{ totalAmount: number, spendingNotes: SpendingNote[] }> {
+  async listSpendingNoteService(
+    userId: string,
+  ): Promise<{ totalAmount: number; spendingNotes: SpendingNote[] }> {
     const spendingNotes = await this.spendingNoteModel.find({ userId });
-    const totalAmount = spendingNotes.reduce((acc, note) => acc + note.amount, 0);
+    const totalAmount = spendingNotes.reduce(
+      (acc, note) => acc + note.amount,
+      0,
+    );
     return { totalAmount, spendingNotes };
-}
+  }
   async searchSpendingNoteService(
     searchKey: string,
     userId: string,
@@ -214,18 +219,30 @@ export class SpendingNoteService {
         59,
       ),
     );
+
     const spendingNotes = await this.spendingNoteModel.find({
       spendingDate: { $gte: start, $lte: end },
       userId,
     });
+
     let totalCost = 0;
-    const spendingDetails = spendingNotes.map((note) => {
+    const spendingDetails = {};
+
+    // Create an array of dates between start and end
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      spendingDetails[d.toISOString().split('T')[0]] = [];
+    }
+
+    // Populate the spendingDetails object
+    spendingNotes.forEach((note) => {
       totalCost += note.amount;
-      return {
+      const date = note.spendingDate.toISOString().split('T')[0];
+      spendingDetails[date].push({
         title: note.title,
         cost: note.amount,
-      };
+      });
     });
+
     return {
       startDate: start,
       endDate: end,
@@ -320,9 +337,7 @@ export class SpendingNoteService {
       userId,
     });
 
-    const cateIdUnique = [
-      ...new Set(spendingNotes.map((note) => note.cateId)),
-    ];
+    const cateIdUnique = [...new Set(spendingNotes.map((note) => note.cateId))];
 
     const spendingDetails = await Promise.all(
       cateIdUnique.map(async (cateId) => {
@@ -385,6 +400,108 @@ export class SpendingNoteService {
       spending: Array.from(groupedSpendingDetails.values()),
     };
   }
+
+  async statisticSpendingNoteService(
+    userId: string,
+    filterBy: string,
+    numberOfItems: number,
+    category?: string,
+  ) {
+    let start, end;
+    const currentDate = new Date();
+    const currentYear = currentDate.getUTCFullYear();
+    const currentMonth = currentDate.getUTCMonth();
+
+    switch (filterBy) {
+      case 'month':
+        start = new Date(
+          Date.UTC(currentYear, currentMonth - numberOfItems + 1, 1),
+        );
+        end = new Date(
+          Date.UTC(
+            currentYear,
+            currentMonth,
+            currentDate.getUTCDate(),
+            23,
+            59,
+            59,
+          ),
+        );
+        break;
+      case 'year':
+        start = new Date(Date.UTC(currentYear - numberOfItems + 1, 0, 1));
+        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+        break;
+      case 'category':
+        start = new Date(Date.UTC(currentYear, 0, 1));
+        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+        break;
+      default:
+        throw new Error('Invalid filter type');
+    }
+
+    const query: {
+      spendingDate: { $gte: Date; $lte: Date };
+      userId: string;
+      cateId?: string;
+    } = {
+      spendingDate: { $gte: start, $lte: end },
+      userId,
+    };
+
+    if (category) {
+      query.cateId = category;
+    }
+
+    const spendingNotes = await this.spendingNoteModel.find(query);
+
+    let groupedSpendingDetails = {};
+    if (filterBy === 'month') {
+      let year = currentYear;
+      let month = currentMonth;
+      for (let i = 0; i < numberOfItems; i++) {
+        const key = `${year}-${month + 1}`; // Create a string key in the format 'YYYY-MM'
+        groupedSpendingDetails[key] = {
+          totalCost: 0,
+          items: [],
+        };
+        month -= 1;
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+      }
+    } else if (filterBy === 'year') {
+      for (let i = 0; i < numberOfItems; i++) {
+        const year = currentYear - i;
+        groupedSpendingDetails[year] = {
+          totalCost: 0,
+          items: [],
+        };
+      }
+    }
+
+    spendingNotes.forEach((note) => {
+      const noteDate = new Date(note.spendingDate);
+      const key =
+        filterBy === 'month'
+          ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1}`
+          : noteDate.getUTCFullYear();
+
+      if (groupedSpendingDetails[key]) {
+        groupedSpendingDetails[key].totalCost += note.amount;
+        groupedSpendingDetails[key].items.push({
+          title: note.title,
+          cost: note.amount,
+          category: note.cateId,
+          spendingDate: note.spendingDate,
+        });
+      }
+    });
+
+    return { start, end, groupedSpendingDetails };
+  }
+
   //return message and budget limit,budget has use of cate when out of budget
   async notifySpendingNoteService(
     userId: string,

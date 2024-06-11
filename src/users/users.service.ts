@@ -3,7 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  forwardRef
+  forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -58,8 +58,14 @@ export class UsersService {
     }
 
     const encryptKey = user.encryptKey;
-    const decryptKey = this.encryptionService.decryptEncryptKey(encryptKey,user.password)
-    const newEncryptKey = this.encryptionService.updateEncryptKey(newPassword,decryptKey);
+    const decryptKey = this.encryptionService.decryptEncryptKey(
+      encryptKey,
+      user.password,
+    );
+    const newEncryptKey = this.encryptionService.updateEncryptKey(
+      newPassword,
+      decryptKey,
+    );
     user.encryptKey = newEncryptKey;
     user.password = newPassword;
     user.authCode = null;
@@ -115,7 +121,9 @@ export class UsersService {
     if (userExist) {
       return { message: 'Email or username already exists' };
     }
-    const createEncryptKey = this.encryptionService.createEncryptKey(password.toString());
+    const createEncryptKey = this.encryptionService.createEncryptKey(
+      password.toString(),
+    );
     const newUser = new this.userModel({
       email,
       password,
@@ -188,7 +196,12 @@ export class UsersService {
       // Exclude the password field
       const users = await this.userModel.find({}, { password: 0 });
       const preprocessString = (str: string) =>
-      str ? removeAccents(str).replace(/[^a-zA-Z0-9\s]/gi, '').trim().toLowerCase() : '';
+        str
+          ? removeAccents(str)
+              .replace(/[^a-zA-Z0-9\s]/gi, '')
+              .trim()
+              .toLowerCase()
+          : '';
       // Preprocess the search key
       const preprocessedSearchKey = preprocessString(searchKey);
       // Construct a case-insensitive regex pattern without word boundaries
@@ -235,8 +248,8 @@ export class UsersService {
     return this.userModel.findOneAndDelete({ _id }).exec();
   }
 
-async findUserByIdService(userId: string): Promise<any> {
-  const user = await this.userModel.findOne({ _id: userId }).exec();
-  return user;
-}
+  async findUserByIdService(userId: string): Promise<any> {
+    const user = await this.userModel.findOne({ _id: userId }).exec();
+    return user;
+  }
 }

@@ -243,4 +243,101 @@ export class IncomenoteService {
       income,
     };
   }
+  async statisticIncomeNoteService(
+    userId: string,
+    filterBy: string,
+    numberOfItems: number,
+    category?: string,
+  ) {
+    let start, end;
+    const currentDate = new Date();
+    const currentYear = currentDate.getUTCFullYear();
+    const currentMonth = currentDate.getUTCMonth() + 1; // Add 1 to the month
+
+    switch (filterBy) {
+      case 'month':
+        start = new Date(
+          Date.UTC(currentYear, currentMonth - numberOfItems, 1),
+        );
+        end = new Date(
+          Date.UTC(
+            currentYear,
+            currentMonth - 1,
+            currentDate.getUTCDate(),
+            23,
+            59,
+            59,
+          ),
+        );
+        break;
+      case 'year':
+        start = new Date(Date.UTC(currentYear - numberOfItems + 1, 0, 1));
+        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+        break;
+      case 'category':
+        start = new Date(Date.UTC(currentYear, 0, 1));
+        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+        break;
+      default:
+        throw new Error('Invalid filter type');
+    }
+
+   const query: {
+  incomeDate: { $gte: Date; $lte: Date };
+  userId: string;
+  cateId?: string;
+} = {
+  incomeDate: { $gte: start, $lte: end },
+  userId,
+};
+if (category) {
+  query.cateId = category;
+}
+const incomeNote = await this.incomeNoteModel.find(query);
+    let groupedIncomeDetails = {};
+    if (filterBy === 'month') {
+      let year = currentYear;
+      let month = currentMonth;
+      for (let i = 0; i < numberOfItems; i++) {
+        const key = `${year}-${month < 10 ? '0' + month : month}`; // Add a leading zero to the month if necessary
+        groupedIncomeDetails[key] = {
+          totalCost: 0,
+          items: [],
+        };
+        month -= 1;
+        if (month < 1) {
+          month = 12;
+          year -= 1;
+        }
+      }
+    } else if (filterBy === 'year') {
+      for (let i = 0; i < numberOfItems; i++) {
+        const year = currentYear - i;
+        groupedIncomeDetails[year] = {
+          totalCost: 0,
+          items: [],
+        };
+      }
+    }
+
+    incomeNote.forEach((note) => {
+      const noteDate = new Date(note.incomeDate);
+      const key =
+        filterBy === 'month'
+          ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1 < 10 ? '0' + (noteDate.getUTCMonth() + 1) : noteDate.getUTCMonth() + 1}` // Add a leading zero to the month if necessary
+          : noteDate.getUTCFullYear();
+
+      if (groupedIncomeDetails[key]) {
+        groupedIncomeDetails[key].totalCost += note.amount;
+        groupedIncomeDetails[key].items.push({
+          title: note.title,
+          cost: note.amount,
+          category: note.cateId,
+          incomeNote: note.incomeDate,
+        });
+      }
+    });
+
+    return { start, end, groupedIncomeDetails };
+  }
 }

@@ -30,6 +30,7 @@ import { CreateIncomeNoteDto } from './dto/CreateIncomeNote.dto';
 import { UpdateIncomeNoteDto } from './dto/UpdateIncomeNote.dto';
 import { QueryDateDto } from './dto/queryDate.dto';
 import { IsNotEmpty } from 'class-validator';
+import { StatisticsIncomeNoteDto } from './dto/statisticsincomeNote';
 
 @ApiTags('income note')
 @ApiBearerAuth()
@@ -178,5 +179,22 @@ async getIncomeNoteByCategoryController(
     const userId = this.getUserIdFromToken(request);
     return this.incomenoteService.staticticsIncomeNoteOptionYearService(userId, year);
   }
-    
+  
+  @Get('statistics-income')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Statistic spending note' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async statisticSpendingController(
+    @Req() req: Request,
+    @Query() dto: StatisticsIncomeNoteDto,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.incomenoteService.statisticIncomeNoteService(
+      userId,
+      dto.filterBy,
+      dto.numberOfItem,
+      dto.cateId,
+    );
+  }
 }

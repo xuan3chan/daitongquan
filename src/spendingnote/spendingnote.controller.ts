@@ -30,6 +30,7 @@ import { UpdateSpendingNoteDto } from './dto/updateSpendingNote.dto';
 import { DeleteSpendingNoteDto } from './dto/DeleteSpendingNote.dto';
 import { QueryDateSpendingNoteDto } from './dto/FilterSpendingNote.dto';
 import { Request } from 'express'; // Import the Request module from 'express'
+import { StatisticsSpendingDto } from './dto/StatictisSpendingNote.dto';
 @ApiTags('spending note')
 @ApiBearerAuth()
 @Controller('spendingnote')
@@ -263,4 +264,21 @@ export class SpendingnoteController {
     return this.spendingnoteService.notifySpendingNoteService(userId);
   }
   
+  @Get('statistic-spending')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Statistic spending note' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async statisticSpendingController(
+    @Req() req: Request,
+    @Query() dto: StatisticsSpendingDto,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.statisticSpendingNoteService(
+      userId,
+      dto.filterBy,
+      dto.numberOfItem,
+      dto.cateId,
+    );
+  }
 }
