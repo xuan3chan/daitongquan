@@ -1,13 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Category } from './schema/category.schema';
+import { SpendingLimitService } from 'src/spendinglimit/spendinglimit.service';
 
 @Injectable()
 export class CategoryService {
   constructor(
     @InjectModel(Category.name)
     private CategoryModel: Model<Category>,
+    @Inject(forwardRef(() => SpendingLimitService))
+    private spendingLimitService: SpendingLimitService,
   ) {}
 
   async deleteOfUser(userId: string): Promise<any> {
@@ -117,13 +120,23 @@ export class CategoryService {
       type: 'income',
     });
   }
-  async getCateByTypeSpendingService(
-    userId: string,  
-  ): Promise<Category[]> {
-    return this.CategoryModel.find({
-      userId,
-      type: 'spend',
-    });
-  }
+async getCateByTypeSpendingService(
+  userId: string,  
+): Promise<(Category & { budget: number })[]> {
+  const categories = await this.CategoryModel.find({
+    userId,
+    type: 'spend',
+  });
+
+  const categoriesWithBudget = await Promise.all(categories.map(async (category) => {
+    const spendingLimit = await this.spendingLimitService.findSpendingLimitByIdService(
+      category.spendingLimitId,
+    );
+    const budget = spendingLimit ? spendingLimit.budget : 0;
+    return { ...category.toObject(), budget } as Category & { budget: number };
+  }));
+
+  return categoriesWithBudget;
+}
 
 }

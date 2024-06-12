@@ -1,12 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SpendingLimitService } from './spendinglimit.service';
 import { SpendinglimitController } from './spendinglimit.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { SpendingLimit, SpendingLimitSchema } from './schema/spendinglimit.schema';
-
 import { CategoryModule } from 'src/category/category.module';
-
 
 @Module({
   imports: [
@@ -15,7 +13,7 @@ import { CategoryModule } from 'src/category/category.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    CategoryModule
+    forwardRef(() => CategoryModule),
   ],
   controllers: [SpendinglimitController],
   providers: [SpendingLimitService],
