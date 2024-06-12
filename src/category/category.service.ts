@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Category } from './schema/category.schema';
 import { SpendingLimitService } from 'src/spendinglimit/spendinglimit.service';
+import { SpendingNoteService } from 'src/spendingnote/spendingnote.service';
 
 @Injectable()
 export class CategoryService {
@@ -11,6 +12,8 @@ export class CategoryService {
     private CategoryModel: Model<Category>,
     @Inject(forwardRef(() => SpendingLimitService))
     private spendingLimitService: SpendingLimitService,
+    @Inject(forwardRef(() => SpendingNoteService))
+    private spendingNoteService: SpendingNoteService,
   ) {}
 
   async deleteOfUser(userId: string): Promise<any> {
@@ -62,6 +65,11 @@ export class CategoryService {
       userId,
       _id: cateId,
     });
+    const checkExistSpendingNote = await this.spendingNoteService.findSpendingNoteByCateIdService
+    (cateId);
+    if (checkExistSpendingNote.length > 0) {
+      throw new NotFoundException('Category has spending note');
+    }
     if (!cate) {
       throw new NotFoundException('Category not found');
     }

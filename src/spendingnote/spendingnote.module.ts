@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SpendingNoteService } from './spendingnote.service';
 import { SpendingnoteController } from './spendingnote.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -10,7 +10,7 @@ import { SpendingLimitModule } from 'src/spendinglimit/spendinglimit.module';
 @Module({
   imports: [
     SpendingLimitModule,
-    CategoryModule,
+    forwardRef(() => CategoryModule),
     MongooseModule.forFeature([{ name:SpendingNote.name , schema:SpendingNoteSchema  }]),
     ConfigModule.forRoot({
       isGlobal: true,

@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { Category, CategorySchema } from './schema/category.schema';
 import { SpendingLimitModule } from 'src/spendinglimit/spendinglimit.module';
+import { SpendingNoteModule } from 'src/spendingnote/spendingnote.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { SpendingLimitModule } from 'src/spendinglimit/spendinglimit.module';
       envFilePath: '.env',
     }),
     forwardRef(() => SpendingLimitModule),
+    forwardRef(() => SpendingNoteModule),
   ],
   controllers: [CategoryController],
   providers: [CategoryService],

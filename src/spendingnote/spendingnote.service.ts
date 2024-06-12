@@ -1,7 +1,9 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -15,6 +17,7 @@ export class SpendingNoteService {
   constructor(
     @InjectModel(SpendingNote.name)
     private spendingNoteModel: Model<SpendingNote>,
+    @Inject(forwardRef(() => CategoryService))
     private CategoryService: CategoryService,
     private spendingLimitService: SpendingLimitService,
   ) {}
@@ -564,5 +567,11 @@ export class SpendingNoteService {
       (total, note) => total + note.amount,
       0,
     );
+  }
+
+  async findSpendingNoteByCateIdService(
+    cateId: string,
+  ): Promise<SpendingNote[]> {
+    return this.spendingNoteModel.find({ cateId });
   }
 }
