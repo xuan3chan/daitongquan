@@ -281,4 +281,21 @@ export class SpendingnoteController {
       dto.cateId,
     );
   }
+  
+  @Delete('delete-all-by-cate/:cateId')
+  @UseGuards(MemberGuard)
+  @HttpCode(200)
+  @ApiOkResponse({ description: 'Spending note deleted' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async deleteAllSpendingNoteByCateController(
+    @Req() req: Request,
+    @Param('cateId') cateId: string,
+  ){
+    const userId = this.getUserIdFromToken(req);
+    return this.spendingnoteService.deleteAllSpendingNoteByCateIdService(
+      userId,
+      cateId,
+    );
+  }
+
 }

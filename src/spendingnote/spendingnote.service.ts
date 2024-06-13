@@ -44,7 +44,6 @@ async createSpendingNoteService(
   
     // Calculate new total spending
     const newTotalSpending = currentTotalSpending + amount;
-    console.log(newTotalSpending);  
   
     // Create new spending note
     const newSpendingNote = new this.spendingNoteModel({
@@ -610,4 +609,9 @@ private async getTotalSpendingForCategory(
   ): Promise<SpendingNote[]> {
     return this.spendingNoteModel.find({ cateId });
   }
-}
+  async deleteAllSpendingNoteByCateIdService(userId: string,cateId:string): Promise<any> {
+
+    await this.spendingNoteModel.deleteMany({ userId,cateId });
+    return { message: 'Delete all note successfully' };
+  }
+} 

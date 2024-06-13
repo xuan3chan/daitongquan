@@ -17,7 +17,7 @@ export class Post extends Document {
   comments: number;
   @Prop({
     type: mongoose.Schema.Types.String,
-    default: 'active',
+    default: 'unApproved',
     enum: ['active', 'inactive', 'unApproved', 'blocked', 'deleted'],
   })
   status: string;
