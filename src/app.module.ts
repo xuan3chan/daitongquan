@@ -18,6 +18,8 @@ import { EncryptionModule } from './encryption/encryption.module';
 import { DebtModule } from './debt/debt.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { AppController } from './app.controller';
+import { RankModule } from './rank/rank.module';
+import { PostModule } from './post/post.module';
 @Module({
   imports: [
     
@@ -40,6 +42,8 @@ import { AppController } from './app.controller';
     EncryptionModule,
     DebtModule,
     ScheduleModule,
+    RankModule,
+    PostModule,
   ],
   controllers: [
     AppController

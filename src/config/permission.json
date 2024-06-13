@@ -105,7 +105,7 @@
     "id": 17,
     "namePermission": "ReadlistPost",
     "action": "read",
-    "subject": "permission"
+    "subject": "post"
   },
   {
     "id": 18,

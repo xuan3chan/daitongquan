@@ -14,6 +14,9 @@ export class SpendingLimitService {
     ) {}
 
     async createSpendingLimitService(spendingCateId:string,budget: number): Promise<SpendingLimit> {
+        if(budget > 100000000000){
+            throw new Error('Budget is too large');
+        }
         const newSpendingLimit = new this.spendingLimitModel({
             budget
         });

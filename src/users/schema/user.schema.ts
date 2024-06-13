@@ -83,9 +83,28 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.String,})
   encryptKey: string;
 
-  @Prop({type: mongoose.Schema.Types.Number,default: 0})
-  rankScore: number;
-
+ @Prop({
+  type: {
+    attendance: { 
+      attendanceScore: { type: mongoose.Schema.Types.Number, default: 0 },
+      isAttendance: { type: mongoose.Schema.Types.Boolean, default: false },
+      dateAttendance: { type: mongoose.Schema.Types.Date, default: Date.now },
+    },
+    numberOfComment: { type: mongoose.Schema.Types.Number, default: 0 },
+    NumberOfBlog: { type: mongoose.Schema.Types.Number, default: 0 },
+    numberOfLike: { type: mongoose.Schema.Types.Number, default: 0 },
+  },
+})
+rankScore: {
+  attendance: {
+    attendanceScore: number;
+    isAttendance: boolean;
+    dateAttendance: Date;
+  };
+  numberOfComment: number;
+  NumberOfBlog: number;
+  numberOfLike: number;
+};
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

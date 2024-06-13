@@ -505,69 +505,59 @@ export class SpendingNoteService {
     return { start, end, groupedSpendingDetails };
   }
 
-  //return message and budget limit,budget has use of cate when out of budget
   async notifySpendingNoteService(
     userId: string,
-  ): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
+): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
     const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
 
     const processedCategories = new Map<string, any>(); // Map to track processed categories
 
     for (const note of spendingNotes) {
-      const { cateId } = note;
-      const infoCate = await this.CategoryService.findOneCateService(
-        userId,
-        cateId,
-      );
-      const limitCate =
-        await this.spendingLimitService.findSpendingLimitByIdService(
-          infoCate.spendingLimitId,
-        );
+        const { cateId } = note;
 
-      if (!infoCate || !limitCate) {
-        throw new NotFoundException('Category or limit not found');
-      }
+        const infoCate = await this.CategoryService.findOneCateService(userId, cateId);
+        if (!infoCate) {
+            throw new NotFoundException('Category not found');
+        }
 
-      let category = processedCategories.get(infoCate.name);
-      if (!category) {
-        const totalCost = await this.getTotalSpendingForCategory(
-          userId,
-          cateId,
-        );
-        category = {
-          nameCate: infoCate.name,
-          budget: limitCate.budget,
-          budgetUsed: totalCost,
-        };
-        processedCategories.set(infoCate.name, category);
-      }
+        const limitCate = await this.spendingLimitService.findSpendingLimitByIdService(infoCate.spendingLimitId);
+        if (!limitCate) {
+            throw new NotFoundException('Spending limit not found');
+        }
+
+        let category = processedCategories.get(infoCate.name);
+        if (!category) {
+            const totalCost = await this.getTotalSpendingForCategory(userId, cateId);
+            category = {
+                nameCate: infoCate.name,
+                budget: limitCate.budget,
+                budgetUsed: totalCost,
+            };
+            processedCategories.set(infoCate.name, category);
+        }
     }
 
-    const outOfBudgetCategories = Array.from(
-      processedCategories.values(),
-    ).filter((category) => category.budgetUsed >= category.budget);
+    const outOfBudgetCategories = Array.from(processedCategories.values()).filter(
+        (category) => category.budgetUsed >= category.budget
+    );
 
     if (outOfBudgetCategories.length === 0) {
-      return { message: 'All of your spending notes are within budget' };
+        return { message: 'All of your spending notes are within budget' };
     }
     return {
-      message: 'You have categories that have reached or exceeded the budget',
-      outOfBudgetCategories,
+        message: 'You have categories that have reached or exceeded the budget',
+        outOfBudgetCategories,
     };
-  }
+}
 
-  private async getTotalSpendingForCategory(
+private async getTotalSpendingForCategory(
     userId: string,
     categoryId: string,
-  ): Promise<number> {
-    const categorySpendingNotes = await this.spendingNoteModel
-      .find({ userId, spendingCateId: categoryId })
-      .lean();
-    return categorySpendingNotes.reduce(
-      (total, note) => total + note.amount,
-      0,
-    );
-  }
+): Promise<number> {
+    const categorySpendingNotes = await this.spendingNoteModel.find({ userId, cateId: categoryId }).lean();
+    return categorySpendingNotes.reduce((total, note) => total + note.amount, 0);
+}
+
 
   async findSpendingNoteByCateIdService(
     cateId: string,
