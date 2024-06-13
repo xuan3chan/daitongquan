@@ -6,13 +6,14 @@ import {CategoryService} from '../category/category.service';
 
 @Injectable()
 export class SpendingLimitService {
+
     constructor(
         @InjectModel(SpendingLimit.name)
         private spendingLimitModel: Model<SpendingLimit>,
         @Inject(forwardRef(() => CategoryService))
         private categoryService: CategoryService,
     ) {}
-
+   
     async createSpendingLimitService(spendingCateId:string,budget: number): Promise<SpendingLimit> {
         if(budget > 100000000000){
             throw new Error('Budget is too large');
