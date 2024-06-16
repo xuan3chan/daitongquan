@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post } from './schema/post.schema';
@@ -48,5 +48,17 @@ export class PostService {
     }
     return await post.save();
   }
-  
+
+  async deletePostService(userId: string, postId: string): Promise<Post> {
+    const post = await this.postModel.findOne({ _id: postId, userId }); 
+    if (!post) {
+      throw new BadRequestException('Post not found');
+    }
+    await this.cloudinaryService.deleteImageService(post.postImage);
+    return await this.postModel.findByIdAndDelete(postId);
+    }
+    
+  async viewDetailPostService(postId: string): Promise<Post> {
+    return await this.postModel.findById(postId);
+  }
 }

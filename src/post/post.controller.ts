@@ -9,6 +9,8 @@ import {
   UseGuards,
   Param,
   Put,
+  Delete,
+  Get,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -100,4 +102,20 @@ export class PostController {
       file,
     );
   }
+  @Delete('/:postId')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post deleted successfully' })
+  async deletePostController(
+    @Param('postId') postId: string,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.deletePostService(userId, postId);
+  }
+  @Get('/:postId')
+  @ApiOkResponse({ description: 'Post detail' })
+  async viewDetailPostController(@Param('postId') postId: string) {
+    return await this.postService.viewDetailPostService(postId);
+  }
+  
 }

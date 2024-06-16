@@ -296,6 +296,7 @@ export class SpendingnoteController {
       userId,
       cateId,
     );
-  }
+  } 
+  
 
 }

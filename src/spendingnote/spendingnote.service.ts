@@ -550,7 +550,7 @@ async createSpendingNoteService(
     return { start, end, groupedSpendingDetails };
   }
 
-  async notifySpendingNoteService(
+async notifySpendingNoteService(
     userId: string,
 ): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
     const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
@@ -574,6 +574,7 @@ async createSpendingNoteService(
         if (!category) {
             const totalCost = await this.getTotalSpendingForCategory(userId, cateId);
             category = {
+                id: cateId, // added id field
                 nameCate: infoCate.name,
                 budget: limitCate.budget,
                 budgetUsed: totalCost,
