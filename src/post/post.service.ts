@@ -61,4 +61,5 @@ export class PostService {
   async viewDetailPostService(postId: string): Promise<Post> {
     return await this.postModel.findById(postId);
   }
+ 
 }
