@@ -17,10 +17,13 @@ export class Post extends Document {
   comments: number;
   @Prop({
     type: mongoose.Schema.Types.String,
-    default: 'unApproved',
-    enum: ['active', 'inactive', 'unApproved', 'blocked', 'deleted'],
+    default: 'inactive',
+    enum: ['active', 'inactive', 'blocked'],
   })
   status: string;
+@Prop({ type: mongoose.Schema.Types.Boolean, default: false })
+  isApproved: boolean;
 }
-
 export const PostSchema = SchemaFactory.createForClass(Post);
+PostSchema.index({ content: 'text' });
+

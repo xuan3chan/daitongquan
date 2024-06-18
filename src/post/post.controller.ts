@@ -12,6 +12,7 @@ import {
   Delete,
   Get,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -19,6 +20,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { PostService } from './post.service';
@@ -27,6 +29,8 @@ import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { CreatePostDto, deleteManyPostDto } from './dto/post.dto';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
+import { PermissionGuard } from 'src/gaurd/permission.gaurd';
+import { Action, Subject } from 'src/decorator/casl.decorator';
 
 @ApiTags('post')
 @ApiBearerAuth()
@@ -110,7 +114,6 @@ export class PostController {
     @Request() req: Request,
   ) {
     const userId = this.getUserIdFromToken(req);
-    console.log(dto.postIds);
     return await this.postService.deleteManyPostService(userId, dto.postIds);
   }
   @Delete('/:postId')
@@ -123,17 +126,56 @@ export class PostController {
     const userId = this.getUserIdFromToken(req);
     return await this.postService.deletePostService(userId, postId);
   }
+  @Get('/search')
+  @ApiOkResponse({ description: 'Posts' })
+  async searchPostController(@Query('searchKey') searchKey: string) {
+    return await this.postService.searchPostService(searchKey);
+  }
+  @Get('/view-list-post')
+  @UseGuards(PermissionGuard)
+  @Action('read')
+  @Subject('post')
+  @ApiOkResponse({ description: 'Posts' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @ApiOperation({ summary: 'For Admin' })
+  async viewListPostController() {
+    return await this.postService.viewAllPostService();
+  }
+  @Get('/view-my-posts')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Posts' })
+  async getMyPostsController(@Request() req: Request) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.viewMyPostService(userId);
+  }
+  @Get('/view-all-post')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Posts' })
+  async getPostsController() {
+    return await this.postService.viewAllPostService();
+  }
   @Get('/:postId')
   @ApiOkResponse({ description: 'Post detail' })
   async viewDetailPostController(@Param('postId') postId: string) {
     return await this.postService.viewDetailPostService(postId);
   }
-  
+
   @Patch('/approve/:postId/')
-  @UseGuards(MemberGuard)
+  @UseGuards(PermissionGuard)
+  @Subject('post')
+  @Action('approve')  
   @ApiOkResponse({ description: 'Post approved' })
-  async approvePostController(@Param('postId') postId: string) {
-    return await this.postService.updateStatusService
+  async approvePostController(
+    @Param('postId') postId: string,
+    @Query('isApproved') isApproved: boolean,
+  ) {
+    return await this.postService.updateApproveService( postId, isApproved);
   }
+
+
+
+
+ 
+
   
 }

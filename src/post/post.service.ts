@@ -84,12 +84,37 @@ export class PostService {
     postId: string,
     status: string,
   ): Promise<Post> {
-    const post = await this.postModel.findOne({ _id: postId, userId
-    });
+    const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new BadRequestException('Post not found');
-    } 
+    }
     post.status = status;
     return await post.save();
   }
+  async updateApproveService(
+    postId: string,
+    isApproved: boolean,
+  ): Promise<Post> {
+    const post = await this.postModel.findOne({ _id: postId });
+    if (!post) {
+      throw new BadRequestException('Post not found');
+    }
+    post.isApproved = isApproved;
+    post.status = isApproved ? 'active' : 'inactive';
+    return await post.save();
+  }
+
+  async viewAllPostService(): Promise<Post[]> {
+    return await this.postModel.find().sort({ createdAt: -1 });
+  }
+
+  async viewMyPostService(userId: string): Promise<Post[]> {
+    return await this.postModel.find({ userId }).sort({ createdAt: -1 });
+  }
+  
+async searchPostService(searchKey: string): Promise<Post[]> {
+    return await this.postModel
+      .find({ $text: { $search: searchKey } })
+      .sort({ createdAt: -1 });
+}
 }

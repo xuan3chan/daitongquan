@@ -110,7 +110,7 @@
   {
     "id": 18,
     "namePermission": "ApprovePost",
-    "action": "update",
+    "action": "approve",
     "subject": "post"
   },
   {

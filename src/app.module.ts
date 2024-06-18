@@ -20,6 +20,7 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { AppController } from './app.controller';
 import { RankModule } from './rank/rank.module';
 import { PostModule } from './post/post.module';
+import { CommentModule } from './comment/comment.module';
 @Module({
   imports: [
     
@@ -44,6 +45,7 @@ import { PostModule } from './post/post.module';
     ScheduleModule,
     RankModule,
     PostModule,
+    CommentModule,
   ],
   controllers: [
     AppController
