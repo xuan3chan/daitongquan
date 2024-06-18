@@ -18,4 +18,21 @@ export class CommentService {
         });
         return await comment.save();
     }
+   async updateCommentService(
+        userId: string,
+        commentId: string,
+        content: string,
+    ) {
+        return this.commentModel.findOneAndUpdate(
+            { _id: commentId, userId },
+            { content },
+            { new: true },
+        );
+    }
+    async deleteCommentService(userId: string, commentId: string) {
+        return this.commentModel.findOneAndDelete({ _id: commentId, userId });
+    }
+    async getCommentService(postId: string) {
+        return this.commentModel.find({ postId }).populate('userId');
+    }   
 }
