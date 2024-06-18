@@ -58,4 +58,7 @@ async uploadImageService(
       });
     });
   }
+  async deleteManyImagesService(urls: string[]) {
+    return Promise.all(urls.map((url) => this.deleteImageService(url)));
+  }
 }

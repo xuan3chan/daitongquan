@@ -3,12 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post } from './schema/post.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>,
     private cloudinaryService: CloudinaryService,
+    private UsersService: UsersService,
   ) {}
 
   async createPostService(
@@ -24,6 +26,7 @@ export class PostService {
       const { url } = await this.cloudinaryService.uploadImageService(file);
       post.postImage = url;
     }
+    await this.UsersService.updateScoreRankService(userId, true);
     return await post.save();
   }
 
@@ -34,7 +37,7 @@ export class PostService {
     file?: Express.Multer.File,
   ): Promise<Post> {
     // find post by postId and userId
-    const post =await this.postModel.findOne({ _id: postId, userId });
+    const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new Error('Post not found');
     }
@@ -50,16 +53,43 @@ export class PostService {
   }
 
   async deletePostService(userId: string, postId: string): Promise<Post> {
-    const post = await this.postModel.findOne({ _id: postId, userId }); 
+    const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new BadRequestException('Post not found');
     }
     await this.cloudinaryService.deleteImageService(post.postImage);
     return await this.postModel.findByIdAndDelete(postId);
-    }
-    
+  }
+
   async viewDetailPostService(postId: string): Promise<Post> {
     return await this.postModel.findById(postId);
   }
- 
+
+  async deleteManyPostService(
+    userId: string,
+    postIds: string[],
+  ): Promise<Post[]> {
+    const posts = await this.postModel.find({ _id: { $in: postIds }, userId });
+    if (!posts.length) {
+      throw new BadRequestException('Posts not found');
+    }
+    posts.forEach(async (post) => {
+      await this.cloudinaryService.deleteImageService(post.postImage);
+    });
+    await this.postModel.deleteMany({ _id: { $in: postIds } });
+    return posts;
+  }
+  async updateStatusService(
+    userId: string,
+    postId: string,
+    status: string,
+  ): Promise<Post> {
+    const post = await this.postModel.findOne({ _id: postId, userId
+    });
+    if (!post) {
+      throw new BadRequestException('Post not found');
+    } 
+    post.status = status;
+    return await post.save();
+  }
 }

@@ -24,7 +24,7 @@ import { PostService } from './post.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import { CreatePostDto } from './dto/post.dto';
+import { CreatePostDto, deleteManyPostDto } from './dto/post.dto';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
 
 @ApiTags('post')
@@ -61,10 +61,9 @@ export class PostController {
     @Body() dto: CreatePostDto,
     @Request() req: Request,
     @UploadedFile() file?: Express.Multer.File,
-  
   ) {
-      const userId = this.getUserIdFromToken(req);
-      return await this.postService.createPostService(userId, dto.content, file);
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.createPostService(userId, dto.content, file);
   }
 
   @Put('/:postId')
@@ -102,6 +101,17 @@ export class PostController {
       file,
     );
   }
+  @Delete('/delete-many')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Posts deleted successfully' })
+  async deleteManyPostController(
+    @Body() dto: deleteManyPostDto,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    console.log(dto.postIds);
+    return await this.postService.deleteManyPostService(userId, dto.postIds);
+  }
   @Delete('/:postId')
   @UseGuards(MemberGuard)
   @ApiOkResponse({ description: 'Post deleted successfully' })
@@ -117,5 +127,6 @@ export class PostController {
   async viewDetailPostController(@Param('postId') postId: string) {
     return await this.postService.viewDetailPostService(postId);
   }
+
   
 }

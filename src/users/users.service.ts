@@ -252,4 +252,49 @@ export class UsersService {
     const user = await this.userModel.findOne({ _id: userId }).exec();
     return user;
   }
+
+  async updateScoreRankService(
+    userId: string,
+    blogScore?: boolean,
+    commentScore?: boolean,
+    likeScore?: boolean
+  ): Promise<User> {
+    // Fetch the user from the database
+    const user = await this.userModel.findOne({ _id: userId }).exec();
+  
+    // Ensure the user exists
+    if (!user) {
+      throw new Error('User not found');
+    }
+  
+    // Ensure the rankScore object exists
+    if (!user.rankScore) {
+      user.rankScore = {
+        attendance: {
+          attendanceScore: 0,
+          isAttendance: false,
+          dateAttendance: new Date(),
+        },
+        numberOfBlog: 0,
+        numberOfComment: 0,
+        numberOfLike: 0,
+      };
+    }
+  
+    // Update the rankScore based on the provided parameters
+    if (blogScore) {
+      user.rankScore.numberOfBlog += 1;
+    }
+    if (commentScore) {
+      user.rankScore.numberOfComment += 1;
+    }
+    if (likeScore) {
+      user.rankScore.numberOfLike += 1;
+    }
+  
+    // Save the updated user document
+    return user.save();
+  }
+  
+    
 }

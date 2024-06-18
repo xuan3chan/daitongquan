@@ -91,7 +91,7 @@ export class User extends Document {
       dateAttendance: { type: mongoose.Schema.Types.Date, default: Date.now },
     },
     numberOfComment: { type: mongoose.Schema.Types.Number, default: 0 },
-    NumberOfBlog: { type: mongoose.Schema.Types.Number, default: 0 },
+    numberOfBlog: { type: mongoose.Schema.Types.Number, default: 0 },
     numberOfLike: { type: mongoose.Schema.Types.Number, default: 0 },
   },
 })
@@ -102,7 +102,7 @@ rankScore: {
     dateAttendance: Date;
   };
   numberOfComment: number;
-  NumberOfBlog: number;
+  numberOfBlog: number;
   numberOfLike: number;
 };
 }

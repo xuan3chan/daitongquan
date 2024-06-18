@@ -60,7 +60,6 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOkResponse({ description: 'refresh token successfully' })
   @ApiBadRequestResponse({ description: 'Bad Request' })
-  @UseGuards(AuthGuard)
   @Patch('refresh-token')
   async refreshTokenController(@Body() refreshToken: RefreshTokenDto) {
     return await this.authService.refreshTokenService(
