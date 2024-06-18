@@ -11,6 +11,7 @@ import {
   Put,
   Delete,
   Get,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -127,6 +128,12 @@ export class PostController {
   async viewDetailPostController(@Param('postId') postId: string) {
     return await this.postService.viewDetailPostService(postId);
   }
-
+  
+  @Patch('/approve/:postId/')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post approved' })
+  async approvePostController(@Param('postId') postId: string) {
+    return await this.postService.updateStatusService
+  }
   
 }
