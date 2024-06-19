@@ -4,9 +4,13 @@ import { CommentController } from './comment.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { CommentSchema } from './schema/comment.schema';
+import { PostModule } from 'src/post/post.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
+    UsersModule,
+    PostModule,
     MongooseModule.forFeature([{ name: 'Comment', schema: CommentSchema}]),
     ConfigModule.forRoot({
       isGlobal: true,

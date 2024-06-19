@@ -757,13 +757,13 @@ let UsersService = class UsersService {
                 numberOfLike: 0,
             };
         }
-        if (blogScore) {
+        if (blogScore === true) {
             user.rankScore.numberOfBlog += 1;
         }
-        if (commentScore) {
+        if (commentScore === true) {
             user.rankScore.numberOfComment += 1;
         }
-        if (likeScore) {
+        if (likeScore === true) {
             user.rankScore.numberOfLike += 1;
         }
         return user.save();
@@ -8165,6 +8165,7 @@ exports.PostModule = PostModule = __decorate([
         ],
         controllers: [post_controller_1.PostController],
         providers: [post_service_1.PostService, abilities_factory_1.AbilityFactory],
+        exports: [post_service_1.PostService],
     })
 ], PostModule);
 
@@ -8252,6 +8253,10 @@ let PostService = class PostService {
         return posts;
     }
     async updateStatusService(userId, postId, status) {
+        const checkExist = await this.postModel.findOne({ _id: postId });
+        if (!checkExist) {
+            throw new common_1.BadRequestException('Post not found');
+        }
         const post = await this.postModel.findOne({ _id: postId, userId });
         if (!post) {
             throw new common_1.BadRequestException('Post not found');
@@ -8327,10 +8332,6 @@ __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Number, default: 0 }),
     __metadata("design:type", Number)
 ], Post.prototype, "likes", void 0);
-__decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Number, default: 0 }),
-    __metadata("design:type", Number)
-], Post.prototype, "comments", void 0);
 __decorate([
     (0, mongoose_1.Prop)({
         type: mongoose_3.default.Schema.Types.String,
@@ -8635,16 +8636,20 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentModule = void 0;
 const common_1 = __webpack_require__(6);
 const comment_service_1 = __webpack_require__(127);
-const comment_controller_1 = __webpack_require__(128);
+const comment_controller_1 = __webpack_require__(129);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const comment_schema_1 = __webpack_require__(129);
+const comment_schema_1 = __webpack_require__(128);
+const post_module_1 = __webpack_require__(121);
+const users_module_1 = __webpack_require__(9);
 let CommentModule = class CommentModule {
 };
 exports.CommentModule = CommentModule;
 exports.CommentModule = CommentModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            users_module_1.UsersModule,
+            post_module_1.PostModule,
             mongoose_1.MongooseModule.forFeature([{ name: 'Comment', schema: comment_schema_1.CommentSchema }]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
@@ -8675,16 +8680,20 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const comment_schema_1 = __webpack_require__(129);
+const comment_schema_1 = __webpack_require__(128);
+const users_service_1 = __webpack_require__(11);
+const post_service_1 = __webpack_require__(122);
 let CommentService = class CommentService {
-    constructor(commentModel) {
+    constructor(commentModel, usersService, postService) {
         this.commentModel = commentModel;
+        this.usersService = usersService;
+        this.postService = postService;
     }
     async createCommentService(userId, postId, content) {
         const comment = new this.commentModel({
@@ -8692,23 +8701,98 @@ let CommentService = class CommentService {
             postId,
             content,
         });
-        return await comment.save();
+        await this.usersService.updateScoreRankService(userId, false, true);
+        await comment.save();
+        return { message: 'Comment created successfully.' };
     }
     async updateCommentService(userId, commentId, content) {
-        return this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
+        const checkComment = await this.commentModel.findOne({
+            _id: commentId,
+            userId,
+        });
+        if (checkComment) {
+            await this.usersService.updateScoreRankService(userId, true, false);
+        }
+        const comment = await this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
+        return {
+            comment,
+            message: comment
+                ? 'Comment updated successfully.'
+                : 'No comment found to update.',
+        };
     }
     async deleteCommentService(userId, commentId) {
-        return this.commentModel.findOneAndDelete({ _id: commentId, userId });
+        const checkComment = await this.commentModel.findOne({
+            _id: commentId,
+            userId,
+        });
+        if (checkComment) {
+            await this.usersService.updateScoreRankService(userId, true, false);
+        }
+        const result = await this.commentModel.findOneAndDelete({
+            _id: commentId,
+            userId,
+        });
+        return {
+            message: result
+                ? 'Comment deleted successfully.'
+                : 'No comment found to delete.',
+        };
     }
     async getCommentService(postId) {
-        return this.commentModel.find({ postId }).populate('userId');
+        let comments = await this.commentModel
+            .find({ postId })
+            .populate('userId', 'firstname lastname avatar rankId')
+            .populate('repliesComment.userId', 'firstname lastname avatar rankId')
+            .sort({ createdAt: -1 });
+        comments = comments.map((comment) => {
+            comment.repliesComment.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            return comment;
+        });
+        return { comments, message: 'Comments fetched successfully.' };
+    }
+    async CreateReplyCommentService(userId, commentId, content) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new common_1.BadRequestException('Comment not found');
+        }
+        const replyComment = {
+            userId,
+            content,
+            createdAt: new Date(),
+        };
+        const newReplyComment = {
+            _id: 'some-id',
+            userId: replyComment.userId,
+            content: replyComment.content,
+            createdAt: replyComment.createdAt,
+        };
+        comment.repliesComment.push(newReplyComment);
+        await comment.save();
+        return { comment, message: 'Reply comment created successfully.' };
+    }
+    async updateReplyCommentService(userId, commentId, replyCommentId, content) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new common_1.BadRequestException('Comment not found');
+        }
+        const replyCommentIndex = comment.repliesComment.findIndex(reply => reply._id.toString() === replyCommentId);
+        if (replyCommentIndex === -1) {
+            throw new common_1.BadRequestException('Reply comment not found');
+        }
+        if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
+            throw new common_1.BadRequestException('You are not the owner of this reply comment');
+        }
+        comment.repliesComment[replyCommentIndex].content = content;
+        await comment.save();
+        return { message: 'Reply comment updated successfully.' };
     }
 };
 exports.CommentService = CommentService;
 exports.CommentService = CommentService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(comment_schema_1.Comment.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _b : Object, typeof (_c = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _c : Object])
 ], CommentService);
 
 
@@ -8727,21 +8811,41 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CommentController = void 0;
-const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(127);
-let CommentController = class CommentController {
-    constructor(commentService) {
-        this.commentService = commentService;
-    }
+exports.CommentSchema = exports.Comment = void 0;
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+let Comment = class Comment extends mongoose_2.Document {
 };
-exports.CommentController = CommentController;
-exports.CommentController = CommentController = __decorate([
-    (0, common_1.Controller)('comment'),
-    __metadata("design:paramtypes", [typeof (_a = typeof comment_service_1.CommentService !== "undefined" && comment_service_1.CommentService) === "function" ? _a : Object])
-], CommentController);
+exports.Comment = Comment;
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_2.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    __metadata("design:type", String)
+], Comment.prototype, "userId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_2.default.Schema.Types.ObjectId, ref: 'Post', required: true }),
+    __metadata("design:type", String)
+], Comment.prototype, "postId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_2.default.Schema.Types.String, required: true }),
+    __metadata("design:type", String)
+], Comment.prototype, "content", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: [{
+                _id: { type: mongoose_2.default.Schema.Types.ObjectId, auto: true },
+                userId: { type: mongoose_2.default.Schema.Types.ObjectId, ref: 'User', required: true },
+                content: { type: mongoose_2.default.Schema.Types.String, required: true },
+                createdAt: { type: mongoose_2.default.Schema.Types.Date, required: true }
+            }],
+        default: []
+    }),
+    __metadata("design:type", Array)
+], Comment.prototype, "repliesComment", void 0);
+exports.Comment = Comment = __decorate([
+    (0, mongoose_1.Schema)({ timestamps: true })
+], Comment);
+exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
 
 
 /***/ }),
@@ -8759,30 +8863,179 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CommentSchema = exports.Comment = void 0;
-const mongoose_1 = __webpack_require__(7);
-const mongoose_2 = __webpack_require__(12);
-const mongoose_3 = __webpack_require__(12);
-let Comment = class Comment extends mongoose_2.Document {
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
 };
-exports.Comment = Comment;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CommentController = void 0;
+const common_1 = __webpack_require__(6);
+const comment_service_1 = __webpack_require__(127);
+const swagger_1 = __webpack_require__(28);
+const comment_dto_1 = __webpack_require__(130);
+const jwt = __webpack_require__(29);
+const member_gaurd_1 = __webpack_require__(53);
+let CommentController = class CommentController {
+    constructor(commentService) {
+        this.commentService = commentService;
+    }
+    getUserIdFromToken(request) {
+        const token = request.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.decode(token);
+        return decodedToken._id;
+    }
+    async createCommentController(request, createCommentDto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.createCommentService(userId, createCommentDto.postId, createCommentDto.content);
+    }
+    async updateCommentController(request, commentId, updateCommentDto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.updateCommentService(userId, commentId, updateCommentDto.content);
+    }
+    async deleteCommentController(request, commentId) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.deleteCommentService(userId, commentId);
+    }
+    async getCommentController(postId) {
+        return this.commentService.getCommentService(postId);
+    }
+    async replyCommentController(request, commentId, dto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.CreateReplyCommentService(userId, commentId, dto.content);
+    }
+    async updateReplyCommentController(request, commentId, replyId, dto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.updateReplyCommentService(userId, commentId, replyId, dto.content);
+    }
+};
+exports.CommentController = CommentController;
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true }),
-    __metadata("design:type", String)
-], Comment.prototype, "userId", void 0);
+    (0, common_1.Post)(),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof Request !== "undefined" && Request) === "function" ? _b : Object, typeof (_c = typeof comment_dto_1.CreateCommentDto !== "undefined" && comment_dto_1.CreateCommentDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "createCommentController", null);
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'Post', required: true }),
-    __metadata("design:type", String)
-], Comment.prototype, "postId", void 0);
+    (0, common_1.Put)(':commentId'),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad Request' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Success' }),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('commentId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof Request !== "undefined" && Request) === "function" ? _d : Object, String, typeof (_e = typeof comment_dto_1.UpdateCommentDto !== "undefined" && comment_dto_1.UpdateCommentDto) === "function" ? _e : Object]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "updateCommentController", null);
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
+    (0, common_1.Delete)(':commentId'),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad Request' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Success' }),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('commentId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_f = typeof Request !== "undefined" && Request) === "function" ? _f : Object, String]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "deleteCommentController", null);
+__decorate([
+    (0, common_1.Get)(':postId'),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad Request' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Success' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "getCommentController", null);
+__decorate([
+    (0, common_1.Post)('reply/:commentId'),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad Request' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Success' }),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('commentId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_g = typeof Request !== "undefined" && Request) === "function" ? _g : Object, String, typeof (_h = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "replyCommentController", null);
+__decorate([
+    (0, common_1.Put)(':commentId/reply/:replyId'),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad Request' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Success' }),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('commentId')),
+    __param(2, (0, common_1.Param)('replyId')),
+    __param(3, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_j = typeof Request !== "undefined" && Request) === "function" ? _j : Object, String, String, typeof (_k = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _k : Object]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "updateReplyCommentController", null);
+exports.CommentController = CommentController = __decorate([
+    (0, swagger_1.ApiTags)('comment'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Controller)('comment'),
+    __metadata("design:paramtypes", [typeof (_a = typeof comment_service_1.CommentService !== "undefined" && comment_service_1.CommentService) === "function" ? _a : Object])
+], CommentController);
+
+
+/***/ }),
+/* 130 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReplyCommentDto = exports.UpdateCommentDto = exports.CreateCommentDto = void 0;
+const swagger_1 = __webpack_require__(28);
+const class_validator_1 = __webpack_require__(44);
+class CreateCommentDto {
+}
+exports.CreateCommentDto = CreateCommentDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'asdjksopkdoasodo', description: ' content comment for post' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], Comment.prototype, "content", void 0);
-exports.Comment = Comment = __decorate([
-    (0, mongoose_1.Schema)({ timestamps: true })
-], Comment);
-exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
+], CreateCommentDto.prototype, "content", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '112233', description: 'key for encrypt' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CreateCommentDto.prototype, "postId", void 0);
+class UpdateCommentDto {
+}
+exports.UpdateCommentDto = UpdateCommentDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'asdjksopkdoasodo', description: ' content comment for post' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], UpdateCommentDto.prototype, "content", void 0);
+class ReplyCommentDto {
+}
+exports.ReplyCommentDto = ReplyCommentDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'asdjksopkdoasodo', description: ' content comment for post' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], ReplyCommentDto.prototype, "content", void 0);
 
 
 /***/ })
@@ -8847,7 +9100,7 @@ exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("7462faf9c189fec873e0")
+/******/ 		__webpack_require__.h = () => ("5206eb5587c9c3e6b6c5")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

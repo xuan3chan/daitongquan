@@ -282,13 +282,13 @@ export class UsersService {
     }
   
     // Update the rankScore based on the provided parameters
-    if (blogScore) {
+    if (blogScore === true) {
       user.rankScore.numberOfBlog += 1;
     }
-    if (commentScore) {
+    if (commentScore === true) {
       user.rankScore.numberOfComment += 1;
     }
-    if (likeScore) {
+    if (likeScore === true) {
       user.rankScore.numberOfLike += 1;
     }
   

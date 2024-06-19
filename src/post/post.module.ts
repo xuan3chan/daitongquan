@@ -23,5 +23,6 @@ import { AdminModule } from 'src/admin/admin.module';
 
   controllers: [PostController],
   providers: [PostService,AbilityFactory],
+  exports: [PostService],
 })
 export class PostModule {}

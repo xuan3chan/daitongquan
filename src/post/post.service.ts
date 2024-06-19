@@ -84,6 +84,11 @@ export class PostService {
     postId: string,
     status: string,
   ): Promise<Post> {
+    const checkExist = await this.postModel.findOne({ _id: postId });
+    if (!checkExist) {
+      throw new BadRequestException('Post not found');
+    }
+
     const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new BadRequestException('Post not found');

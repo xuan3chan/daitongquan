@@ -13,8 +13,6 @@ export class Post extends Document {
   postImage: string;
   @Prop({ type: mongoose.Schema.Types.Number, default: 0 })
   likes: number;
-  @Prop({ type: mongoose.Schema.Types.Number, default: 0 })
-  comments: number;
   @Prop({
     type: mongoose.Schema.Types.String,
     default: 'inactive',
