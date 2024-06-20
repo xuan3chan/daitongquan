@@ -1448,7 +1448,7 @@ let SpendingNoteService = class SpendingNoteService {
         const start = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
         const end = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59));
         const spendingNotes = await this.spendingNoteModel.find({
-            createdAt: { $gte: start, $lte: end },
+            spendingDate: { $gte: start, $lte: end },
             userId,
         });
         if (spendingNotes.length === 0) {
@@ -9100,7 +9100,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("5206eb5587c9c3e6b6c5")
+/******/ 		__webpack_require__.h = () => ("6d20c2c8659e5ff6d4a6")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

@@ -232,7 +232,7 @@ async createSpendingNoteService(
     );
 
     const spendingNotes = await this.spendingNoteModel.find({
-      createdAt: { $gte: start, $lte: end },
+      spendingDate: { $gte: start, $lte: end },
       userId,
     });
 
