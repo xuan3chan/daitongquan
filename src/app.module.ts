@@ -21,6 +21,7 @@ import { AppController } from './app.controller';
 import { RankModule } from './rank/rank.module';
 import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
+import { ReportModule } from './report/report.module';
 @Module({
   imports: [
     
@@ -46,6 +47,7 @@ import { CommentModule } from './comment/comment.module';
     RankModule,
     PostModule,
     CommentModule,
+    ReportModule,
   ],
   controllers: [
     AppController

@@ -3,18 +3,25 @@ import { PostService } from './post.service';
 import { PostController } from './post.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { Post,PostSchema } from './schema/post.schema';
+import { Post, PostSchema } from './schema/post.schema';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { UsersModule } from 'src/users/users.module';
 import { AbilityFactory } from 'src/abilities/abilities.factory';
 import { AdminModule } from 'src/admin/admin.module';
+import { FavoritePostSchema } from './schema/favoritePost.schema';
+import { CommentSchema } from 'src/comment/schema/comment.schema';
 
 @Module({
   imports: [
     CloudinaryModule,
     UsersModule,
     AdminModule,
-    MongooseModule.forFeature([{ name: Post.name, schema: PostSchema }]),
+    MongooseModule.forFeature([
+      { name: Post.name, schema: PostSchema },
+      { name: 'FavoritePost', schema: FavoritePostSchema },
+      { name: 'Comment', schema: CommentSchema},
+    ]),
+
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -22,7 +29,7 @@ import { AdminModule } from 'src/admin/admin.module';
   ],
 
   controllers: [PostController],
-  providers: [PostService,AbilityFactory],
+  providers: [PostService, AbilityFactory],
   exports: [PostService],
 })
 export class PostModule {}

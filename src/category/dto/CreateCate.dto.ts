@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsEnum } from "class-validator";
+import { IsDate,MinLength, IsEmail, IsNotEmpty, IsString, MaxLength,Matches, IsNumber, ArrayNotEmpty, IsArray, ArrayMinSize, IsEnum, IsOptional } from "class-validator";
 
 export class CreateCateDto {
 
@@ -24,6 +24,7 @@ export class CreateCateDto {
         example: 'Food or drink or salary or rent or ...'
     })
     @IsString()
+    @IsOptional()
     description: string;
     @ApiProperty({
         description: 'Icon of spending category ',

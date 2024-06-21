@@ -103,5 +103,18 @@ export class CommentController {
       dto.content,
     );
   }
-
+  @Delete(':commentId/reply/:replyId')
+  @UseGuards(MemberGuard)
+  async deleteReplyCommentController(
+    @Req() request: Request,
+    @Param('commentId') commentId: string,
+    @Param('replyId') replyId: string,
+  ) {
+    const userId = this.getUserIdFromToken(request);
+    return this.commentService.deleteReplyCommentService(
+      userId,
+      commentId,
+      replyId,
+    );
+  }
 }

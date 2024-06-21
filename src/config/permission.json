@@ -136,5 +136,11 @@
     "namePermission": "WarningReport",
     "action": "update",
     "subject": "report"
+  },
+  {
+    "id": 23,
+    "namePermission": "BlockReport",
+    "action": "block",
+    "subject": "report"
   }
-]
+  ]

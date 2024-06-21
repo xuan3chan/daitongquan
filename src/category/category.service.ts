@@ -24,19 +24,19 @@ export class CategoryService {
     userId: string,
     name: string,
     type: string,
-    description: string,
     icon: string,
     color: string,
     status: string,
+    description?: string,
   ): Promise<Category> {
     const newCate = new this.CategoryModel({
       userId,
       name,
       type,
-      description,
       icon,
       color,
       status,
+      description : description || '',
     });
     return newCate.save();
   }

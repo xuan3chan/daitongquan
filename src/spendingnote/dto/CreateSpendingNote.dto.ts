@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDateString, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsDateString, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, Max } from "class-validator";
 
 export class CreateSpendingNoteDto {
 
@@ -49,5 +49,6 @@ export class CreateSpendingNoteDto {
     })
     @IsNumber()
     @IsNotEmpty()
+    @Max(100000000000000000)
     amount: number
 }

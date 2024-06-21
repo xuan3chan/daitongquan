@@ -4,13 +4,16 @@ import { Model } from 'mongoose';
 import { Post } from './schema/post.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UsersService } from 'src/users/users.service';
+import { FavoritePost } from './schema/favoritePost.schema';
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>,
+    @InjectModel('FavoritePost') private favoritePostModel: Model<FavoritePost>,
+    @InjectModel('Comment') private commentModel: Model<Comment>,
     private cloudinaryService: CloudinaryService,
-    private UsersService: UsersService,
+    private usersService: UsersService,
   ) {}
 
   async createPostService(
@@ -26,7 +29,7 @@ export class PostService {
       const { url } = await this.cloudinaryService.uploadImageService(file);
       post.postImage = url;
     }
-    await this.UsersService.updateScoreRankService(userId, true);
+    await this.usersService.updateScoreRankService(userId, true);
     return await post.save();
   }
 
@@ -110,16 +113,124 @@ export class PostService {
   }
 
   async viewAllPostService(): Promise<Post[]> {
+    return await this.postModel.find({ status: 'active' }).sort({ createdAt: -1 });
+}
+async viewListPostService(): Promise<Post[]> {
     return await this.postModel.find().sort({ createdAt: -1 });
   }
+
 
   async viewMyPostService(userId: string): Promise<Post[]> {
     return await this.postModel.find({ userId }).sort({ createdAt: -1 });
   }
-  
-async searchPostService(searchKey: string): Promise<Post[]> {
+
+  async searchPostService(searchKey: string): Promise<Post[]> {
     return await this.postModel
       .find({ $text: { $search: searchKey } })
       .sort({ createdAt: -1 });
-}
+  }
+
+  async addReactionPostService(
+    userId: string,
+    postId: string,
+    reaction: string,
+  ): Promise<{ message: string }> {
+    const post = await this.postModel.findOne({
+      _id: postId,
+      'userReaction.userId': userId,
+    });
+    if (post) {
+      await this.postModel.updateOne(
+        { _id: postId, 'userReaction.userId': userId },
+        {
+          $set: {
+            'userReaction.$.reaction': reaction,
+          },
+        },
+      );
+      return { message: 'Reaction updated successfully' };
+    }
+    const newPost = await this.postModel.findOneAndUpdate(
+      { _id: postId, 'userReaction.userId': { $ne: userId } },
+      {
+        $push: {
+          userReaction: { userId, reaction },
+        },
+        $inc: {
+          reactionCount: 1,
+        },
+      },
+      { new: true },
+    );
+    if (!newPost) {
+      throw new BadRequestException('You have already reacted to this post');
+    }
+    await this.usersService.updateScoreRankService(userId, false, false,true);
+
+    return { message: 'Reaction added successfully' };
+  }
+
+  async removeReactionPostService(
+    userId: string,
+    postId: string,
+  ): Promise<Post> {
+    const post = await this.postModel.findOneAndUpdate(
+      { _id: postId, 'userReaction.userId': userId },
+      {
+        $pull: {
+          userReaction: { userId },
+        },
+        $inc: {
+          reactionCount: -1,
+        },
+      },
+      { new: true },
+    );
+    if (!post) {
+      throw new BadRequestException('You have not reacted to this post');
+    }
+    return post;
+  }
+
+  async addFavoritePostService(
+    userId: string,
+    postId: string,
+  ): Promise<{ message: string }> {
+    try {
+      const favoritePost = new this.favoritePostModel({
+        userId,
+        postId,
+      });
+      await favoritePost.save();
+      return { message: 'Favorite post added successfully' };
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Error while adding favorite post');
+    }
+  }
+
+  async removeFavoritePostService(
+    userId: string,
+    postId: string,
+  ): Promise<{ message: string }> {
+    try {
+      await this.favoritePostModel.findOneAndDelete({ userId, postId });
+      return { message: 'Favorite post remove successfully' };
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Error while removing favorite post');
+    }
+  }
+
+  async viewMyFavoritePostService(userId: string): Promise<Post[]> {
+    try {
+      const favoritePosts = await this.favoritePostModel.find({ userId });
+      const postIds = favoritePosts.map((post) => post.postId);
+      return await this.postModel.find({ _id: { $in: postIds } });
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Error while viewing favorite post');
+    }
+  }
+ 
 }

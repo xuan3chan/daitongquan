@@ -22,7 +22,7 @@ export class CategoryController {
 
   @Post()
   @UseGuards(MemberGuard)
-  async createSpendingCateController(
+  async createCateController(
     @Req() request: Request,
     @Body() createCateDto: CreateCateDto,
   ): Promise<any> {
@@ -31,16 +31,16 @@ export class CategoryController {
       userId,
       createCateDto.name,
       createCateDto.type,
-      createCateDto.description,
       createCateDto.icon,
       createCateDto.color,
       createCateDto.status,
+      createCateDto.description,
     );
   }
 
   @Put()
   @UseGuards(MemberGuard)
-  async updateSpendingCateController(
+  async updateCateController(
     @Req() request: Request,
     @Body() updateCateDto: UpdateCateDto,
   ): Promise<any> {

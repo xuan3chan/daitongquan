@@ -126,6 +126,13 @@ export class PostController {
     const userId = this.getUserIdFromToken(req);
     return await this.postService.deletePostService(userId, postId);
   }
+  @Get('/favorite')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Favorite posts' })
+  async getFavoritePostController(@Request() req: Request) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.viewMyFavoritePostService(userId);
+  }
   @Get('/search')
   @ApiOkResponse({ description: 'Posts' })
   async searchPostController(@Query('searchKey') searchKey: string) {
@@ -139,7 +146,7 @@ export class PostController {
   @ApiBadRequestResponse({ description: 'Bad request' })
   @ApiOperation({ summary: 'For Admin' })
   async viewListPostController() {
-    return await this.postService.viewAllPostService();
+    return await this.postService.viewListPostService();
   }
   @Get('/view-my-posts')
   @UseGuards(MemberGuard)
@@ -172,6 +179,49 @@ export class PostController {
     return await this.postService.updateApproveService( postId, isApproved);
   }
 
+  @Put('/reaction/:postId')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post reaction' })
+  async reactionPostController(
+    @Param('postId') postId: string,
+    @Query('action') action: string,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.addReactionPostService(userId, postId, action);
+  }
+  @Delete('/:postId/reaction')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post reaction removed' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  async removeReactionPostController(
+    @Param('postId') postId: string,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.removeReactionPostService(userId, postId);
+  }
+
+  @Post('/favorite/:postId')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post favorited' })
+  async favoritePostController(
+    @Param('postId') postId: string,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.addFavoritePostService(userId, postId);
+  }
+  @Delete('/favorite/:postId')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Post unfavorited' })
+  async unFavoritePostController(
+    @Param('postId') postId: string,
+    @Request() req: Request,
+  ) {
+    const userId = this.getUserIdFromToken(req);
+    return await this.postService.removeFavoritePostService(userId, postId);
+  }
 
 
 

@@ -258,7 +258,8 @@ const schedule_module_1 = __webpack_require__(108);
 const app_controller_1 = __webpack_require__(116);
 const rank_module_1 = __webpack_require__(117);
 const post_module_1 = __webpack_require__(121);
-const comment_module_1 = __webpack_require__(126);
+const comment_module_1 = __webpack_require__(128);
+const report_module_1 = __webpack_require__(132);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -287,6 +288,7 @@ exports.AppModule = AppModule = __decorate([
             rank_module_1.RankModule,
             post_module_1.PostModule,
             comment_module_1.CommentModule,
+            report_module_1.ReportModule,
         ],
         controllers: [
             app_controller_1.AppController
@@ -1059,15 +1061,15 @@ let CategoryService = class CategoryService {
     async deleteOfUser(userId) {
         return this.CategoryModel.deleteMany({ userId }).exec();
     }
-    async createCateService(userId, name, type, description, icon, color, status) {
+    async createCateService(userId, name, type, icon, color, status, description) {
         const newCate = new this.CategoryModel({
             userId,
             name,
             type,
-            description,
             icon,
             color,
             status,
+            description: description || '',
         });
         return newCate.save();
     }
@@ -2766,11 +2768,11 @@ let CategoryController = class CategoryController {
         const decodedToken = jwt.decode(token);
         return decodedToken._id;
     }
-    async createSpendingCateController(request, createCateDto) {
+    async createCateController(request, createCateDto) {
         const userId = this.getUserIdFromToken(request);
-        return this.categoryService.createCateService(userId, createCateDto.name, createCateDto.type, createCateDto.description, createCateDto.icon, createCateDto.color, createCateDto.status);
+        return this.categoryService.createCateService(userId, createCateDto.name, createCateDto.type, createCateDto.icon, createCateDto.color, createCateDto.status, createCateDto.description);
     }
-    async updateSpendingCateController(request, updateCateDto) {
+    async updateCateController(request, updateCateDto) {
         const userId = this.getUserIdFromToken(request);
         return this.categoryService.updateCateService(userId, updateCateDto.cateId, updateCateDto.name, updateCateDto.description, updateCateDto.icon, updateCateDto.color, updateCateDto.status);
     }
@@ -2800,7 +2802,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_b = typeof Request !== "undefined" && Request) === "function" ? _b : Object, typeof (_c = typeof CreateCate_dto_1.CreateCateDto !== "undefined" && CreateCate_dto_1.CreateCateDto) === "function" ? _c : Object]),
     __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
-], CategoryController.prototype, "createSpendingCateController", null);
+], CategoryController.prototype, "createCateController", null);
 __decorate([
     (0, common_1.Put)(),
     (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
@@ -2809,7 +2811,7 @@ __decorate([
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [typeof (_e = typeof Request !== "undefined" && Request) === "function" ? _e : Object, typeof (_f = typeof UpdateCate_dto_1.UpdateCateDto !== "undefined" && UpdateCate_dto_1.UpdateCateDto) === "function" ? _f : Object]),
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
-], CategoryController.prototype, "updateSpendingCateController", null);
+], CategoryController.prototype, "updateCateController", null);
 __decorate([
     (0, common_1.Delete)(':CateId'),
     (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
@@ -2898,6 +2900,7 @@ __decorate([
         example: 'Food or drink or salary or rent or ...'
     }),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateCateDto.prototype, "description", void 0);
 __decorate([
@@ -3670,6 +3673,7 @@ __decorate([
     }),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.Max)(100000000000000000),
     __metadata("design:type", Number)
 ], CreateSpendingNoteDto.prototype, "amount", void 0);
 
@@ -8148,6 +8152,8 @@ const cloudinary_module_1 = __webpack_require__(49);
 const users_module_1 = __webpack_require__(9);
 const abilities_factory_1 = __webpack_require__(32);
 const admin_module_1 = __webpack_require__(66);
+const favoritePost_schema_1 = __webpack_require__(126);
+const comment_schema_1 = __webpack_require__(127);
 let PostModule = class PostModule {
 };
 exports.PostModule = PostModule;
@@ -8157,7 +8163,11 @@ exports.PostModule = PostModule = __decorate([
             cloudinary_module_1.CloudinaryModule,
             users_module_1.UsersModule,
             admin_module_1.AdminModule,
-            mongoose_1.MongooseModule.forFeature([{ name: post_schema_1.Post.name, schema: post_schema_1.PostSchema }]),
+            mongoose_1.MongooseModule.forFeature([
+                { name: post_schema_1.Post.name, schema: post_schema_1.PostSchema },
+                { name: 'FavoritePost', schema: favoritePost_schema_1.FavoritePostSchema },
+                { name: 'Comment', schema: comment_schema_1.CommentSchema },
+            ]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: '.env',
@@ -8188,7 +8198,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostService = void 0;
 const common_1 = __webpack_require__(6);
@@ -8198,10 +8208,12 @@ const post_schema_1 = __webpack_require__(123);
 const cloudinary_service_1 = __webpack_require__(14);
 const users_service_1 = __webpack_require__(11);
 let PostService = class PostService {
-    constructor(postModel, cloudinaryService, UsersService) {
+    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService) {
         this.postModel = postModel;
+        this.favoritePostModel = favoritePostModel;
+        this.commentModel = commentModel;
         this.cloudinaryService = cloudinaryService;
-        this.UsersService = UsersService;
+        this.usersService = usersService;
     }
     async createPostService(userId, content, file) {
         const post = new this.postModel({
@@ -8212,7 +8224,7 @@ let PostService = class PostService {
             const { url } = await this.cloudinaryService.uploadImageService(file);
             post.postImage = url;
         }
-        await this.UsersService.updateScoreRankService(userId, true);
+        await this.usersService.updateScoreRankService(userId, true);
         return await post.save();
     }
     async updatePostService(userId, postId, content, file) {
@@ -8274,6 +8286,9 @@ let PostService = class PostService {
         return await post.save();
     }
     async viewAllPostService() {
+        return await this.postModel.find({ status: 'active' }).sort({ createdAt: -1 });
+    }
+    async viewListPostService() {
         return await this.postModel.find().sort({ createdAt: -1 });
     }
     async viewMyPostService(userId) {
@@ -8284,12 +8299,90 @@ let PostService = class PostService {
             .find({ $text: { $search: searchKey } })
             .sort({ createdAt: -1 });
     }
+    async addReactionPostService(userId, postId, reaction) {
+        const post = await this.postModel.findOne({
+            _id: postId,
+            'userReaction.userId': userId,
+        });
+        if (post) {
+            await this.postModel.updateOne({ _id: postId, 'userReaction.userId': userId }, {
+                $set: {
+                    'userReaction.$.reaction': reaction,
+                },
+            });
+            return { message: 'Reaction updated successfully' };
+        }
+        const newPost = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': { $ne: userId } }, {
+            $push: {
+                userReaction: { userId, reaction },
+            },
+            $inc: {
+                reactionCount: 1,
+            },
+        }, { new: true });
+        if (!newPost) {
+            throw new common_1.BadRequestException('You have already reacted to this post');
+        }
+        await this.usersService.updateScoreRankService(userId, false, false, true);
+        return { message: 'Reaction added successfully' };
+    }
+    async removeReactionPostService(userId, postId) {
+        const post = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': userId }, {
+            $pull: {
+                userReaction: { userId },
+            },
+            $inc: {
+                reactionCount: -1,
+            },
+        }, { new: true });
+        if (!post) {
+            throw new common_1.BadRequestException('You have not reacted to this post');
+        }
+        return post;
+    }
+    async addFavoritePostService(userId, postId) {
+        try {
+            const favoritePost = new this.favoritePostModel({
+                userId,
+                postId,
+            });
+            await favoritePost.save();
+            return { message: 'Favorite post added successfully' };
+        }
+        catch (error) {
+            console.error(error);
+            throw new common_1.BadRequestException('Error while adding favorite post');
+        }
+    }
+    async removeFavoritePostService(userId, postId) {
+        try {
+            await this.favoritePostModel.findOneAndDelete({ userId, postId });
+            return { message: 'Favorite post remove successfully' };
+        }
+        catch (error) {
+            console.error(error);
+            throw new common_1.BadRequestException('Error while removing favorite post');
+        }
+    }
+    async viewMyFavoritePostService(userId) {
+        try {
+            const favoritePosts = await this.favoritePostModel.find({ userId });
+            const postIds = favoritePosts.map((post) => post.postId);
+            return await this.postModel.find({ _id: { $in: postIds } });
+        }
+        catch (error) {
+            console.error(error);
+            throw new common_1.BadRequestException('Error while viewing favorite post');
+        }
+    }
 };
 exports.PostService = PostService;
 exports.PostService = PostService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(post_schema_1.Post.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object])
+    __param(1, (0, mongoose_1.InjectModel)('FavoritePost')),
+    __param(2, (0, mongoose_1.InjectModel)('Comment')),
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object])
 ], PostService);
 
 
@@ -8331,7 +8424,21 @@ __decorate([
 __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Number, default: 0 }),
     __metadata("design:type", Number)
-], Post.prototype, "likes", void 0);
+], Post.prototype, "commentCount", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Number, default: 0 }),
+    __metadata("design:type", Number)
+], Post.prototype, "reactionCount", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: [
+            {
+                userId: { type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true },
+                reaction: { type: mongoose_3.default.Schema.Types.String, required: true, enum: ['like', 'dislike'] },
+            }
+        ],
+    }),
+    __metadata("design:type", Object)
+], Post.prototype, "userReaction", void 0);
 __decorate([
     (0, mongoose_1.Prop)({
         type: mongoose_3.default.Schema.Types.String,
@@ -8369,7 +8476,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostController = void 0;
 const common_1 = __webpack_require__(6);
@@ -8409,11 +8516,15 @@ let PostController = class PostController {
         const userId = this.getUserIdFromToken(req);
         return await this.postService.deletePostService(userId, postId);
     }
+    async getFavoritePostController(req) {
+        const userId = this.getUserIdFromToken(req);
+        return await this.postService.viewMyFavoritePostService(userId);
+    }
     async searchPostController(searchKey) {
         return await this.postService.searchPostService(searchKey);
     }
     async viewListPostController() {
-        return await this.postService.viewAllPostService();
+        return await this.postService.viewListPostService();
     }
     async getMyPostsController(req) {
         const userId = this.getUserIdFromToken(req);
@@ -8427,6 +8538,22 @@ let PostController = class PostController {
     }
     async approvePostController(postId, isApproved) {
         return await this.postService.updateApproveService(postId, isApproved);
+    }
+    async reactionPostController(postId, action, req) {
+        const userId = this.getUserIdFromToken(req);
+        return await this.postService.addReactionPostService(userId, postId, action);
+    }
+    async removeReactionPostController(postId, req) {
+        const userId = this.getUserIdFromToken(req);
+        return await this.postService.removeReactionPostService(userId, postId);
+    }
+    async favoritePostController(postId, req) {
+        const userId = this.getUserIdFromToken(req);
+        return await this.postService.addFavoritePostService(userId, postId);
+    }
+    async unFavoritePostController(postId, req) {
+        const userId = this.getUserIdFromToken(req);
+        return await this.postService.removeFavoritePostService(userId, postId);
     }
 };
 exports.PostController = PostController;
@@ -8504,6 +8631,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "deletePostController", null);
 __decorate([
+    (0, common_1.Get)('/favorite'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Favorite posts' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_o = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _o : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "getFavoritePostController", null);
+__decorate([
     (0, common_1.Get)('/search'),
     (0, swagger_1.ApiOkResponse)({ description: 'Posts' }),
     __param(0, (0, common_1.Query)('searchKey')),
@@ -8529,7 +8665,7 @@ __decorate([
     (0, swagger_1.ApiOkResponse)({ description: 'Posts' }),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_o = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _o : Object]),
+    __metadata("design:paramtypes", [typeof (_p = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _p : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "getMyPostsController", null);
 __decorate([
@@ -8560,6 +8696,48 @@ __decorate([
     __metadata("design:paramtypes", [String, Boolean]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "approvePostController", null);
+__decorate([
+    (0, common_1.Put)('/reaction/:postId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Post reaction' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, common_1.Query)('action')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, typeof (_q = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _q : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "reactionPostController", null);
+__decorate([
+    (0, common_1.Delete)('/:postId/reaction'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Post reaction removed' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_r = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _r : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "removeReactionPostController", null);
+__decorate([
+    (0, common_1.Post)('/favorite/:postId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Post favorited' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_s = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _s : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "favoritePostController", null);
+__decorate([
+    (0, common_1.Delete)('/favorite/:postId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Post unfavorited' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_t = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _t : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "unFavoritePostController", null);
 exports.PostController = PostController = __decorate([
     (0, swagger_1.ApiTags)('post'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -8632,172 +8810,33 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CommentModule = void 0;
-const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(127);
-const comment_controller_1 = __webpack_require__(129);
-const mongoose_1 = __webpack_require__(7);
-const config_1 = __webpack_require__(8);
-const comment_schema_1 = __webpack_require__(128);
-const post_module_1 = __webpack_require__(121);
-const users_module_1 = __webpack_require__(9);
-let CommentModule = class CommentModule {
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-exports.CommentModule = CommentModule;
-exports.CommentModule = CommentModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            users_module_1.UsersModule,
-            post_module_1.PostModule,
-            mongoose_1.MongooseModule.forFeature([{ name: 'Comment', schema: comment_schema_1.CommentSchema }]),
-            config_1.ConfigModule.forRoot({
-                isGlobal: true,
-                envFilePath: '.env',
-            }),
-        ],
-        controllers: [comment_controller_1.CommentController],
-        providers: [comment_service_1.CommentService],
-    })
-], CommentModule);
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.FavoritePostSchema = exports.FavoritePost = void 0;
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const mongoose_3 = __webpack_require__(12);
+let FavoritePost = class FavoritePost extends mongoose_2.Document {
+};
+exports.FavoritePost = FavoritePost;
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    __metadata("design:type", String)
+], FavoritePost.prototype, "userId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'Post', required: true }),
+    __metadata("design:type", String)
+], FavoritePost.prototype, "postId", void 0);
+exports.FavoritePost = FavoritePost = __decorate([
+    (0, mongoose_1.Schema)({ timestamps: true })
+], FavoritePost);
+exports.FavoritePostSchema = mongoose_1.SchemaFactory.createForClass(FavoritePost);
 
 
 /***/ }),
 /* 127 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-var __param = (this && this.__param) || function (paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-};
-var _a, _b, _c;
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CommentService = void 0;
-const common_1 = __webpack_require__(6);
-const mongoose_1 = __webpack_require__(7);
-const mongoose_2 = __webpack_require__(12);
-const comment_schema_1 = __webpack_require__(128);
-const users_service_1 = __webpack_require__(11);
-const post_service_1 = __webpack_require__(122);
-let CommentService = class CommentService {
-    constructor(commentModel, usersService, postService) {
-        this.commentModel = commentModel;
-        this.usersService = usersService;
-        this.postService = postService;
-    }
-    async createCommentService(userId, postId, content) {
-        const comment = new this.commentModel({
-            userId,
-            postId,
-            content,
-        });
-        await this.usersService.updateScoreRankService(userId, false, true);
-        await comment.save();
-        return { message: 'Comment created successfully.' };
-    }
-    async updateCommentService(userId, commentId, content) {
-        const checkComment = await this.commentModel.findOne({
-            _id: commentId,
-            userId,
-        });
-        if (checkComment) {
-            await this.usersService.updateScoreRankService(userId, true, false);
-        }
-        const comment = await this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
-        return {
-            comment,
-            message: comment
-                ? 'Comment updated successfully.'
-                : 'No comment found to update.',
-        };
-    }
-    async deleteCommentService(userId, commentId) {
-        const checkComment = await this.commentModel.findOne({
-            _id: commentId,
-            userId,
-        });
-        if (checkComment) {
-            await this.usersService.updateScoreRankService(userId, true, false);
-        }
-        const result = await this.commentModel.findOneAndDelete({
-            _id: commentId,
-            userId,
-        });
-        return {
-            message: result
-                ? 'Comment deleted successfully.'
-                : 'No comment found to delete.',
-        };
-    }
-    async getCommentService(postId) {
-        let comments = await this.commentModel
-            .find({ postId })
-            .populate('userId', 'firstname lastname avatar rankId')
-            .populate('repliesComment.userId', 'firstname lastname avatar rankId')
-            .sort({ createdAt: -1 });
-        comments = comments.map((comment) => {
-            comment.repliesComment.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-            return comment;
-        });
-        return { comments, message: 'Comments fetched successfully.' };
-    }
-    async CreateReplyCommentService(userId, commentId, content) {
-        const comment = await this.commentModel.findById(commentId);
-        if (!comment) {
-            throw new common_1.BadRequestException('Comment not found');
-        }
-        const replyComment = {
-            userId,
-            content,
-            createdAt: new Date(),
-        };
-        const newReplyComment = {
-            _id: 'some-id',
-            userId: replyComment.userId,
-            content: replyComment.content,
-            createdAt: replyComment.createdAt,
-        };
-        comment.repliesComment.push(newReplyComment);
-        await comment.save();
-        return { comment, message: 'Reply comment created successfully.' };
-    }
-    async updateReplyCommentService(userId, commentId, replyCommentId, content) {
-        const comment = await this.commentModel.findById(commentId);
-        if (!comment) {
-            throw new common_1.BadRequestException('Comment not found');
-        }
-        const replyCommentIndex = comment.repliesComment.findIndex(reply => reply._id.toString() === replyCommentId);
-        if (replyCommentIndex === -1) {
-            throw new common_1.BadRequestException('Reply comment not found');
-        }
-        if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
-            throw new common_1.BadRequestException('You are not the owner of this reply comment');
-        }
-        comment.repliesComment[replyCommentIndex].content = content;
-        await comment.save();
-        return { message: 'Reply comment updated successfully.' };
-    }
-};
-exports.CommentService = CommentService;
-exports.CommentService = CommentService = __decorate([
-    (0, common_1.Injectable)(),
-    __param(0, (0, mongoose_1.InjectModel)(comment_schema_1.Comment.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _b : Object, typeof (_c = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _c : Object])
-], CommentService);
-
-
-/***/ }),
-/* 128 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8849,6 +8888,51 @@ exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
 
 
 /***/ }),
+/* 128 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CommentModule = void 0;
+const common_1 = __webpack_require__(6);
+const comment_service_1 = __webpack_require__(129);
+const comment_controller_1 = __webpack_require__(130);
+const mongoose_1 = __webpack_require__(7);
+const config_1 = __webpack_require__(8);
+const comment_schema_1 = __webpack_require__(127);
+const post_module_1 = __webpack_require__(121);
+const users_module_1 = __webpack_require__(9);
+const post_schema_1 = __webpack_require__(123);
+let CommentModule = class CommentModule {
+};
+exports.CommentModule = CommentModule;
+exports.CommentModule = CommentModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            users_module_1.UsersModule,
+            post_module_1.PostModule,
+            mongoose_1.MongooseModule.forFeature([{ name: 'Comment', schema: comment_schema_1.CommentSchema },
+                { name: 'Post', schema: post_schema_1.PostSchema },
+            ]),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: '.env',
+            }),
+        ],
+        controllers: [comment_controller_1.CommentController],
+        providers: [comment_service_1.CommentService],
+    })
+], CommentModule);
+
+
+/***/ }),
 /* 129 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -8866,13 +8950,167 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+var _a, _b, _c, _d;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CommentService = void 0;
+const common_1 = __webpack_require__(6);
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const comment_schema_1 = __webpack_require__(127);
+const users_service_1 = __webpack_require__(11);
+const post_service_1 = __webpack_require__(122);
+let CommentService = class CommentService {
+    constructor(commentModel, postModel, usersService, postService) {
+        this.commentModel = commentModel;
+        this.postModel = postModel;
+        this.usersService = usersService;
+        this.postService = postService;
+    }
+    async createCommentService(userId, postId, content) {
+        const comment = new this.commentModel({
+            userId,
+            postId,
+            content,
+        });
+        await this.usersService.updateScoreRankService(userId, false, true);
+        await this.postModel.findByIdAndUpdate(postId, {
+            $inc: { commentCount: 1 },
+        });
+        await comment.save();
+        return { message: 'Comment created successfully.' };
+    }
+    async updateCommentService(userId, commentId, content) {
+        const comment = await this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
+        return {
+            comment,
+            message: comment
+                ? 'Comment updated successfully.'
+                : 'No comment found to update.',
+        };
+    }
+    async deleteCommentService(userId, commentId) {
+        const result = await this.commentModel.findOneAndDelete({
+            _id: commentId,
+            userId,
+        });
+        const postId = result.postId;
+        await this.postModel.findByIdAndUpdate(postId, {
+            $inc: { commentCount: -1 },
+        });
+        return {
+            message: result
+                ? 'Comment deleted successfully.'
+                : 'No comment found to delete.',
+        };
+    }
+    async getCommentService(postId) {
+        let comments = await this.commentModel
+            .find({ postId })
+            .populate('userId', 'firstname lastname avatar rankId')
+            .populate('repliesComment.userId', 'firstname lastname avatar rankId')
+            .sort({ createdAt: -1 });
+        comments = comments.map((comment) => {
+            comment.repliesComment.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            return comment;
+        });
+        return { comments, message: 'Comments fetched successfully.' };
+    }
+    async CreateReplyCommentService(userId, commentId, content) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new common_1.BadRequestException('Comment not found');
+        }
+        const replyComment = {
+            userId,
+            content,
+            createdAt: new Date(),
+        };
+        const newReplyComment = {
+            _id: 'some-id',
+            userId: replyComment.userId,
+            content: replyComment.content,
+            createdAt: replyComment.createdAt,
+        };
+        comment.repliesComment.push(newReplyComment);
+        await this.usersService.updateScoreRankService(userId, false, true);
+        const postId = comment.postId;
+        await this.postModel.findByIdAndUpdate(postId, {
+            $inc: { commentCount: 1 },
+        });
+        await comment.save();
+        return { comment, message: 'Reply comment created successfully.' };
+    }
+    async updateReplyCommentService(userId, commentId, replyCommentId, content) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new common_1.BadRequestException('Comment not found');
+        }
+        const replyCommentIndex = comment.repliesComment.findIndex((reply) => reply._id.toString() === replyCommentId);
+        if (replyCommentIndex === -1) {
+            throw new common_1.BadRequestException('Reply comment not found');
+        }
+        if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
+            throw new common_1.BadRequestException('You are not the owner of this reply comment');
+        }
+        comment.repliesComment[replyCommentIndex].content = content;
+        await comment.save();
+        return { message: 'Reply comment updated successfully.' };
+    }
+    async deleteReplyCommentService(userId, commentId, replyCommentId) {
+        const comment = await this.commentModel.findById(commentId);
+        if (!comment) {
+            throw new common_1.BadRequestException('Comment not found');
+        }
+        const replyCommentIndex = comment.repliesComment.findIndex((reply) => reply._id.toString() === replyCommentId);
+        if (replyCommentIndex === -1) {
+            throw new common_1.BadRequestException('Reply comment not found');
+        }
+        if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
+            throw new common_1.BadRequestException('You are not the owner of this reply comment');
+        }
+        comment.repliesComment.splice(replyCommentIndex, 1);
+        const postId = comment.postId;
+        await this.postModel.findByIdAndUpdate(postId, {
+            $inc: { commentCount: -1 },
+        });
+        await comment.save();
+        return { message: 'Reply comment deleted successfully.' };
+    }
+};
+exports.CommentService = CommentService;
+exports.CommentService = CommentService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, mongoose_1.InjectModel)(comment_schema_1.Comment.name)),
+    __param(1, (0, mongoose_1.InjectModel)('Post')),
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _d : Object])
+], CommentService);
+
+
+/***/ }),
+/* 130 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentController = void 0;
 const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(127);
+const comment_service_1 = __webpack_require__(129);
 const swagger_1 = __webpack_require__(28);
-const comment_dto_1 = __webpack_require__(130);
+const comment_dto_1 = __webpack_require__(131);
 const jwt = __webpack_require__(29);
 const member_gaurd_1 = __webpack_require__(53);
 let CommentController = class CommentController {
@@ -8906,6 +9144,10 @@ let CommentController = class CommentController {
     async updateReplyCommentController(request, commentId, replyId, dto) {
         const userId = this.getUserIdFromToken(request);
         return this.commentService.updateReplyCommentService(userId, commentId, replyId, dto.content);
+    }
+    async deleteReplyCommentController(request, commentId, replyId) {
+        const userId = this.getUserIdFromToken(request);
+        return this.commentService.deleteReplyCommentService(userId, commentId, replyId);
     }
 };
 exports.CommentController = CommentController;
@@ -8975,6 +9217,16 @@ __decorate([
     __metadata("design:paramtypes", [typeof (_j = typeof Request !== "undefined" && Request) === "function" ? _j : Object, String, String, typeof (_k = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _k : Object]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "updateReplyCommentController", null);
+__decorate([
+    (0, common_1.Delete)(':commentId/reply/:replyId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('commentId')),
+    __param(2, (0, common_1.Param)('replyId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_l = typeof Request !== "undefined" && Request) === "function" ? _l : Object, String, String]),
+    __metadata("design:returntype", Promise)
+], CommentController.prototype, "deleteReplyCommentController", null);
 exports.CommentController = CommentController = __decorate([
     (0, swagger_1.ApiTags)('comment'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -8984,7 +9236,7 @@ exports.CommentController = CommentController = __decorate([
 
 
 /***/ }),
-/* 130 */
+/* 131 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9036,6 +9288,341 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], ReplyCommentDto.prototype, "content", void 0);
+
+
+/***/ }),
+/* 132 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReportModule = void 0;
+const common_1 = __webpack_require__(6);
+const report_service_1 = __webpack_require__(133);
+const report_controller_1 = __webpack_require__(135);
+const config_1 = __webpack_require__(8);
+const mongoose_1 = __webpack_require__(7);
+const report_schema_1 = __webpack_require__(134);
+const abilities_factory_1 = __webpack_require__(32);
+const admin_module_1 = __webpack_require__(66);
+const user_schema_1 = __webpack_require__(13);
+const post_schema_1 = __webpack_require__(123);
+let ReportModule = class ReportModule {
+};
+exports.ReportModule = ReportModule;
+exports.ReportModule = ReportModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            admin_module_1.AdminModule,
+            mongoose_1.MongooseModule.forFeature([{ name: 'Report', schema: report_schema_1.ReportSchema },
+                { name: 'User', schema: user_schema_1.UserSchema },
+                { name: 'Post', schema: post_schema_1.PostSchema },
+            ]),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: '.env',
+            }),
+        ],
+        controllers: [report_controller_1.ReportController],
+        providers: [report_service_1.ReportService, abilities_factory_1.AbilityFactory],
+    })
+], ReportModule);
+
+
+/***/ }),
+/* 133 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReportService = void 0;
+const common_1 = __webpack_require__(6);
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const report_schema_1 = __webpack_require__(134);
+let ReportService = class ReportService {
+    constructor(reportModel, userModel, postModel) {
+        this.reportModel = reportModel;
+        this.userModel = userModel;
+        this.postModel = postModel;
+    }
+    async createReportService(userId, postId, reportType, reportContent) {
+        const report = new this.reportModel({
+            userId,
+            postId,
+            reportType,
+            reportContent,
+        });
+        await report.save();
+        return { message: 'Report created successfully.' };
+    }
+    async getReportsService() {
+        return await this.reportModel.find().populate('userId', 'firstname lastname avatar').populate('postId');
+    }
+    async deleteReportService(reportId) {
+        const report = await this.reportModel.findByIdAndDelete(reportId);
+        if (!report) {
+            throw new Error('Report not found');
+        }
+        return { message: 'Report deleted successfully.' };
+    }
+    async blockUserByReportService(reportId) {
+        const report = await this.reportModel.findById(reportId).populate('postId');
+        if (!report) {
+            throw new common_1.BadRequestException('Report not found');
+        }
+        const userId = report.postId.userId;
+        console.log(userId);
+        await this.userModel.findByIdAndUpdate(userId, { isBlock: true });
+        report.status = 'Processed';
+        await report.save();
+        return { message: 'User blocked successfully.' };
+    }
+    async blockPostByReportService(reportId) {
+        const report = await this.reportModel.findById(reportId).populate('postId');
+        if (!report) {
+            throw new common_1.BadRequestException('Report not found');
+        }
+        await this.postModel.findByIdAndUpdate(report.postId, { status: 'blocked' });
+        report.status = 'Processed';
+        await report.save();
+        return { message: 'Post blocked successfully.' };
+    }
+};
+exports.ReportService = ReportService;
+exports.ReportService = ReportService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, mongoose_1.InjectModel)(report_schema_1.Report.name)),
+    __param(1, (0, mongoose_1.InjectModel)('User')),
+    __param(2, (0, mongoose_1.InjectModel)('Post')),
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object])
+], ReportService);
+
+
+/***/ }),
+/* 134 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReportSchema = exports.Report = void 0;
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const mongoose_3 = __webpack_require__(12);
+let Report = class Report extends mongoose_2.Document {
+};
+exports.Report = Report;
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    __metadata("design:type", String)
+], Report.prototype, "userId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
+    __metadata("design:type", String)
+], Report.prototype, "reportType", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
+    __metadata("design:type", String)
+], Report.prototype, "reportContent", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'Post', required: true }),
+    __metadata("design:type", String)
+], Report.prototype, "postId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, default: 'pending', enum: ['pending', 'Processed', 'rejected'] }),
+    __metadata("design:type", String)
+], Report.prototype, "status", void 0);
+exports.Report = Report = __decorate([
+    (0, mongoose_1.Schema)({ timestamps: true })
+], Report);
+exports.ReportSchema = mongoose_1.SchemaFactory.createForClass(Report);
+
+
+/***/ }),
+/* 135 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f, _g, _h;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ReportController = void 0;
+const common_1 = __webpack_require__(6);
+const report_service_1 = __webpack_require__(133);
+const swagger_1 = __webpack_require__(28);
+const member_gaurd_1 = __webpack_require__(53);
+const express_1 = __webpack_require__(41);
+const jwt = __webpack_require__(29);
+const report_dto_1 = __webpack_require__(136);
+const permission_gaurd_1 = __webpack_require__(31);
+const casl_decorator_1 = __webpack_require__(40);
+let ReportController = class ReportController {
+    constructor(reportService) {
+        this.reportService = reportService;
+    }
+    getUserIdFromToken(request) {
+        const token = request.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.decode(token);
+        return decodedToken._id;
+    }
+    async createReportController(request, postId, dto) {
+        const userId = this.getUserIdFromToken(request);
+        return await this.reportService.createReportService(userId, postId, dto.reportType, dto.reportContent);
+    }
+    async getReportsController() {
+        return { reports: await this.reportService.getReportsService() };
+    }
+    async deleteReportController(reportId) {
+        return await this.reportService.deleteReportService(reportId);
+    }
+    async blockUserByReportController(reportId) {
+        return await this.reportService.blockUserByReportService(reportId);
+    }
+    async blockPostByReportController(reportId) {
+        return await this.reportService.blockPostByReportService(reportId);
+    }
+};
+exports.ReportController = ReportController;
+__decorate([
+    (0, common_1.Post)(':postId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('postId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_b = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _b : Object, String, typeof (_c = typeof report_dto_1.CreateReportDto !== "undefined" && report_dto_1.CreateReportDto) === "function" ? _c : Object]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], ReportController.prototype, "createReportController", null);
+__decorate([
+    (0, common_1.Get)('list-report'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('report'),
+    (0, casl_decorator_1.Action)('read'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], ReportController.prototype, "getReportsController", null);
+__decorate([
+    (0, common_1.Delete)(':reportId'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('report'),
+    (0, casl_decorator_1.Action)('delete'),
+    __param(0, (0, common_1.Param)('reportId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], ReportController.prototype, "deleteReportController", null);
+__decorate([
+    (0, common_1.Patch)('block-user/:reportId'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('report'),
+    (0, casl_decorator_1.Action)('block'),
+    __param(0, (0, common_1.Param)('reportId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], ReportController.prototype, "blockUserByReportController", null);
+__decorate([
+    (0, common_1.Patch)('block-post/:reportId'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('report'),
+    (0, casl_decorator_1.Action)('block'),
+    __param(0, (0, common_1.Param)('reportId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+], ReportController.prototype, "blockPostByReportController", null);
+exports.ReportController = ReportController = __decorate([
+    (0, swagger_1.ApiTags)('report'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Controller)('report'),
+    __metadata("design:paramtypes", [typeof (_a = typeof report_service_1.ReportService !== "undefined" && report_service_1.ReportService) === "function" ? _a : Object])
+], ReportController);
+
+
+/***/ }),
+/* 136 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CreateReportDto = void 0;
+const swagger_1 = __webpack_require__(28);
+const class_validator_1 = __webpack_require__(44);
+class CreateReportDto {
+}
+exports.CreateReportDto = CreateReportDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: '60f4b3b3b3b3b3b3b3b3b3b3',
+        description: 'type report',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CreateReportDto.prototype, "reportType", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        example: 'nội  dung khiếm nhã',
+        description: 'content report',
+    }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], CreateReportDto.prototype, "reportContent", void 0);
 
 
 /***/ })
@@ -9100,7 +9687,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("6d20c2c8659e5ff6d4a6")
+/******/ 		__webpack_require__.h = () => ("2e6f9c5925c1e612a77a")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
