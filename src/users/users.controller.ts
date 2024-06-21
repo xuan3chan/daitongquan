@@ -30,6 +30,7 @@ import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
 import { Request } from 'express';
 import {DeleteUserDto, CreateUserDto, BlockUserDto, UpdateUserProfileDto } from './dto/index';
+import { MemberGuard } from 'src/gaurd/member.gaurd';
 
 
 
@@ -158,7 +159,15 @@ export class UsersController {
     return { message: 'delete user successfully' };
   }
 
-
+  @Patch('attendance-user')
+  @ApiOkResponse({ description: 'Attendance user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  @UseGuards(MemberGuard)
+  async attendanceUserController(@Req() request: Request): Promise<{ message: string }> {
+    const userId = this.getUserIdFromToken(request);
+    await this.usersService.attendanceService(userId);
+    return { message: 'Attendance user successfully' };
+  }
   
     
 }

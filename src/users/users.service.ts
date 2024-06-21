@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -12,12 +13,14 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { remove as removeAccents } from 'remove-accents';
 import { CategoryService } from '../category/category.service';
 import { EncryptionService } from '../encryption/encryption.service';
+import { Rank } from 'src/rank/schema/rank.schema';
 
 @Injectable()
 export class UsersService {
   constructor(
     private cloudinaryService: CloudinaryService,
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Rank.name) private rankModel: Model<Rank>,
     private categoryService: CategoryService,
     @Inject(forwardRef(() => EncryptionService))
     private encryptionService: EncryptionService,
@@ -140,8 +143,9 @@ export class UsersService {
     return this.userModel
       .findOne({ _id })
       .select(
-        'email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt ',
+        'email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID ',
       )
+      .populate('rankID')
       .exec();
   }
 
@@ -272,7 +276,6 @@ export class UsersService {
       user.rankScore = {
         attendance: {
           attendanceScore: 0,
-          isAttendance: false,
           dateAttendance: new Date(),
         },
         numberOfBlog: 0,
@@ -291,10 +294,92 @@ export class UsersService {
     if (likeScore === true) {
       user.rankScore.numberOfLike += 1;
     }
+  await this.checkRankService(userId);
+    // Save the updated user document
+    return user.save();
+  }
+  
+  async attendanceService(userId: string): Promise<User> {
+    // Fetch the user from the database
+    const user = await this.userModel.findOne({ _id: userId }).exec();
+  
+    // Ensure the user exists
+    if (!user) {
+      throw new Error('User not found');
+    }
+  
+    // Ensure the rankScore object exists
+    if (!user.rankScore) {
+      user.rankScore = {
+        attendance: {
+          attendanceScore: 0,
+          dateAttendance: new Date(),
+        },
+        numberOfBlog: 0,
+        numberOfComment: 0,
+        numberOfLike: 0,
+      };
+    }
+
+    // Update the rankScore object
+    user.rankScore.attendance.attendanceScore += 1;
+    user.rankScore.attendance.dateAttendance = new Date();
   
     // Save the updated user document
     return user.save();
   }
   
+  //check rank user has <= user.rankScore
+async checkRankService(userId: string): Promise<any> {
+    // Fetch the user from the database
+    const user = await this.userModel.findOne({ _id: userId }).exec();
+  
+    // Ensure the user exists
+    if (!user) {
+      throw new Error('User not found');
+    }
+  
+    // Ensure the rankScore object exists
+    if (!user.rankScore) {
+      user.rankScore = {
+        attendance: {
+          attendanceScore: 0,
+          dateAttendance: new Date(),
+        },
+        numberOfBlog: 0,
+        numberOfComment: 0,
+        numberOfLike: 0,
+      };
+    }
+  
+    // Fetch all ranks from the database
+    const ranks = await this.rankModel.find().exec();
+  
+    // Ensure there are ranks
+    if (!ranks || ranks.length === 0) {
+      throw new Error('No ranks found');
+    }
+  
+    // Find the highest rank that the user has achieved
+    let highestRank = null;
+    for (const rank of ranks) {
+      if (user.rankScore.attendance.attendanceScore >= rank.score.attendanceScore
+        && user.rankScore.numberOfComment >= rank.score.numberOfComment
+        && user.rankScore.numberOfBlog >= rank.score.numberOfBlog
+        && user.rankScore.numberOfLike >= rank.score.numberOfLike) {
+        if (!highestRank || rank.rankScoreGoal > highestRank.rankScoreGoal) {
+          highestRank = rank;
+        }
+      }
+    }
+  
+    // If the user has achieved a rank, update the user's rankID
     
+    if (highestRank) {
+      user.rankID = highestRank._id;
+      await user.save();
+    }
+  
+    return true;
+}    
 }

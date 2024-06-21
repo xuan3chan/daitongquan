@@ -344,6 +344,7 @@ const abilities_factory_1 = __webpack_require__(32);
 const category_module_1 = __webpack_require__(50);
 const admin_module_1 = __webpack_require__(66);
 const encryption_module_1 = __webpack_require__(78);
+const rank_schema_1 = __webpack_require__(119);
 let UsersModule = class UsersModule {
 };
 exports.UsersModule = UsersModule;
@@ -354,7 +355,7 @@ exports.UsersModule = UsersModule = __decorate([
             admin_module_1.AdminModule,
             category_module_1.CategoryModule,
             cloudinary_module_1.CloudinaryModule,
-            mongoose_1.MongooseModule.forFeature([{ name: user_schema_1.User.name, schema: user_schema_1.UserSchema }]),
+            mongoose_1.MongooseModule.forFeature([{ name: user_schema_1.User.name, schema: user_schema_1.UserSchema }, { name: rank_schema_1.Rank.name, schema: rank_schema_1.RankSchema }]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: '.env',
@@ -385,7 +386,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersController = void 0;
 const common_1 = __webpack_require__(6);
@@ -399,6 +400,7 @@ const permission_gaurd_1 = __webpack_require__(31);
 const casl_decorator_1 = __webpack_require__(40);
 const express_1 = __webpack_require__(41);
 const index_1 = __webpack_require__(42);
+const member_gaurd_1 = __webpack_require__(53);
 let UsersController = class UsersController {
     constructor(usersService, cloudinaryService) {
         this.usersService = usersService;
@@ -442,6 +444,11 @@ let UsersController = class UsersController {
     async deleteUserController(deleteUserDto) {
         await this.usersService.deleteUserService(deleteUserDto._id);
         return { message: 'delete user successfully' };
+    }
+    async attendanceUserController(request) {
+        const userId = this.getUserIdFromToken(request);
+        await this.usersService.attendanceService(userId);
+        return { message: 'Attendance user successfully' };
     }
 };
 exports.UsersController = UsersController;
@@ -539,6 +546,16 @@ __decorate([
     __metadata("design:paramtypes", [typeof (_r = typeof index_1.DeleteUserDto !== "undefined" && index_1.DeleteUserDto) === "function" ? _r : Object]),
     __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
 ], UsersController.prototype, "deleteUserController", null);
+__decorate([
+    (0, common_1.Patch)('attendance-user'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Attendance user success' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'bad request' }),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_t = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _t : Object]),
+    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
+], UsersController.prototype, "attendanceUserController", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('users'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -565,7 +582,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersService = void 0;
 const common_1 = __webpack_require__(6);
@@ -576,10 +593,12 @@ const cloudinary_service_1 = __webpack_require__(14);
 const remove_accents_1 = __webpack_require__(17);
 const category_service_1 = __webpack_require__(18);
 const encryption_service_1 = __webpack_require__(24);
+const rank_schema_1 = __webpack_require__(119);
 let UsersService = class UsersService {
-    constructor(cloudinaryService, userModel, categoryService, encryptionService) {
+    constructor(cloudinaryService, userModel, rankModel, categoryService, encryptionService) {
         this.cloudinaryService = cloudinaryService;
         this.userModel = userModel;
+        this.rankModel = rankModel;
         this.categoryService = categoryService;
         this.encryptionService = encryptionService;
     }
@@ -666,7 +685,8 @@ let UsersService = class UsersService {
     async viewProfileService(_id) {
         return this.userModel
             .findOne({ _id })
-            .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt ')
+            .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID ')
+            .populate('rankID')
             .exec();
     }
     async updateUserProfileService(_id, firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink) {
@@ -751,7 +771,6 @@ let UsersService = class UsersService {
             user.rankScore = {
                 attendance: {
                     attendanceScore: 0,
-                    isAttendance: false,
                     dateAttendance: new Date(),
                 },
                 numberOfBlog: 0,
@@ -768,15 +787,74 @@ let UsersService = class UsersService {
         if (likeScore === true) {
             user.rankScore.numberOfLike += 1;
         }
+        await this.checkRankService(userId);
         return user.save();
+    }
+    async attendanceService(userId) {
+        const user = await this.userModel.findOne({ _id: userId }).exec();
+        if (!user) {
+            throw new Error('User not found');
+        }
+        if (!user.rankScore) {
+            user.rankScore = {
+                attendance: {
+                    attendanceScore: 0,
+                    dateAttendance: new Date(),
+                },
+                numberOfBlog: 0,
+                numberOfComment: 0,
+                numberOfLike: 0,
+            };
+        }
+        user.rankScore.attendance.attendanceScore += 1;
+        user.rankScore.attendance.dateAttendance = new Date();
+        return user.save();
+    }
+    async checkRankService(userId) {
+        const user = await this.userModel.findOne({ _id: userId }).exec();
+        if (!user) {
+            throw new Error('User not found');
+        }
+        if (!user.rankScore) {
+            user.rankScore = {
+                attendance: {
+                    attendanceScore: 0,
+                    dateAttendance: new Date(),
+                },
+                numberOfBlog: 0,
+                numberOfComment: 0,
+                numberOfLike: 0,
+            };
+        }
+        const ranks = await this.rankModel.find().exec();
+        if (!ranks || ranks.length === 0) {
+            throw new Error('No ranks found');
+        }
+        let highestRank = null;
+        for (const rank of ranks) {
+            if (user.rankScore.attendance.attendanceScore >= rank.score.attendanceScore
+                && user.rankScore.numberOfComment >= rank.score.numberOfComment
+                && user.rankScore.numberOfBlog >= rank.score.numberOfBlog
+                && user.rankScore.numberOfLike >= rank.score.numberOfLike) {
+                if (!highestRank || rank.rankScoreGoal > highestRank.rankScoreGoal) {
+                    highestRank = rank;
+                }
+            }
+        }
+        if (highestRank) {
+            user.rankID = highestRank._id;
+            await user.save();
+        }
+        return true;
     }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
-    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => encryption_service_1.EncryptionService))),
-    __metadata("design:paramtypes", [typeof (_a = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _c : Object, typeof (_d = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _d : Object])
+    __param(2, (0, mongoose_1.InjectModel)(rank_schema_1.Rank.name)),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => encryption_service_1.EncryptionService))),
+    __metadata("design:paramtypes", [typeof (_a = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _d : Object, typeof (_e = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _e : Object])
 ], UsersService);
 
 
@@ -901,7 +979,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "gender", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, default: null }),
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, default: null, ref: 'Rank' }),
     __metadata("design:type", String)
 ], User.prototype, "rankID", void 0);
 __decorate([
@@ -913,7 +991,6 @@ __decorate([
         type: {
             attendance: {
                 attendanceScore: { type: mongoose_3.default.Schema.Types.Number, default: 0 },
-                isAttendance: { type: mongoose_3.default.Schema.Types.Boolean, default: false },
                 dateAttendance: { type: mongoose_3.default.Schema.Types.Date, default: Date.now },
             },
             numberOfComment: { type: mongoose_3.default.Schema.Types.Number, default: 0 },
@@ -7930,6 +8007,9 @@ let RankService = class RankService {
     async getRankService() {
         return this.RankModel.find();
     }
+    async getRankDetailService(rankId) {
+        return this.RankModel.findOne({ _id: rankId });
+    }
 };
 exports.RankService = RankService;
 exports.RankService = RankService = __decorate([
@@ -8041,6 +8121,9 @@ let RankController = class RankController {
     async getAllRankController() {
         return this.rankService.getRankService();
     }
+    async getRankByIdController(rankId) {
+        return this.rankService.getRankDetailService(rankId);
+    }
 };
 exports.RankController = RankController;
 __decorate([
@@ -8120,6 +8203,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], RankController.prototype, "getAllRankController", null);
+__decorate([
+    (0, common_1.Get)(':rankId'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get rank by id successfully' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Rank not existed' }),
+    __param(0, (0, common_1.Param)('rankId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], RankController.prototype, "getRankByIdController", null);
 exports.RankController = RankController = __decorate([
     (0, swagger_1.ApiTags)('rank'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -8227,7 +8319,7 @@ let PostService = class PostService {
         await this.usersService.updateScoreRankService(userId, true);
         return await post.save();
     }
-    async updatePostService(userId, postId, content, file) {
+    async updatePostService(userId, postId, isShow, content, file) {
         const post = await this.postModel.findOne({ _id: postId, userId });
         if (!post) {
             throw new Error('Post not found');
@@ -8239,6 +8331,9 @@ let PostService = class PostService {
             await this.cloudinaryService.deleteImageService(post.postImage);
             const { url } = await this.cloudinaryService.uploadImageService(file);
             post.postImage = url;
+        }
+        if (isShow) {
+            post.isShow = isShow;
         }
         return await post.save();
     }
@@ -8286,13 +8381,22 @@ let PostService = class PostService {
         return await post.save();
     }
     async viewAllPostService() {
-        return await this.postModel.find({ status: 'active' }).sort({ createdAt: -1 });
+        return await this.postModel
+            .find({ status: 'active', isShow: true })
+            .populate('userReaction.userId', 'firstname lastname avatar')
+            .populate('userId', 'firstname lastname avatar')
+            .sort({ createdAt: -1 });
     }
     async viewListPostService() {
-        return await this.postModel.find().sort({ createdAt: -1 });
+        return await this.postModel.find()
+            .populate('userId', 'firstname lastname avatar')
+            .sort({ createdAt: -1 });
     }
     async viewMyPostService(userId) {
-        return await this.postModel.find({ userId }).sort({ createdAt: -1 });
+        return await this.postModel.find({ userId })
+            .populate('userId', 'firstname lastname avatar rankID')
+            .populate('userReaction.userId', 'firstname lastname avatar rankID')
+            .sort({ createdAt: -1 });
     }
     async searchPostService(searchKey) {
         return await this.postModel
@@ -8323,7 +8427,10 @@ let PostService = class PostService {
         if (!newPost) {
             throw new common_1.BadRequestException('You have already reacted to this post');
         }
-        await this.usersService.updateScoreRankService(userId, false, false, true);
+        if (reaction === 'like') {
+            const plusForUser = newPost.userId.toString();
+            await this.usersService.updateScoreRankService(plusForUser, true, false, false);
+        }
         return { message: 'Reaction added successfully' };
     }
     async removeReactionPostService(userId, postId) {
@@ -8448,6 +8555,10 @@ __decorate([
     __metadata("design:type", String)
 ], Post.prototype, "status", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Boolean, default: true }),
+    __metadata("design:type", Boolean)
+], Post.prototype, "isShow", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Boolean, default: false }),
     __metadata("design:type", Boolean)
 ], Post.prototype, "isApproved", void 0);
@@ -8506,7 +8617,7 @@ let PostController = class PostController {
         if (!postId) {
             throw new common_1.BadRequestException('postId is required');
         }
-        return await this.postService.updatePostService(userId, postId, dto.content, file);
+        return await this.postService.updatePostService(userId, postId, dto.isShow, dto.content, file);
     }
     async deleteManyPostController(dto, req) {
         const userId = this.getUserIdFromToken(req);
@@ -8593,6 +8704,7 @@ __decorate([
             type: 'object',
             properties: {
                 content: { type: 'string' },
+                isShow: { type: 'boolean' },
                 file: {
                     type: 'string',
                     format: 'binary',
@@ -8607,7 +8719,7 @@ __decorate([
     __param(2, (0, common_1.Request)()),
     __param(3, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_f = typeof post_dto_1.CreatePostDto !== "undefined" && post_dto_1.CreatePostDto) === "function" ? _f : Object, String, typeof (_g = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _g : Object, typeof (_j = typeof Express !== "undefined" && (_h = Express.Multer) !== void 0 && _h.File) === "function" ? _j : Object]),
+    __metadata("design:paramtypes", [typeof (_f = typeof post_dto_1.UpdatePostDto !== "undefined" && post_dto_1.UpdatePostDto) === "function" ? _f : Object, String, typeof (_g = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _g : Object, typeof (_j = typeof Express !== "undefined" && (_h = Express.Multer) !== void 0 && _h.File) === "function" ? _j : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "updatePostController", null);
 __decorate([
@@ -8686,6 +8798,7 @@ __decorate([
 ], PostController.prototype, "viewDetailPostController", null);
 __decorate([
     (0, common_1.Patch)('/approve/:postId/'),
+    (0, swagger_1.ApiOperation)({ summary: 'For Admin' }),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Subject)('post'),
     (0, casl_decorator_1.Action)('approve'),
@@ -8708,7 +8821,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "reactionPostController", null);
 __decorate([
-    (0, common_1.Delete)('/:postId/reaction'),
+    (0, common_1.Delete)('reaction/:postId'),
     (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
     (0, swagger_1.ApiOkResponse)({ description: 'Post reaction removed' }),
     (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
@@ -8781,6 +8894,11 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdatePostDto.prototype, "content", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], UpdatePostDto.prototype, "isShow", void 0);
 class deleteManyPostDto {
 }
 exports.deleteManyPostDto = deleteManyPostDto;
@@ -9687,7 +9805,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("2e6f9c5925c1e612a77a")
+/******/ 		__webpack_require__.h = () => ("337c7217e86d07aa0f67")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

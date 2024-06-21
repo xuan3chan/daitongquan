@@ -9,6 +9,7 @@ import {AbilityFactory} from '../abilities/abilities.factory';
 import { CategoryModule } from 'src/category/category.module';
 import { AdminModule } from 'src/admin/admin.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
+import { Rank, RankSchema } from 'src/rank/schema/rank.schema';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { EncryptionModule } from 'src/encryption/encryption.module';
     AdminModule,
     CategoryModule,
     CloudinaryModule,
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema },{ name: Rank.name, schema: RankSchema }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

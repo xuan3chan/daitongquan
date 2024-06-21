@@ -27,7 +27,7 @@ import { PostService } from './post.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import { CreatePostDto, deleteManyPostDto } from './dto/post.dto';
+import { CreatePostDto, UpdatePostDto, deleteManyPostDto } from './dto/post.dto';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
 import { PermissionGuard } from 'src/gaurd/permission.gaurd';
 import { Action, Subject } from 'src/decorator/casl.decorator';
@@ -80,6 +80,7 @@ export class PostController {
       type: 'object',
       properties: {
         content: { type: 'string' },
+        isShow: { type: 'boolean' },
         file: {
           type: 'string',
           format: 'binary',
@@ -90,7 +91,7 @@ export class PostController {
   @ApiOkResponse({ description: 'Post updated successfully' })
   @ApiBadRequestResponse({ description: 'Bad request' })
   async updatePostController(
-    @Body() dto: CreatePostDto,
+    @Body() dto: UpdatePostDto,
     @Param('postId') postId: string,
     @Request() req: Request,
     @UploadedFile() file?: Express.Multer.File,
@@ -102,6 +103,7 @@ export class PostController {
     return await this.postService.updatePostService(
       userId,
       postId,
+      dto.isShow,
       dto.content,
       file,
     );
@@ -168,6 +170,7 @@ export class PostController {
   }
 
   @Patch('/approve/:postId/')
+  @ApiOperation({ summary: 'For Admin' })
   @UseGuards(PermissionGuard)
   @Subject('post')
   @Action('approve')  
@@ -190,7 +193,7 @@ export class PostController {
     const userId = this.getUserIdFromToken(req);
     return await this.postService.addReactionPostService(userId, postId, action);
   }
-  @Delete('/:postId/reaction')
+  @Delete('reaction/:postId')
   @UseGuards(MemberGuard)
   @ApiOkResponse({ description: 'Post reaction removed' })
   @ApiBadRequestResponse({ description: 'Bad request' })

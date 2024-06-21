@@ -77,7 +77,7 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.String,enum:['Nam','Nữ']})
   gender: string;
 
-  @Prop({type: mongoose.Schema.Types.ObjectId,default: null})
+  @Prop({type: mongoose.Schema.Types.ObjectId,default: null,ref: 'Rank'})
   rankID: string;
 
   @Prop({type: mongoose.Schema.Types.String,})
@@ -87,7 +87,6 @@ export class User extends Document {
   type: {
     attendance: { 
       attendanceScore: { type: mongoose.Schema.Types.Number, default: 0 },
-      isAttendance: { type: mongoose.Schema.Types.Boolean, default: false },
       dateAttendance: { type: mongoose.Schema.Types.Date, default: Date.now },
     },
     numberOfComment: { type: mongoose.Schema.Types.Number, default: 0 },
@@ -98,7 +97,6 @@ export class User extends Document {
 rankScore: {
   attendance: {
     attendanceScore: number;
-    isAttendance: boolean;
     dateAttendance: Date;
   };
   numberOfComment: number;

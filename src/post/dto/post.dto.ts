@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsArray, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreatePostDto {
   @IsNotEmpty()
@@ -10,6 +10,10 @@ export class UpdatePostDto {
   @IsString()
   @IsOptional()
   content: string;
+
+  @IsString()
+  @IsOptional()
+  isShow: boolean;
 }
 export class deleteManyPostDto {
 

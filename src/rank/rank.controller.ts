@@ -136,4 +136,12 @@ export class RankController {
   async getAllRankController() {
     return this.rankService.getRankService();
   }
+
+  @Get(':rankId')
+  @ApiOkResponse({ description: 'Get rank by id successfully' })
+  @ApiBadRequestResponse({ description: 'Rank not existed' })
+  async getRankByIdController(@Param('rankId') rankId: string) {
+    return this.rankService.getRankDetailService(rankId);
+  }
+
 }

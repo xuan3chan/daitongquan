@@ -36,6 +36,7 @@ export class PostService {
   async updatePostService(
     userId: string,
     postId: string,
+    isShow?: boolean,
     content?: string,
     file?: Express.Multer.File,
   ): Promise<Post> {
@@ -51,6 +52,9 @@ export class PostService {
       await this.cloudinaryService.deleteImageService(post.postImage);
       const { url } = await this.cloudinaryService.uploadImageService(file);
       post.postImage = url;
+    }
+    if (isShow) {
+      post.isShow = isShow;
     }
     return await post.save();
   }
@@ -112,16 +116,24 @@ export class PostService {
     return await post.save();
   }
 
-  async viewAllPostService(): Promise<Post[]> {
-    return await this.postModel.find({ status: 'active' }).sort({ createdAt: -1 });
+ async viewAllPostService(): Promise<Post[]> {
+    return await this.postModel
+      .find({ status: 'active', isShow: true })
+      .populate('userReaction.userId', 'firstname lastname avatar')
+      .populate('userId', 'firstname lastname avatar')
+      .sort({ createdAt: -1 });
 }
-async viewListPostService(): Promise<Post[]> {
-    return await this.postModel.find().sort({ createdAt: -1 });
+  async viewListPostService(): Promise<Post[]> {
+    return await this.postModel.find()
+    .populate('userId', 'firstname lastname avatar')
+    .sort({ createdAt: -1 });
   }
 
-
   async viewMyPostService(userId: string): Promise<Post[]> {
-    return await this.postModel.find({ userId }).sort({ createdAt: -1 });
+    return await this.postModel.find({ userId })
+    .populate('userId', 'firstname lastname avatar rankID')
+    .populate('userReaction.userId', 'firstname lastname avatar rankID')
+    .sort({ createdAt: -1 });
   }
 
   async searchPostService(searchKey: string): Promise<Post[]> {
@@ -165,8 +177,10 @@ async viewListPostService(): Promise<Post[]> {
     if (!newPost) {
       throw new BadRequestException('You have already reacted to this post');
     }
-    await this.usersService.updateScoreRankService(userId, false, false,true);
-
+    if (reaction === 'like') {
+      const plusForUser = newPost.userId.toString();
+      await this.usersService.updateScoreRankService(plusForUser, true, false, false);
+    }
     return { message: 'Reaction added successfully' };
   }
 
@@ -232,5 +246,4 @@ async viewListPostService(): Promise<Post[]> {
       throw new BadRequestException('Error while viewing favorite post');
     }
   }
- 
 }

@@ -32,6 +32,9 @@ export class Post extends Document {
     enum: ['active', 'inactive', 'blocked'],
   })
   status: string;
+
+  @Prop({ type: mongoose.Schema.Types.Boolean, default: true })
+  isShow: boolean;
 @Prop({ type: mongoose.Schema.Types.Boolean, default: false })
   isApproved: boolean;
 }

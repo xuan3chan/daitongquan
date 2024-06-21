@@ -96,4 +96,8 @@ export class RankService {
   async getRankService(): Promise<Rank[]> {
     return this.RankModel.find();
   }
+  async getRankDetailService(rankId: string): Promise<Rank> {
+    return this.RankModel.findOne({_id: rankId });
+}
+
 }
