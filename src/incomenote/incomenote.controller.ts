@@ -31,6 +31,7 @@ import { UpdateIncomeNoteDto } from './dto/UpdateIncomeNote.dto';
 import { QueryDateDto } from './dto/queryDate.dto';
 import { IsNotEmpty } from 'class-validator';
 import { StatisticsIncomeNoteDto } from './dto/statisticsincomeNote';
+import { DeleteManyIncomeDto } from './dto/DeleteManyIncome.dto';
 
 @ApiTags('income note')
 @ApiBearerAuth()
@@ -86,7 +87,18 @@ export class IncomenoteController {
       dto.amount,
     );
   }
-
+  @Delete('deleteMany')
+  @UseGuards(MemberGuard)
+  @ApiOkResponse({ description: 'Income note deleted' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @HttpCode(200)
+  async deleteManyIncomeNoteController(
+    @Req() request: Request,
+    @Body() dto:DeleteManyIncomeDto
+  ): Promise<any> {
+    const userId = this.getUserIdFromToken(request);
+    return this.incomenoteService.deleteManyIncomeNoteService(userId, dto.incomeNoteIds);
+  }
   @Delete(':incomeNoteId')
   @UseGuards(MemberGuard)
   @ApiOkResponse({ description: 'Income note deleted' })
@@ -99,6 +111,7 @@ export class IncomenoteController {
     const userId = this.getUserIdFromToken(request);
     return this.incomenoteService.deleteIncomeNoteService(userId, incomeNoteId);
   }
+
 
   @Get()
   @UseGuards(MemberGuard)

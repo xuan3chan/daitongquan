@@ -5878,6 +5878,17 @@ let IncomenoteService = class IncomenoteService {
         await this.incomeNoteModel.findByIdAndDelete(incomeNoteId);
         return { message: 'Income note deleted' };
     }
+    async deleteManyIncomeNoteService(userId, incomeNoteIds) {
+        const incomeNote = await this.incomeNoteModel.find({
+            _id: { $in: incomeNoteIds },
+            userId,
+        });
+        if (!incomeNote) {
+            throw new common_1.NotFoundException('Income note not found');
+        }
+        await this.incomeNoteModel.deleteMany({ _id: { $in: incomeNoteIds } });
+        return { message: 'Income note deleted' };
+    }
     async viewAllIncomeNoteService(userId) {
         const incomeNotes = await this.incomeNoteModel.find({ userId });
         const totalAmount = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
@@ -6144,7 +6155,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteController = void 0;
 const incomenote_service_1 = __webpack_require__(96);
@@ -6157,6 +6168,7 @@ const CreateIncomeNote_dto_1 = __webpack_require__(99);
 const UpdateIncomeNote_dto_1 = __webpack_require__(100);
 const queryDate_dto_1 = __webpack_require__(101);
 const statisticsincomeNote_1 = __webpack_require__(102);
+const DeleteManyIncome_dto_1 = __webpack_require__(137);
 let IncomenoteController = class IncomenoteController {
     constructor(incomenoteService) {
         this.incomenoteService = incomenoteService;
@@ -6173,6 +6185,10 @@ let IncomenoteController = class IncomenoteController {
     async updateIncomeNoteController(request, incomeNoteId, dto) {
         const userId = this.getUserIdFromToken(request);
         return this.incomenoteService.updateIncomeNoteService(userId, incomeNoteId, dto.cateId, dto.title, dto.content, dto.incomeDate, dto.method, dto.amount);
+    }
+    async deleteManyIncomeNoteController(request, dto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.incomenoteService.deleteManyIncomeNoteService(userId, dto.incomeNoteIds);
     }
     async deleteIncomeNoteController(request, incomeNoteId) {
         const userId = this.getUserIdFromToken(request);
@@ -6246,6 +6262,18 @@ __decorate([
     __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], IncomenoteController.prototype, "updateIncomeNoteController", null);
 __decorate([
+    (0, common_1.Delete)('deleteMany'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiOkResponse)({ description: 'Income note deleted' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
+    (0, common_1.HttpCode)(200),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_h = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _h : Object, typeof (_j = typeof DeleteManyIncome_dto_1.DeleteManyIncomeDto !== "undefined" && DeleteManyIncome_dto_1.DeleteManyIncomeDto) === "function" ? _j : Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+], IncomenoteController.prototype, "deleteManyIncomeNoteController", null);
+__decorate([
     (0, common_1.Delete)(':incomeNoteId'),
     (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
     (0, swagger_1.ApiOkResponse)({ description: 'Income note deleted' }),
@@ -6254,8 +6282,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('incomeNoteId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _h : Object, String]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [typeof (_l = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _l : Object, String]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], IncomenoteController.prototype, "deleteIncomeNoteController", null);
 __decorate([
     (0, common_1.Get)(),
@@ -6265,8 +6293,8 @@ __decorate([
     (0, common_1.HttpCode)(200),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [typeof (_o = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _o : Object]),
+    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
 ], IncomenoteController.prototype, "getAllIncomeNoteController", null);
 __decorate([
     (0, common_1.Get)('get-by-cate/:cateId'),
@@ -6274,8 +6302,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('cateId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_m = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _m : Object, String]),
-    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
+    __metadata("design:paramtypes", [typeof (_q = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _q : Object, String]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], IncomenoteController.prototype, "getIncomeNoteByCategoryController", null);
 __decorate([
     (0, common_1.Get)('search'),
@@ -6283,8 +6311,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)('searchKey')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_p = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _p : Object, String]),
-    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
+    __metadata("design:paramtypes", [typeof (_s = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _s : Object, String]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], IncomenoteController.prototype, "searchIncomeNoteController", null);
 __decorate([
     (0, common_1.Get)('filter-by-date'),
@@ -6292,8 +6320,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_r = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _r : Object, typeof (_s = typeof queryDate_dto_1.QueryDateDto !== "undefined" && queryDate_dto_1.QueryDateDto) === "function" ? _s : Object]),
-    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
+    __metadata("design:paramtypes", [typeof (_u = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _u : Object, typeof (_v = typeof queryDate_dto_1.QueryDateDto !== "undefined" && queryDate_dto_1.QueryDateDto) === "function" ? _v : Object]),
+    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
 ], IncomenoteController.prototype, "filterIncomeNoteByDateController", null);
 __decorate([
     (0, common_1.Get)('statictics-option-day'),
@@ -6301,8 +6329,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_u = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _u : Object, typeof (_v = typeof queryDate_dto_1.QueryDateDto !== "undefined" && queryDate_dto_1.QueryDateDto) === "function" ? _v : Object]),
-    __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
+    __metadata("design:paramtypes", [typeof (_x = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _x : Object, typeof (_y = typeof queryDate_dto_1.QueryDateDto !== "undefined" && queryDate_dto_1.QueryDateDto) === "function" ? _y : Object]),
+    __metadata("design:returntype", typeof (_z = typeof Promise !== "undefined" && Promise) === "function" ? _z : Object)
 ], IncomenoteController.prototype, "staticticsIncomeNoteOptionDayController", null);
 __decorate([
     (0, common_1.Get)('statictics-option-month'),
@@ -6311,16 +6339,16 @@ __decorate([
     __param(1, (0, common_1.Query)('month')),
     __param(2, (0, common_1.Query)('year')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_x = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _x : Object, Number, Number]),
-    __metadata("design:returntype", typeof (_y = typeof Promise !== "undefined" && Promise) === "function" ? _y : Object)
+    __metadata("design:paramtypes", [typeof (_0 = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _0 : Object, Number, Number]),
+    __metadata("design:returntype", typeof (_1 = typeof Promise !== "undefined" && Promise) === "function" ? _1 : Object)
 ], IncomenoteController.prototype, "staticticsIncomeNoteOptionMonthController", null);
 __decorate([
     (0, common_1.Get)('statictics-option-year'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)('year')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_z = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _z : Object, Number]),
-    __metadata("design:returntype", typeof (_0 = typeof Promise !== "undefined" && Promise) === "function" ? _0 : Object)
+    __metadata("design:paramtypes", [typeof (_2 = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _2 : Object, Number]),
+    __metadata("design:returntype", typeof (_3 = typeof Promise !== "undefined" && Promise) === "function" ? _3 : Object)
 ], IncomenoteController.prototype, "staticticsIncomeNoteOptionYearController", null);
 __decorate([
     (0, common_1.Get)('statistics-income'),
@@ -6331,7 +6359,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_1 = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _1 : Object, typeof (_2 = typeof statisticsincomeNote_1.StatisticsIncomeNoteDto !== "undefined" && statisticsincomeNote_1.StatisticsIncomeNoteDto) === "function" ? _2 : Object]),
+    __metadata("design:paramtypes", [typeof (_4 = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _4 : Object, typeof (_5 = typeof statisticsincomeNote_1.StatisticsIncomeNoteDto !== "undefined" && statisticsincomeNote_1.StatisticsIncomeNoteDto) === "function" ? _5 : Object]),
     __metadata("design:returntype", Promise)
 ], IncomenoteController.prototype, "statisticSpendingController", null);
 exports.IncomenoteController = IncomenoteController = __decorate([
@@ -9738,6 +9766,36 @@ __decorate([
 ], CreateReportDto.prototype, "reportContent", void 0);
 
 
+/***/ }),
+/* 137 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DeleteManyIncomeDto = void 0;
+const swagger_1 = __webpack_require__(30);
+class DeleteManyIncomeDto {
+}
+exports.DeleteManyIncomeDto = DeleteManyIncomeDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Array of ids to delete',
+        example: ['id1', 'id2'],
+    }),
+    __metadata("design:type", Array)
+], DeleteManyIncomeDto.prototype, "incomeNoteIds", void 0);
+
+
 /***/ })
 /******/ 	]);
 /************************************************************************/
@@ -9800,7 +9858,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("3bb58a0df49167943c3b")
+/******/ 		__webpack_require__.h = () => ("b98dfba71846e3ec1656")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

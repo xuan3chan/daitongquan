@@ -81,6 +81,21 @@ export class IncomenoteService {
     await this.incomeNoteModel.findByIdAndDelete(incomeNoteId);
     return { message: 'Income note deleted' };
   }
+  async deleteManyIncomeNoteService(
+    userId: string,
+    incomeNoteIds: string[],
+  ): Promise<any> {
+    // find incomenoteid and userId
+    const incomeNote = await this.incomeNoteModel.find({
+      _id: { $in: incomeNoteIds },
+      userId,
+    });
+    if (!incomeNote) {
+      throw new NotFoundException('Income note not found');
+    }
+    await this.incomeNoteModel.deleteMany({ _id: { $in: incomeNoteIds } });
+    return { message: 'Income note deleted' };
+  }
 
   async viewAllIncomeNoteService(userId: string): Promise<{ totalAmount: number, incomeNotes: IncomeNote[] }> {
     const incomeNotes = await this.incomeNoteModel.find({ userId });
@@ -133,6 +148,7 @@ export class IncomenoteService {
       throw new InternalServerErrorException(error.message);
     }
   }
+
   async filterIncomeNoteByDateService(
     userId: string,
     startDate: Date,
@@ -161,7 +177,6 @@ export class IncomenoteService {
       totalAmount,
       totalIncomeNotes: filteredIncomeNotes.length,
     };
-    
   }
   async staticticsIncomeNoteOptionDayService(
     userId: string,
