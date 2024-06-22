@@ -975,7 +975,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "username", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, enum: ['Male', 'Female', 'Other'] }),
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String }),
     __metadata("design:type", String)
 ], User.prototype, "gender", void 0);
 __decorate([
@@ -9805,7 +9805,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("e9e9a4272a0a582a4429")
+/******/ 		__webpack_require__.h = () => ("5da5642297cc1783f654")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
