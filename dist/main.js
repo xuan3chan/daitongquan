@@ -9077,6 +9077,7 @@ const mongoose_2 = __webpack_require__(12);
 const comment_schema_1 = __webpack_require__(127);
 const users_service_1 = __webpack_require__(11);
 const post_service_1 = __webpack_require__(122);
+const mongoose_3 = __webpack_require__(12);
 let CommentService = class CommentService {
     constructor(commentModel, postModel, usersService, postService) {
         this.commentModel = commentModel;
@@ -9138,18 +9139,12 @@ let CommentService = class CommentService {
         if (!comment) {
             throw new common_1.BadRequestException('Comment not found');
         }
-        const replyComment = {
-            userId,
-            content,
+        comment.repliesComment.push({
+            _id: new mongoose_3.Types.ObjectId().toString(),
+            userId: userId,
+            content: content,
             createdAt: new Date(),
-        };
-        const newReplyComment = {
-            _id: 'some-id',
-            userId: replyComment.userId,
-            content: replyComment.content,
-            createdAt: replyComment.createdAt,
-        };
-        comment.repliesComment.push(newReplyComment);
+        });
         await this.usersService.updateScoreRankService(userId, false, true);
         const postId = comment.postId;
         await this.postModel.findByIdAndUpdate(postId, {
@@ -9805,7 +9800,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("5da5642297cc1783f654")
+/******/ 		__webpack_require__.h = () => ("3bb58a0df49167943c3b")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

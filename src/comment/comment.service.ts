@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Comment } from './schema/comment.schema';
 import { UsersService } from 'src/users/users.service';
 import { PostService } from 'src/post/post.service';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class CommentService {
@@ -94,38 +95,34 @@ export class CommentService {
     return { comments, message: 'Comments fetched successfully.' };
   }
 
-  async CreateReplyCommentService(
-    userId: string,
-    commentId: string,
-    content: string,
-  ): Promise<{ comment: Comment; message: string }> {
-    const comment = await this.commentModel.findById(commentId);
-    if (!comment) {
-      throw new BadRequestException('Comment not found');
-    }
 
-    const replyComment = {
-      userId,
-      content,
-      createdAt: new Date(),
-    };
-
-    const newReplyComment = {
-      _id: 'some-id', // Replace 'some-id' with the actual ID value
-      userId: replyComment.userId,
-      content: replyComment.content,
-      createdAt: replyComment.createdAt,
-    };
-    comment.repliesComment.push(newReplyComment);
-    await this.usersService.updateScoreRankService(userId, false, true);
-    const postId = comment.postId;
-    await this.postModel.findByIdAndUpdate(postId, {
-      $inc: { commentCount: 1 },
-    });
-    await comment.save();
-
-    return { comment, message: 'Reply comment created successfully.' };
+async CreateReplyCommentService(
+  userId: string,
+  commentId: string,
+  content: string,
+): Promise<{ comment: Comment; message: string }> {
+  const comment = await this.commentModel.findById(commentId);
+  if (!comment) {
+    throw new BadRequestException('Comment not found');
   }
+
+  // Directly push the new reply comment into the repliesComment array
+  comment.repliesComment.push({
+    _id: new Types.ObjectId().toString(), // Ensure _id is generated correctly
+    userId: userId,
+    content: content,
+    createdAt: new Date(),
+  });
+
+  await this.usersService.updateScoreRankService(userId, false, true);
+  const postId = comment.postId;
+  await this.postModel.findByIdAndUpdate(postId, {
+    $inc: { commentCount: 1 },
+  });
+  await comment.save();
+
+  return { comment, message: 'Reply comment created successfully.' };
+}
 
   async updateReplyCommentService(
     userId: string,
