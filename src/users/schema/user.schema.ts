@@ -74,7 +74,7 @@ export class User extends Document {
   @Prop({type: mongoose.Schema.Types.String,reuired: true,unique: true})
   username: string;
 
-  @Prop({type: mongoose.Schema.Types.String,enum:['Nam','Nữ']})
+  @Prop({type: mongoose.Schema.Types.String,enum:['Male','Female','Other']})
   gender: string;
 
   @Prop({type: mongoose.Schema.Types.ObjectId,default: null,ref: 'Rank'})
