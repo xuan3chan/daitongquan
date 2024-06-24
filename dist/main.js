@@ -7712,7 +7712,6 @@ let ScheduleController = class ScheduleController {
     }
     async viewListScheduleController(request, dto) {
         const userId = this.getUserIdFromToken(request);
-        console.log(dto.calendars);
         return this.scheduleService.viewListScheduleService(userId, dto.calendars);
     }
     async notifyScheduleController(request) {
@@ -7866,6 +7865,7 @@ var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ViewScheduleDto = exports.DeleteManyDto = exports.UpdateScheduleDto = exports.CreateScheduleDto = void 0;
 const swagger_1 = __webpack_require__(30);
+const class_transformer_1 = __webpack_require__(47);
 const class_validator_1 = __webpack_require__(27);
 class CreateScheduleDto {
 }
@@ -7988,6 +7988,7 @@ __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Title of schedule', example: ['type 1', 'type 2'] }),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ArrayNotEmpty)(),
+    (0, class_transformer_1.Transform)(({ value }) => Array.isArray(value) ? value : [value], { toClassOnly: true }),
     __metadata("design:type", Array)
 ], ViewScheduleDto.prototype, "calendars", void 0);
 
@@ -9905,7 +9906,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("02202c29f5f5c73ec004")
+/******/ 		__webpack_require__.h = () => ("ea664425ea2ecfc7cf05")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

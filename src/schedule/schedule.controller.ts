@@ -138,7 +138,6 @@ export class ScheduleController {
     @Query() dto: ViewScheduleDto,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    console.log(dto.calendars);
     return this.scheduleService.viewListScheduleService(userId, dto.calendars);
   }
 

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsDateString, IsNotEmpty, IsOptional, IsString, ArrayNotEmpty, IsMongoId } from 'class-validator';
 
 export class CreateScheduleDto {
@@ -96,5 +97,6 @@ export class ViewScheduleDto {
   @ApiProperty({ description: 'Title of schedule', example: ['type 1','type 2'] })
   @IsArray()
   @ArrayNotEmpty()
+  @Transform(({ value }) => Array.isArray(value) ? value : [value], { toClassOnly: true })
   calendars: string[];
 }
