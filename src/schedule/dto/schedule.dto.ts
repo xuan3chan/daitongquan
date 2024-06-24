@@ -30,6 +30,12 @@ export class CreateScheduleDto {
   @ApiProperty({ description: 'Is loop schedule', example: false })
   @IsBoolean()
   isLoop: boolean;
+
+  @ApiProperty({ description: 'Calendars of schedule', example: 'calendar1' })
+  calendars: string;
+
+  @ApiProperty({ description: 'URL of schedule', example: 'https://example.com' })
+  url: string;
 }
 
 export class UpdateScheduleDto {
@@ -67,6 +73,16 @@ export class UpdateScheduleDto {
   @IsBoolean()
   @IsOptional()
   isLoop: boolean;
+
+  @ApiProperty({ description: 'Calendars of schedule', example: 'calendar1' })
+  @IsString()
+  @IsOptional()
+  calendars: string;
+
+  @ApiProperty({ description: 'URL of schedule', example: 'https://example.com' })
+  @IsString()
+  @IsOptional()
+  url: string;
 }
 
 export class DeleteManyDto {
@@ -75,4 +91,10 @@ export class DeleteManyDto {
   @ArrayNotEmpty()
   @IsMongoId({ each: true })
   scheduleIds: string[];
+}
+export class ViewScheduleDto {
+  @ApiProperty({ description: 'Title of schedule', example: ['type 1','type 2'] })
+  @IsArray()
+  @ArrayNotEmpty()
+  calendars: string[];
 }

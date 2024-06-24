@@ -5,8 +5,10 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseArrayPipe,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +20,7 @@ import {
   CreateScheduleDto,
   UpdateScheduleDto,
   DeleteManyDto,
+  ViewScheduleDto,
 } from './dto/schedule.dto';
 import {
   ApiBadRequestResponse,
@@ -60,6 +63,8 @@ export class ScheduleController {
       createScheduleDto.endDateTime,
       createScheduleDto.note,
       createScheduleDto.isLoop,
+      createScheduleDto.calendars,
+      createScheduleDto.url,
     );
   }
 
@@ -86,6 +91,8 @@ export class ScheduleController {
       updateScheduleDto.endDateTime,
       updateScheduleDto.note,
       updateScheduleDto.isLoop,
+      updateScheduleDto.calendars,
+      updateScheduleDto.url,
     );
   }
 
@@ -126,9 +133,13 @@ export class ScheduleController {
   })
   @ApiBadRequestResponse({ description: 'Bad request' })
   @HttpCode(200)
-  async viewListScheduleController(@Req() request: Request): Promise<any> {
+  async viewListScheduleController(
+    @Req() request: Request,
+    @Query() dto: ViewScheduleDto,
+  ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.scheduleService.viewListScheduleService(userId);
+    console.log(dto.calendars);
+    return this.scheduleService.viewListScheduleService(userId, dto.calendars);
   }
 
   @Get('notify-schedule')

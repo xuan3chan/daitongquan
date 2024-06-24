@@ -38,6 +38,13 @@ export class Schedule {
   
   @Prop({ type: mongoose.Schema.Types.Boolean, required: false })
   isEncrypted: boolean;
+
+  @Prop({ type: mongoose.Schema.Types.String, required: false })
+  calendars: string;
+
+  @Prop({ type: mongoose.Schema.Types.String, required: false })
+  url: string;
+    
 }
 
 export type ScheduleDocument = HydratedDocument<Schedule>;

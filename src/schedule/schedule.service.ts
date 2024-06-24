@@ -29,6 +29,8 @@ export class ScheduleService {
     endDateTime: Date,
     note: string,
     isLoop: boolean,
+    calendars: string,
+    url: string,
   ): Promise<Schedule> {
     if (startDateTime > endDateTime) {
       throw new BadRequestException(
@@ -45,6 +47,8 @@ export class ScheduleService {
       endDateTime,
       note,
       isLoop,
+      calendars,
+      url,
     });
 
     try {
@@ -64,6 +68,8 @@ export class ScheduleService {
     endDateTime?: Date,
     note?: string,
     isLoop?: boolean,
+    calendars?: string,
+    url?: string,
   ): Promise<Schedule> {
     const schedule = await this.scheduleModel.findOne({
       userId,
@@ -83,7 +89,7 @@ export class ScheduleService {
     try {
       return await this.scheduleModel.findOneAndUpdate(
         { userId, _id: scheduleId },
-        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop },
+        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url},
         { new: true },
       );
     } catch (error) {
@@ -135,37 +141,34 @@ export class ScheduleService {
     }
   }
 
-  async viewListScheduleService(userId: string): Promise<Schedule[]> {
-    const schedule = this.scheduleModel.find({ userId });
-
-    const findUser = await this.usersService.findUserByIdService(userId);
-    if (!findUser) {
-      throw new BadRequestException('User not found');
-    }
-
-    return (await schedule).map((schedule) => {
-      if (schedule.isEncrypted) {
-        const encryptedKey = findUser.encryptKey;
-        const decryptedKey = this.encryptionService.decryptEncryptKey(
-          encryptedKey,
-          findUser.password,
-        );
-
-        schedule.title = this.encryptionService.decryptData(
-          schedule.title,
-          decryptedKey,
-        );
-        schedule.location = this.encryptionService.decryptData(
-          schedule.location,
-          decryptedKey,
-        );
-        schedule.note = schedule.note
-          ? this.encryptionService.decryptData(schedule.note, decryptedKey)
-          : undefined;
-      }
-      return schedule;
-    });
+ async viewListScheduleService(userId: string, calendars: string[]): Promise<Schedule[]> {
+  // Ensure the user exists first
+  const findUser = await this.usersService.findUserByIdService(userId);
+  if (!findUser) {
+    throw new BadRequestException('User not found');
   }
+  // Use $in operator to filter schedules by carlendals
+  const schedules = await this.scheduleModel.find({
+    userId,
+    calendars: { $in: calendars },
+  });
+  if (!schedules.length) {
+    throw new BadRequestException('Schedules not found');
+  }
+
+  // Decrypt data if necessary
+  return schedules.map(schedule => {
+    if (schedule.isEncrypted) {
+      const encryptedKey = findUser.encryptKey;
+      const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+
+      schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+      schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+      schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+    }
+    return schedule;
+  });
+}
 
   async notifyScheduleService(userId: string): Promise<any> {
     const TIMEZONE_OFFSET_HOURS = 7;
