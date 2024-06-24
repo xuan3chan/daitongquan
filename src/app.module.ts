@@ -22,6 +22,7 @@ import { RankModule } from './rank/rank.module';
 import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { ReportModule } from './report/report.module';
+import { StatisticsModule } from './statistics/statistics.module';
 @Module({
   imports: [
     
@@ -48,6 +49,7 @@ import { ReportModule } from './report/report.module';
     PostModule,
     CommentModule,
     ReportModule,
+    StatisticsModule,
   ],
   controllers: [
     AppController

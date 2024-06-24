@@ -142,5 +142,11 @@
     "namePermission": "BlockReport",
     "action": "block",
     "subject": "report"
+  },
+  {
+    "id": 24,
+    "namePermission": "ReadDashboard",
+    "action": "read",
+    "subject": "dashboard"
   }
   ]

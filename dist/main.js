@@ -260,6 +260,7 @@ const rank_module_1 = __webpack_require__(119);
 const post_module_1 = __webpack_require__(122);
 const comment_module_1 = __webpack_require__(129);
 const report_module_1 = __webpack_require__(133);
+const statistics_module_1 = __webpack_require__(138);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -289,6 +290,7 @@ exports.AppModule = AppModule = __decorate([
             post_module_1.PostModule,
             comment_module_1.CommentModule,
             report_module_1.ReportModule,
+            statistics_module_1.StatisticsModule,
         ],
         controllers: [
             app_controller_1.AppController
@@ -9844,6 +9846,183 @@ __decorate([
 ], CreateReportDto.prototype, "reportContent", void 0);
 
 
+/***/ }),
+/* 138 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StatisticsModule = void 0;
+const common_1 = __webpack_require__(6);
+const statistics_service_1 = __webpack_require__(139);
+const statistics_controller_1 = __webpack_require__(140);
+const config_1 = __webpack_require__(8);
+const mongoose_1 = __webpack_require__(7);
+const user_schema_1 = __webpack_require__(13);
+const rank_schema_1 = __webpack_require__(26);
+const admin_module_1 = __webpack_require__(67);
+const abilities_factory_1 = __webpack_require__(34);
+const post_schema_1 = __webpack_require__(124);
+let StatisticsModule = class StatisticsModule {
+};
+exports.StatisticsModule = StatisticsModule;
+exports.StatisticsModule = StatisticsModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            admin_module_1.AdminModule,
+            mongoose_1.MongooseModule.forFeature([
+                { name: user_schema_1.User.name, schema: user_schema_1.UserSchema },
+                { name: rank_schema_1.Rank.name, schema: rank_schema_1.RankSchema },
+                { name: post_schema_1.Post.name, schema: post_schema_1.PostSchema }
+            ]),
+            config_1.ConfigModule.forRoot({
+                isGlobal: true,
+                envFilePath: '.env',
+            }),
+        ],
+        controllers: [statistics_controller_1.StatisticsController],
+        providers: [statistics_service_1.StatisticsService, abilities_factory_1.AbilityFactory],
+    })
+], StatisticsModule);
+
+
+/***/ }),
+/* 139 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StatisticsService = void 0;
+const common_1 = __webpack_require__(6);
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const rank_schema_1 = __webpack_require__(26);
+const user_schema_1 = __webpack_require__(13);
+let StatisticsService = class StatisticsService {
+    constructor(userModel, rankModel, postModel) {
+        this.userModel = userModel;
+        this.rankModel = rankModel;
+        this.postModel = postModel;
+    }
+    async statisticsUserFollowRankService() {
+        const users = await this.userModel.find();
+        const ranks = await this.rankModel.find();
+        const statistics = [];
+        for (const rank of ranks) {
+            const userFollowRank = users.filter((user) => user.rankID.toString() === rank._id.toString());
+            statistics.push({
+                rankName: rank.rankName,
+                totalUserFollowRank: userFollowRank.length,
+            });
+        }
+        return statistics;
+    }
+    async statisticsTopPost(filter, start, end) {
+        const posts = await this.postModel.find();
+        const topPost = posts.filter((post) => post.commentCount + post.reactionCount >= start && post.commentCount + post.reactionCount <= end);
+        const count = topPost.length;
+        return { posts: topPost, count: count };
+    }
+};
+exports.StatisticsService = StatisticsService;
+exports.StatisticsService = StatisticsService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
+    __param(1, (0, mongoose_1.InjectModel)(rank_schema_1.Rank.name)),
+    __param(2, (0, mongoose_1.InjectModel)('Post')),
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object])
+], StatisticsService);
+
+
+/***/ }),
+/* 140 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StatisticsController = void 0;
+const common_1 = __webpack_require__(6);
+const statistics_service_1 = __webpack_require__(139);
+const swagger_1 = __webpack_require__(30);
+const permission_gaurd_1 = __webpack_require__(33);
+const casl_decorator_1 = __webpack_require__(42);
+let StatisticsController = class StatisticsController {
+    constructor(statisticsService) {
+        this.statisticsService = statisticsService;
+    }
+    async statisticsUserFollowRankController() {
+        return this.statisticsService.statisticsUserFollowRankService();
+    }
+    async statisticsTopPostController(filter, start, end) {
+        return this.statisticsService.statisticsTopPost(filter, start, end);
+    }
+};
+exports.StatisticsController = StatisticsController;
+__decorate([
+    (0, common_1.Get)('user-follow-rank'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_b = typeof Promise !== "undefined" && Promise) === "function" ? _b : Object)
+], StatisticsController.prototype, "statisticsUserFollowRankController", null);
+__decorate([
+    (0, common_1.Get)('top-post'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __param(0, (0, common_1.Query)('filter')),
+    __param(1, (0, common_1.Query)('start')),
+    __param(2, (0, common_1.Query)('end')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number, Number]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], StatisticsController.prototype, "statisticsTopPostController", null);
+exports.StatisticsController = StatisticsController = __decorate([
+    (0, swagger_1.ApiTags)('statistics'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Controller)('statistics'),
+    __metadata("design:paramtypes", [typeof (_a = typeof statistics_service_1.StatisticsService !== "undefined" && statistics_service_1.StatisticsService) === "function" ? _a : Object])
+], StatisticsController);
+
+
 /***/ })
 /******/ 	]);
 /************************************************************************/
@@ -9906,7 +10085,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("ea664425ea2ecfc7cf05")
+/******/ 		__webpack_require__.h = () => ("8c7a2b28338f8085204e")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
