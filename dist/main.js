@@ -1681,6 +1681,7 @@ let SpendingNoteService = class SpendingNoteService {
         if (category) {
             query.cateId = category;
         }
+        let totalCosts = 0;
         const spendingNotes = await this.spendingNoteModel.find(query);
         let groupedSpendingDetails = {};
         if (filterBy === 'month') {
@@ -1721,9 +1722,10 @@ let SpendingNoteService = class SpendingNoteService {
                     category: note.cateId,
                     spendingDate: note.spendingDate,
                 });
+                totalCosts += note.amount;
             }
         });
-        return { start, end, groupedSpendingDetails };
+        return { start, end, totalCosts, groupedSpendingDetails };
     }
     async notifySpendingNoteService(userId) {
         const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
@@ -9903,7 +9905,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("f384a7a65f67ef82631f")
+/******/ 		__webpack_require__.h = () => ("02202c29f5f5c73ec004")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

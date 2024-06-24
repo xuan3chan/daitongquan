@@ -500,9 +500,10 @@ async createSpendingNoteService(
     if (category) {
       query.cateId = category;
     }
+    let totalCosts = 0;
 
     const spendingNotes = await this.spendingNoteModel.find(query);
-
+    
     let groupedSpendingDetails = {};
     if (filterBy === 'month') {
       let year = currentYear;
@@ -528,14 +529,14 @@ async createSpendingNoteService(
         };
       }
     }
-
+    
     spendingNotes.forEach((note) => {
       const noteDate = new Date(note.spendingDate);
       const key =
         filterBy === 'month'
           ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1}`
           : noteDate.getUTCFullYear();
-
+    
       if (groupedSpendingDetails[key]) {
         groupedSpendingDetails[key].totalCost += note.amount;
         groupedSpendingDetails[key].items.push({
@@ -544,11 +545,13 @@ async createSpendingNoteService(
           category: note.cateId,
           spendingDate: note.spendingDate,
         });
+        // Accumulate the total costs
+        totalCosts += note.amount;
       }
     });
-
-    return { start, end, groupedSpendingDetails };
-  }
+    
+    return { start, end, totalCosts, groupedSpendingDetails };
+    }
 
 async notifySpendingNoteService(
     userId: string,
