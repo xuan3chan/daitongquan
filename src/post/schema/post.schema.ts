@@ -15,17 +15,26 @@ export class Post extends Document {
   commentCount: number;
   @Prop({ type: mongoose.Schema.Types.Number, default: 0 })
   reactionCount: number;
-  @Prop({type:[
-    {
-      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-      reaction: { type: mongoose.Schema.Types.String, required: true, enum: ['like', 'dislike'] },
-    }
-  ],
+  @Prop({
+    type: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        reaction: {
+          type: mongoose.Schema.Types.String,
+          required: true,
+          enum: ['like', 'dislike'],
+        },
+      },
+    ],
   })
   userReaction: {
     reaction: string;
     userId: string;
-  }
+  };
   @Prop({
     type: mongoose.Schema.Types.String,
     default: 'inactive',
@@ -35,9 +44,12 @@ export class Post extends Document {
 
   @Prop({ type: mongoose.Schema.Types.Boolean, default: true })
   isShow: boolean;
-@Prop({ type: mongoose.Schema.Types.Boolean, default: false })
+  @Prop({ type: mongoose.Schema.Types.Boolean, default: false })
   isApproved: boolean;
+  @Prop({ type: mongoose.Schema.Types.Date })
+  createdAt: Date;
+  @Prop({ type: mongoose.Schema.Types.Date })
+  updatedAt: Date;
 }
 export const PostSchema = SchemaFactory.createForClass(Post);
 PostSchema.index({ content: 'text' });
-

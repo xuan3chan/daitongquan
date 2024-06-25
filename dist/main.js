@@ -8616,6 +8616,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostSchema = exports.Post = void 0;
 const mongoose_1 = __webpack_require__(7);
@@ -8645,11 +8646,20 @@ __decorate([
     __metadata("design:type", Number)
 ], Post.prototype, "reactionCount", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: [
+    (0, mongoose_1.Prop)({
+        type: [
             {
-                userId: { type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true },
-                reaction: { type: mongoose_3.default.Schema.Types.String, required: true, enum: ['like', 'dislike'] },
-            }
+                userId: {
+                    type: mongoose_3.default.Schema.Types.ObjectId,
+                    ref: 'User',
+                    required: true,
+                },
+                reaction: {
+                    type: mongoose_3.default.Schema.Types.String,
+                    required: true,
+                    enum: ['like', 'dislike'],
+                },
+            },
         ],
     }),
     __metadata("design:type", Object)
@@ -8670,6 +8680,14 @@ __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Boolean, default: false }),
     __metadata("design:type", Boolean)
 ], Post.prototype, "isApproved", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Date }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], Post.prototype, "createdAt", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Date }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], Post.prototype, "updatedAt", void 0);
 exports.Post = Post = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], Post);
@@ -9940,9 +9958,158 @@ let StatisticsService = class StatisticsService {
     }
     async statisticsTopPost(filter, start, end) {
         const posts = await this.postModel.find();
-        const topPost = posts.filter((post) => post.commentCount + post.reactionCount >= start && post.commentCount + post.reactionCount <= end);
+        const topPost = posts.filter((post) => {
+            let count = 0;
+            if (filter === 'like') {
+                count = post.reactionCount;
+            }
+            else if (filter === 'comment') {
+                count = post.commentCount;
+            }
+            else {
+                count = post.commentCount + post.reactionCount;
+            }
+            return count >= start && count <= end;
+        });
         const count = topPost.length;
         return { posts: topPost, count: count };
+    }
+    async statisticsUserService(filter, numberOfItem) {
+        const users = await this.userModel.find();
+        const statistics = [];
+        let date = new Date();
+        for (let i = 0; i < numberOfItem; i++) {
+            const formattedDate = this.formatDateByFilter(date, filter);
+            const userFollowRank = users.filter((user) => {
+                const userCreatedAtFormatted = this.formatDateByFilter(new Date(user.createdAt), filter);
+                return userCreatedAtFormatted === formattedDate;
+            });
+            statistics.push({
+                title: formattedDate,
+                count: userFollowRank.length,
+            });
+            switch (filter) {
+                case 'day':
+                    date.setDate(date.getDate() - 1);
+                    break;
+                case 'month':
+                    if (date.getMonth() === 0) {
+                        date.setFullYear(date.getFullYear() - 1);
+                        date.setMonth(11);
+                    }
+                    else {
+                        date.setMonth(date.getMonth() - 1);
+                    }
+                    break;
+                case 'year':
+                    date.setFullYear(date.getFullYear() - 1);
+                    break;
+            }
+        }
+        return statistics;
+    }
+    formatDateByFilter(date, filter) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        switch (filter) {
+            case 'day':
+                return `${day}/${month}/${year}`;
+            case 'month':
+                return `${month}/${year}`;
+            case 'year':
+                return year.toString();
+            default:
+                throw new Error('Invalid filter');
+        }
+    }
+    async statisticsPostService(filter, numberOfItem) {
+        const posts = await this.postModel.find();
+        const statistics = [];
+        let date = new Date();
+        for (let i = 0; i < numberOfItem; i++) {
+            const formattedDate = this.formatDateByFilter(date, filter);
+            const post = posts.filter((post) => {
+                const postCreatedAtFormatted = this.formatDateByFilter(new Date(post.createdAt), filter);
+                return postCreatedAtFormatted === formattedDate;
+            });
+            statistics.push({
+                title: formattedDate,
+                count: post.length,
+            });
+            switch (filter) {
+                case 'day':
+                    date.setDate(date.getDate() - 1);
+                    break;
+                case 'month':
+                    if (date.getMonth() === 0) {
+                        date.setFullYear(date.getFullYear() - 1);
+                        date.setMonth(11);
+                    }
+                    else {
+                        date.setMonth(date.getMonth() - 1);
+                    }
+                    break;
+                case 'year':
+                    date.setFullYear(date.getFullYear() - 1);
+                    break;
+            }
+        }
+        return statistics;
+    }
+    async statisticsUserOptionDayService(start, end) {
+        const users = await this.userModel.find();
+        const statistics = {};
+        const newStart = new Date(start);
+        const newEnd = new Date(end);
+        newEnd.setHours(23, 59, 59, 999);
+        let currentDate = new Date(newStart);
+        while (currentDate <= newEnd) {
+            const dateString = currentDate.toISOString().split('T')[0];
+            statistics[dateString] = 0;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        for (const user of users) {
+            const userCreatedAt = new Date(user.createdAt);
+            if (userCreatedAt >= newStart && userCreatedAt <= newEnd) {
+                const createdAtString = userCreatedAt.toISOString().split('T')[0];
+                if (statistics.hasOwnProperty(createdAtString)) {
+                    statistics[createdAtString] += 1;
+                }
+            }
+        }
+        const statisticsArray = Object.keys(statistics).map((date) => ({
+            title: date,
+            count: statistics[date],
+        }));
+        return statisticsArray;
+    }
+    async statisticsPostOptionDayService(start, end) {
+        const posts = await this.postModel.find();
+        const statistics = {};
+        const newStart = new Date(start);
+        const newEnd = new Date(end);
+        newEnd.setHours(23, 59, 59, 999);
+        let currentDate = new Date(newStart);
+        while (currentDate <= newEnd) {
+            const dateString = currentDate.toISOString().split('T')[0];
+            statistics[dateString] = 0;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        for (const post of posts) {
+            const postCreatedAt = new Date(post.createdAt);
+            if (postCreatedAt >= newStart && postCreatedAt <= newEnd) {
+                const createdAtString = postCreatedAt.toISOString().split('T')[0];
+                if (statistics.hasOwnProperty(createdAtString)) {
+                    statistics[createdAtString] += 1;
+                }
+            }
+        }
+        const statisticsArray = Object.keys(statistics).map((date) => ({
+            title: date,
+            count: statistics[date],
+        }));
+        return statisticsArray;
     }
 };
 exports.StatisticsService = StatisticsService;
@@ -9973,7 +10140,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
@@ -9981,6 +10148,7 @@ const statistics_service_1 = __webpack_require__(139);
 const swagger_1 = __webpack_require__(30);
 const permission_gaurd_1 = __webpack_require__(33);
 const casl_decorator_1 = __webpack_require__(42);
+const querydate_dto_1 = __webpack_require__(141);
 let StatisticsController = class StatisticsController {
     constructor(statisticsService) {
         this.statisticsService = statisticsService;
@@ -9990,6 +10158,18 @@ let StatisticsController = class StatisticsController {
     }
     async statisticsTopPostController(filter, start, end) {
         return this.statisticsService.statisticsTopPost(filter, start, end);
+    }
+    async statisticsUserController(filter, numberOfItem) {
+        return this.statisticsService.statisticsUserService(filter, numberOfItem);
+    }
+    async statisticsPostController(filter, numberOfItem) {
+        return this.statisticsService.statisticsPostService(filter, numberOfItem);
+    }
+    async statisticsUserOptionDayController(dto) {
+        return this.statisticsService.statisticsUserOptionDayService(dto.start, dto.end);
+    }
+    async statisticsPostOptionDayController(dto) {
+        return this.statisticsService.statisticsPostOptionDayService(dto.start, dto.end);
     }
 };
 exports.StatisticsController = StatisticsController;
@@ -10006,6 +10186,9 @@ __decorate([
 ], StatisticsController.prototype, "statisticsUserFollowRankController", null);
 __decorate([
     (0, common_1.Get)('top-post'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
     (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)('filter')),
@@ -10015,12 +10198,104 @@ __decorate([
     __metadata("design:paramtypes", [String, Number, Number]),
     __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], StatisticsController.prototype, "statisticsTopPostController", null);
+__decorate([
+    (0, common_1.Get)('user'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __param(0, (0, common_1.Query)('filter')),
+    __param(1, (0, common_1.Query)('numberOfItem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], StatisticsController.prototype, "statisticsUserController", null);
+__decorate([
+    (0, common_1.Get)('post'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __param(0, (0, common_1.Query)('filter')),
+    __param(1, (0, common_1.Query)('numberOfItem')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], StatisticsController.prototype, "statisticsPostController", null);
+__decorate([
+    (0, common_1.Get)('user-option-day'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_f = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _f : Object]),
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+], StatisticsController.prototype, "statisticsUserOptionDayController", null);
+__decorate([
+    (0, common_1.Get)('post-option-day'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_h = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], StatisticsController.prototype, "statisticsPostOptionDayController", null);
 exports.StatisticsController = StatisticsController = __decorate([
     (0, swagger_1.ApiTags)('statistics'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('statistics'),
     __metadata("design:paramtypes", [typeof (_a = typeof statistics_service_1.StatisticsService !== "undefined" && statistics_service_1.StatisticsService) === "function" ? _a : Object])
 ], StatisticsController);
+
+
+/***/ }),
+/* 141 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.QueryDto = void 0;
+const swagger_1 = __webpack_require__(30);
+class QueryDto {
+}
+exports.QueryDto = QueryDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: Date,
+        description: 'Start date',
+        example: '2021-01-01',
+        required: true
+    }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], QueryDto.prototype, "start", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        type: Date,
+        description: 'End date',
+        example: '2021-01-01',
+        required: true
+    }),
+    __metadata("design:type", typeof (_b = typeof Date !== "undefined" && Date) === "function" ? _b : Object)
+], QueryDto.prototype, "end", void 0);
 
 
 /***/ })
@@ -10085,7 +10360,7 @@ exports.StatisticsController = StatisticsController = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("8c7a2b28338f8085204e")
+/******/ 		__webpack_require__.h = () => ("10e09b7ed13126774bc5")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
