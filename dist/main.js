@@ -449,8 +449,7 @@ let UsersController = class UsersController {
     }
     async attendanceUserController(request) {
         const userId = this.getUserIdFromToken(request);
-        await this.usersService.attendanceService(userId);
-        return { message: 'Attendance user successfully' };
+        return await this.usersService.attendanceService(userId);
     }
 };
 exports.UsersController = UsersController;
@@ -687,8 +686,8 @@ let UsersService = class UsersService {
     async viewProfileService(_id) {
         return this.userModel
             .findOne({ _id })
-            .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID ')
-            .populate('rankID')
+            .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID rankScore')
+            .populate('rankID', '-score -rankScoreGoal')
             .exec();
     }
     async updateUserProfileService(_id, firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink) {
@@ -808,14 +807,20 @@ let UsersService = class UsersService {
                 numberOfLike: 0,
             };
         }
+        const today = new Date();
+        const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
+        if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
+            throw new common_1.BadRequestException("You have already marked attendance today.");
+        }
         user.rankScore.attendance.attendanceScore += 1;
         user.rankScore.attendance.dateAttendance = new Date();
-        return user.save();
+        await user.save();
+        return { message: 'Attendance marked successfully' };
     }
     async checkRankService(userId) {
         const user = await this.userModel.findOne({ _id: userId }).exec();
         if (!user) {
-            throw new Error('User not found');
+            throw new common_1.BadRequestException('User not found');
         }
         if (!user.rankScore) {
             user.rankScore = {
@@ -830,7 +835,7 @@ let UsersService = class UsersService {
         }
         const ranks = await this.rankModel.find().exec();
         if (!ranks || ranks.length === 0) {
-            throw new Error('No ranks found');
+            throw new common_1.BadRequestException('No ranks found');
         }
         let highestRank = null;
         for (const rank of ranks) {
@@ -5027,6 +5032,25 @@ let AuthService = class AuthService {
         this.adminService = adminService;
         this.roleService = roleService;
     }
+    async createJwtPayload(accountHolder, isUser) {
+        if (isUser) {
+            return {
+                _id: accountHolder._id,
+                role: accountHolder.role,
+                isBlock: accountHolder.isBlock,
+                sub: accountHolder._id,
+            };
+        }
+        else {
+            const roles = await this.roleService.findRoleService(accountHolder.role.map(String));
+            return {
+                _id: accountHolder._id,
+                email: accountHolder.email,
+                fullname: accountHolder.fullname,
+                role: roles,
+            };
+        }
+    }
     async registerService(email, password, username, firstname, lastname) {
         try {
             const hashedPassword = await bcrypt.hash(password, 10);
@@ -5035,21 +5059,7 @@ let AuthService = class AuthService {
             if ('message' in user) {
                 throw new common_1.BadRequestException(user.message);
             }
-            const payload = {
-                email: user.email,
-                role: user.role,
-                _id: user._id,
-                avatar: user.avatar,
-                firstname: user.firstname,
-                lastname: user.lastname,
-                address: user.address,
-                dateOfBirth: user.dateOfBirth,
-                description: user.description,
-                gender: user.gender,
-                hyperlink: user.hyperlink,
-                nickname: user.nickname,
-                phone: user.phone
-            };
+            const payload = await this.createJwtPayload(user, true);
             await this.seedsService.createDefaultSpenCate(user._id);
             await this.seedsService.createDefaultIncomeCate(user._id);
             return {
@@ -5076,18 +5086,9 @@ let AuthService = class AuthService {
                 throw new common_1.UnauthorizedException('Account is blocked');
             }
             const createRefreshToken = (0, crypto_1.randomBytes)(32).toString('hex');
-            let payload;
-            let returnedUser;
-            if (user) {
-                await this.usersService.updateRefreshTokenService(account, createRefreshToken);
-                payload = {
-                    _id: user._id,
-                    role: user.role,
-                    isBlock: user.isBlock,
-                    encryptKey: user.encryptKey,
-                    sub: user._id,
-                };
-                returnedUser = {
+            const payload = await this.createJwtPayload(accountHolder, !!user);
+            const returnedUser = user
+                ? {
                     email: user.email,
                     role: user.role,
                     _id: user._id,
@@ -5100,23 +5101,18 @@ let AuthService = class AuthService {
                     gender: user.gender,
                     nickname: user.nickname,
                     phone: user.phone,
+                }
+                : {
+                    fullname: admin.fullname,
+                    email: admin.email,
+                    role: await this.roleService.findRoleService(admin.role.map(String)),
+                    _id: admin._id,
                 };
+            if (user) {
+                await this.usersService.updateRefreshTokenService(account, createRefreshToken);
             }
             else if (admin) {
-                const roles = await this.roleService.findRoleService(admin.role.map(String));
                 await this.adminService.updateRefreshTokenService(account, createRefreshToken);
-                payload = {
-                    _id: admin._id,
-                    email: admin.email,
-                    fullname: admin.fullname,
-                    role: roles,
-                };
-                returnedUser = {
-                    fullname: admin.fullname,
-                    email: admin.email,
-                    role: roles,
-                    _id: admin._id,
-                };
             }
             return {
                 access_token: this.jwtService.sign(payload),
@@ -5140,26 +5136,12 @@ let AuthService = class AuthService {
                 throw new common_1.UnauthorizedException('Account is blocked');
             }
             const createRefreshToken = (0, crypto_1.randomBytes)(32).toString('hex');
-            let payload;
+            const payload = await this.createJwtPayload(accountHolder, !!user);
             if (user) {
                 await this.usersService.updateRefreshTokenService(user.email, createRefreshToken);
-                payload = {
-                    _id: user._id,
-                    role: user.role,
-                    isBlock: user.isBlock,
-                    sub: user._id,
-                };
             }
             else if (admin) {
-                const roles = await this.roleService.findRoleService(admin.role.map(String));
                 await this.adminService.updateRefreshTokenService(admin.email, createRefreshToken);
-                payload = {
-                    _id: admin._id,
-                    isBlock: admin.isBlock,
-                    email: admin.email,
-                    fullname: admin.fullname,
-                    role: roles,
-                };
             }
             return {
                 access_token: this.jwtService.sign(payload),
@@ -10360,7 +10342,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("10e09b7ed13126774bc5")
+/******/ 		__webpack_require__.h = () => ("30e708e0d10b963b02db")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

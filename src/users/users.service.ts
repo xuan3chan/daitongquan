@@ -143,9 +143,9 @@ export class UsersService {
     return this.userModel
       .findOne({ _id })
       .select(
-        'email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID ',
+        'email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID rankScore',
       )
-      .populate('rankID')
+      .populate('rankID', '-score -rankScoreGoal')
       .exec();
   }
 
@@ -299,35 +299,45 @@ export class UsersService {
     return user.save();
   }
   
-  async attendanceService(userId: string): Promise<User> {
-    // Fetch the user from the database
-    const user = await this.userModel.findOne({ _id: userId }).exec();
-  
-    // Ensure the user exists
-    if (!user) {
-      throw new Error('User not found');
-    }
-  
-    // Ensure the rankScore object exists
-    if (!user.rankScore) {
-      user.rankScore = {
-        attendance: {
-          attendanceScore: 0,
-          dateAttendance: new Date(),
-        },
-        numberOfBlog: 0,
-        numberOfComment: 0,
-        numberOfLike: 0,
-      };
-    }
+ async attendanceService(userId: string): Promise<any> {
+  // Fetch the user from the database
+  const user = await this.userModel.findOne({ _id: userId }).exec();
 
-    // Update the rankScore object
-    user.rankScore.attendance.attendanceScore += 1;
-    user.rankScore.attendance.dateAttendance = new Date();
-  
-    // Save the updated user document
-    return user.save();
+  // Ensure the user exists
+  if (!user) {
+    throw new Error('User not found');
   }
+
+  // Ensure the rankScore object exists
+  if (!user.rankScore) {
+    user.rankScore = {
+      attendance: {
+        attendanceScore: 0,
+        dateAttendance: new Date(),
+      },
+      numberOfBlog: 0,
+      numberOfComment: 0,
+      numberOfLike: 0,
+    };
+  }
+
+  // Check if today's date is the same as the last attendance date
+  const today = new Date();
+  const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
+  if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
+    // User has already marked attendance today
+    throw new BadRequestException("You have already marked attendance today.");
+  }
+
+  // Update the rankScore object for attendance
+  user.rankScore.attendance.attendanceScore += 1;
+  user.rankScore.attendance.dateAttendance = new Date();
+
+  // Save the updated user document
+  await user.save();
+
+  return{message:'Attendance marked successfully'} ;
+}
   
   //check rank user has <= user.rankScore
 async checkRankService(userId: string): Promise<any> {
@@ -336,7 +346,7 @@ async checkRankService(userId: string): Promise<any> {
   
     // Ensure the user exists
     if (!user) {
-      throw new Error('User not found');
+      throw new BadRequestException('User not found');
     }
   
     // Ensure the rankScore object exists
@@ -357,7 +367,7 @@ async checkRankService(userId: string): Promise<any> {
   
     // Ensure there are ranks
     if (!ranks || ranks.length === 0) {
-      throw new Error('No ranks found');
+      throw new BadRequestException('No ranks found');
     }
   
     // Find the highest rank that the user has achieved

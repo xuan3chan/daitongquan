@@ -23,6 +23,25 @@ export class AuthService {
     private roleService: RoleService,
   ) {}
 
+  private async createJwtPayload(accountHolder: any, isUser: boolean): Promise<any> {
+    if (isUser) {
+      return {
+        _id: accountHolder._id,
+        role: accountHolder.role,
+        isBlock: accountHolder.isBlock,
+        sub: accountHolder._id,
+      };
+    } else {
+      const roles = await this.roleService.findRoleService(accountHolder.role.map(String));
+      return {
+        _id: accountHolder._id,
+        email: accountHolder.email,
+        fullname: accountHolder.fullname,
+        role: roles,
+      };
+    }
+  }
+
   async registerService(
     email: string,
     password: string,
@@ -44,24 +63,11 @@ export class AuthService {
       if ('message' in user) {
         throw new BadRequestException(user.message);
       }
-      const payload = {
-        email: user.email,
-        role: user.role,
-        _id: user._id,
-        avatar: user.avatar,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        address: user.address,
-        dateOfBirth: user.dateOfBirth,
-        description: user.description,
-        gender: user.gender,
-        hyperlink: user.hyperlink,
-        nickname: user.nickname,
-        phone: user.phone
-      };
-      //create default seed
+      const payload = await this.createJwtPayload(user, true);
+
       await this.seedsService.createDefaultSpenCate(user._id);
       await this.seedsService.createDefaultIncomeCate(user._id);
+
       return {
         access_token: this.jwtService.sign(payload),
         refresh_token: createRefreshToken,
@@ -71,15 +77,15 @@ export class AuthService {
     }
   }
 
-  //populate idrole
   async loginService(
     account: string,
     password: string,
   ): Promise<{ access_token: string; refreshToken: string; user: any }> {
     try {
-      const user =await this.usersService.findOneEmailOrUsernameService(account);
+      const user = await this.usersService.findOneEmailOrUsernameService(account);
       const admin = await this.adminService.findOneAdminEmailService(account);
       const accountHolder = user || admin;
+
       if (!accountHolder) {
         throw new UnauthorizedException('Account not found');
       }
@@ -93,57 +99,33 @@ export class AuthService {
       }
 
       const createRefreshToken = randomBytes(32).toString('hex');
-
-      let payload : any;
-      let returnedUser : any;
+      const payload = await this.createJwtPayload(accountHolder, !!user);
+      const returnedUser = user
+        ? {
+            email: user.email,
+            role: user.role,
+            _id: user._id,
+            avatar: user.avatar,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            address: user.address,
+            dateOfBirth: user.dateOfBirth,
+            description: user.description,
+            gender: user.gender,
+            nickname: user.nickname,
+            phone: user.phone,
+          }
+        : {
+            fullname: admin.fullname,
+            email: admin.email,
+            role: await this.roleService.findRoleService(admin.role.map(String)),
+            _id: admin._id,
+          };
 
       if (user) {
-        await this.usersService.updateRefreshTokenService(
-          account,
-          createRefreshToken,
-        );
-
-        payload = {
-          _id: user._id,
-          role: user.role,
-          isBlock: user.isBlock,
-          encryptKey: user.encryptKey,
-          sub: user._id,
-        };
-        
-        returnedUser = {
-          email: user.email,
-          role: user.role,
-          _id: user._id,
-          avatar: user.avatar,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          address: user.address,
-          dateOfBirth: user.dateOfBirth,
-          description: user.description,
-          gender: user.gender,
-          nickname: user.nickname,
-          phone: user.phone,
-        };
+        await this.usersService.updateRefreshTokenService(account, createRefreshToken);
       } else if (admin) {
-        const roles = await this.roleService.findRoleService(admin.role.map(String));
-        await this.adminService.updateRefreshTokenService(
-          account,
-          createRefreshToken,
-        );
-
-        payload = {
-          _id: admin._id,
-          email: admin.email,
-          fullname: admin.fullname,
-          role: roles,
-        };
-        returnedUser = {
-          fullname: admin.fullname,
-          email: admin.email,
-          role: roles,
-          _id: admin._id,
-        };
+        await this.adminService.updateRefreshTokenService(account, createRefreshToken);
       }
 
       return {
@@ -155,7 +137,7 @@ export class AuthService {
       throw new BadRequestException(error.message);
     }
   }
-  // populate idrole##
+
   async refreshTokenService(
     refreshToken: string,
   ): Promise<{ access_token: string; refreshToken: string }> {
@@ -172,35 +154,12 @@ export class AuthService {
       }
 
       const createRefreshToken = randomBytes(32).toString('hex');
-
-      let payload;
+      const payload = await this.createJwtPayload(accountHolder, !!user);
 
       if (user) {
-        await this.usersService.updateRefreshTokenService(
-          user.email,
-          createRefreshToken,
-        );
-
-        payload = {
-          _id: user._id,
-          role: user.role,
-          isBlock: user.isBlock,
-          sub: user._id,
-        };
+        await this.usersService.updateRefreshTokenService(user.email, createRefreshToken);
       } else if (admin) {
-        const roles = await this.roleService.findRoleService(admin.role.map(String)); // Convert ObjectId array to string array
-        await this.adminService.updateRefreshTokenService(
-          admin.email,
-          createRefreshToken,
-        );
-
-        payload = {
-          _id: admin._id,
-          isBlock: admin.isBlock,
-          email: admin.email,
-          fullname: admin.fullname,
-          role: roles,
-        };
+        await this.adminService.updateRefreshTokenService(admin.email, createRefreshToken);
       }
 
       return {
@@ -211,6 +170,7 @@ export class AuthService {
       throw new BadRequestException(error.message);
     }
   }
+
   async logoutService(refreshToken: string): Promise<{ message: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
@@ -237,28 +197,20 @@ export class AuthService {
   async forgotPasswordService(
     email: string,
   ): Promise<{ statusCode: number; message: string }> {
-    // tạo code random 6 số
     const munitesExp = 5;
     const authCode = Math.floor(100000 + Math.random() * 900000).toString();
     const now = new Date();
     const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
     const expiredCode = new Date(vnTime.getTime() + munitesExp * 60000);
     try {
-      const saveDate = await this.usersService.updateCodeService(
-        email,
-        authCode,
-        expiredCode,
-      );
+      const saveDate = await this.usersService.updateCodeService(email, authCode, expiredCode);
       if (!saveDate || saveDate === null) {
         throw new BadRequestException('Email not found');
       }
-      // gửi email
       await this.mailerService.sendEmailWithCode(email, authCode);
       return { statusCode: 202, message: 'Email sent successfully' };
     } catch (error) {
-      throw new BadRequestException(
-        'something went wrong with email. please try again',
-      );
+      throw new BadRequestException('something went wrong with email. please try again');
     }
   }
 
@@ -272,7 +224,6 @@ export class AuthService {
       if (!user || user === null) {
         throw new BadRequestException('Code is incorrect');
       }
-      //check nvTime
       const now = new Date();
       const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
       if (user.authCode.expiredAt < vnTime) {

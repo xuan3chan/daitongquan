@@ -163,10 +163,10 @@ export class UsersController {
   @ApiOkResponse({ description: 'Attendance user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
   @UseGuards(MemberGuard)
-  async attendanceUserController(@Req() request: Request): Promise<{ message: string }> {
+  async attendanceUserController(@Req() request: Request): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    await this.usersService.attendanceService(userId);
-    return { message: 'Attendance user successfully' };
+     return await this.usersService.attendanceService(userId);
+    
   }
   
     
