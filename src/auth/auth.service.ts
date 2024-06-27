@@ -23,7 +23,10 @@ export class AuthService {
     private roleService: RoleService,
   ) {}
 
-  private async createJwtPayload(accountHolder: any, isUser: boolean): Promise<any> {
+  private async createJwtPayload(
+    accountHolder: any,
+    isUser: boolean,
+  ): Promise<any> {
     if (isUser) {
       return {
         _id: accountHolder._id,
@@ -32,7 +35,9 @@ export class AuthService {
         sub: accountHolder._id,
       };
     } else {
-      const roles = await this.roleService.findRoleService(accountHolder.role.map(String));
+      const roles = await this.roleService.findRoleService(
+        accountHolder.role.map(String),
+      );
       return {
         _id: accountHolder._id,
         email: accountHolder.email,
@@ -82,7 +87,8 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string; refreshToken: string; user: any }> {
     try {
-      const user = await this.usersService.findOneEmailOrUsernameService(account);
+      const user =
+        await this.usersService.findOneEmailOrUsernameService(account);
       const admin = await this.adminService.findOneAdminEmailService(account);
       const accountHolder = user || admin;
 
@@ -118,14 +124,22 @@ export class AuthService {
         : {
             fullname: admin.fullname,
             email: admin.email,
-            role: await this.roleService.findRoleService(admin.role.map(String)),
+            role: await this.roleService.findRoleService(
+              admin.role.map(String),
+            ),
             _id: admin._id,
           };
 
       if (user) {
-        await this.usersService.updateRefreshTokenService(account, createRefreshToken);
+        await this.usersService.updateRefreshTokenService(
+          account,
+          createRefreshToken,
+        );
       } else if (admin) {
-        await this.adminService.updateRefreshTokenService(account, createRefreshToken);
+        await this.adminService.updateRefreshTokenService(
+          account,
+          createRefreshToken,
+        );
       }
 
       return {
@@ -143,7 +157,8 @@ export class AuthService {
   ): Promise<{ access_token: string; refreshToken: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin = await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin =
+        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
       const accountHolder = user || admin;
 
       if (!accountHolder) {
@@ -157,9 +172,15 @@ export class AuthService {
       const payload = await this.createJwtPayload(accountHolder, !!user);
 
       if (user) {
-        await this.usersService.updateRefreshTokenService(user.email, createRefreshToken);
+        await this.usersService.updateRefreshTokenService(
+          user.email,
+          createRefreshToken,
+        );
       } else if (admin) {
-        await this.adminService.updateRefreshTokenService(admin.email, createRefreshToken);
+        await this.adminService.updateRefreshTokenService(
+          admin.email,
+          createRefreshToken,
+        );
       }
 
       return {
@@ -174,7 +195,8 @@ export class AuthService {
   async logoutService(refreshToken: string): Promise<{ message: string }> {
     try {
       const user = await this.usersService.findOneReTokenService(refreshToken);
-      const admin = await this.adminService.findOneAdminRefreshTokenService(refreshToken);
+      const admin =
+        await this.adminService.findOneAdminRefreshTokenService(refreshToken);
 
       const accountHolder = user || admin;
 
@@ -203,14 +225,20 @@ export class AuthService {
     const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
     const expiredCode = new Date(vnTime.getTime() + munitesExp * 60000);
     try {
-      const saveDate = await this.usersService.updateCodeService(email, authCode, expiredCode);
+      const saveDate = await this.usersService.updateCodeService(
+        email,
+        authCode,
+        expiredCode,
+      );
       if (!saveDate || saveDate === null) {
         throw new BadRequestException('Email not found');
       }
       await this.mailerService.sendEmailWithCode(email, authCode);
       return { statusCode: 202, message: 'Email sent successfully' };
     } catch (error) {
-      throw new BadRequestException('something went wrong with email. please try again');
+      throw new BadRequestException(
+        'something went wrong with email. please try again',
+      );
     }
   }
 
@@ -234,6 +262,15 @@ export class AuthService {
       return { message: 'Password reset successfully' };
     } catch (error) {
       throw new BadRequestException(error.message);
+    }
+  }
+
+  async handleVerifyTokenService(token: string):Promise<string> {
+    try {
+      const Payload = this.jwtService.verify(token);
+      return Payload['_id'];
+    } catch (error) {
+      throw new BadRequestException('Token is invalid');
     }
   }
 }

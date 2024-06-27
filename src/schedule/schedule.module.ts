@@ -20,5 +20,6 @@ import { ScheduleGateway } from './schedulel.gateway';
   ],
   controllers: [ScheduleController],
   providers: [ScheduleService,ScheduleGateway],
+  exports: [ScheduleService]
 })
 export class ScheduleModule {}

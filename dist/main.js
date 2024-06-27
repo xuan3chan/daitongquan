@@ -261,6 +261,7 @@ const post_module_1 = __webpack_require__(122);
 const comment_module_1 = __webpack_require__(129);
 const report_module_1 = __webpack_require__(133);
 const statistics_module_1 = __webpack_require__(138);
+const event_gateway_1 = __webpack_require__(142);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -295,7 +296,9 @@ exports.AppModule = AppModule = __decorate([
         controllers: [
             app_controller_1.AppController
         ],
-        providers: [],
+        providers: [
+            event_gateway_1.EventGateway
+        ],
     })
 ], AppModule);
 
@@ -4868,7 +4871,8 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService]
+        providers: [auth_service_1.AuthService],
+        exports: [auth_service_1.AuthService]
     })
 ], AuthModule);
 
@@ -5207,6 +5211,15 @@ let AuthService = class AuthService {
         }
         catch (error) {
             throw new common_1.BadRequestException(error.message);
+        }
+    }
+    async handleVerifyTokenService(token) {
+        try {
+            const Payload = this.jwtService.verify(token);
+            return Payload['_id'];
+        }
+        catch (error) {
+            throw new common_1.BadRequestException('Token is invalid');
         }
     }
 };
@@ -7157,21 +7170,18 @@ exports.UpdateDebtDto = UpdateDebtDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'John Doe', description: 'Name of the debtor' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateDebtDto.prototype, "debtor", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Jane Doe', description: 'Name of the creditor' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateDebtDto.prototype, "creditor", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 1000, description: 'Amount of the debt' }),
     (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.Min)(1),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
@@ -7179,14 +7189,12 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'Loan for car', description: 'Description of the debt' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], UpdateDebtDto.prototype, "description", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'active', enum: ['active', 'paid', 'overdue'], description: 'Status of the debt' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(['active', 'paid', 'overdue']),
     __metadata("design:type", String)
@@ -7194,7 +7202,6 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'lending_debt or borrowing_debt', enum: ['lending_debt', 'borrowing_debt'], description: 'Type of the debt' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(['lending_debt', 'borrowing_debt']),
     __metadata("design:type", String)
@@ -7246,6 +7253,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
         ],
         controllers: [schedule_controller_1.ScheduleController],
         providers: [schedule_service_1.ScheduleService, schedulel_gateway_1.ScheduleGateway],
+        exports: [schedule_service_1.ScheduleService]
     })
 ], ScheduleModule);
 
@@ -10280,6 +10288,127 @@ __decorate([
 ], QueryDto.prototype, "end", void 0);
 
 
+/***/ }),
+/* 142 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e, _f;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EventGateway = void 0;
+const websockets_1 = __webpack_require__(114);
+const socket_io_1 = __webpack_require__(115);
+const auth_service_1 = __webpack_require__(82);
+const schedule_service_1 = __webpack_require__(111);
+let EventGateway = class EventGateway {
+    constructor(authService, scheduleService) {
+        this.authService = authService;
+        this.scheduleService = scheduleService;
+    }
+    handleDisconnect(socket) {
+        console.log('Socket disconnected', 'Socket ID:', socket.id, 'User ID:', socket.data?._id);
+    }
+    async handleConnection(socket) {
+        const authHeader = socket.handshake.headers.authorization;
+        if (authHeader && typeof authHeader === 'string') {
+            const token = authHeader.split(' ')[1];
+            if (token) {
+                try {
+                    const userId = await this.authService.handleVerifyTokenService(token);
+                    if (userId) {
+                        socket.data = { _id: userId };
+                        console.log('Socket connected', 'Socket ID:', socket.id, 'User ID:', userId);
+                        socket.join(userId);
+                    }
+                    else {
+                        console.log('Authentication failed - disconnecting socket');
+                        socket.disconnect();
+                    }
+                }
+                catch (err) {
+                    console.error('Error during connection handling:', err);
+                    socket.disconnect();
+                }
+            }
+            else {
+                console.log('No token provided - disconnecting socket');
+                socket.disconnect();
+            }
+        }
+        else {
+            console.log('No authorization header - disconnecting socket');
+            socket.disconnect();
+        }
+    }
+    handleMessage(socket, data) {
+        console.log('Message received:', data);
+        const userId = socket.data?._id;
+        if (userId) {
+            this.server.to(userId).emit('message', 'Hello from the server!');
+        }
+        else {
+            console.error('User ID is undefined');
+        }
+    }
+    async getSchedule(socket) {
+        const userId = socket.data?._id;
+        if (userId) {
+            try {
+                const schedules = await this.scheduleService.notifyScheduleService(userId);
+                console.log('Schedules:', schedules);
+                this.server.to(userId).emit('schedules', schedules);
+            }
+            catch (error) {
+                console.error('Error getting schedules:', error);
+            }
+        }
+        else {
+            console.error('User ID is undefined');
+        }
+    }
+    afterInit(server) {
+        console.log('Socket server initialized');
+    }
+};
+exports.EventGateway = EventGateway;
+__decorate([
+    (0, websockets_1.WebSocketServer)(),
+    __metadata("design:type", typeof (_c = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _c : Object)
+], EventGateway.prototype, "server", void 0);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('message'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _d : Object, Object]),
+    __metadata("design:returntype", void 0)
+], EventGateway.prototype, "handleMessage", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('getSchedule'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_e = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _e : Object]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], EventGateway.prototype, "getSchedule", null);
+exports.EventGateway = EventGateway = __decorate([
+    (0, websockets_1.WebSocketGateway)({ cors: true }),
+    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object])
+], EventGateway);
+
+
 /***/ })
 /******/ 	]);
 /************************************************************************/
@@ -10342,7 +10471,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("30e708e0d10b963b02db")
+/******/ 		__webpack_require__.h = () => ("1444ae71bef2cccb6d49")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

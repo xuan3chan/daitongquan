@@ -23,6 +23,7 @@ import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { ReportModule } from './report/report.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { EventGateway } from './event.gateway';
 @Module({
   imports: [
     
@@ -54,6 +55,8 @@ import { StatisticsModule } from './statistics/statistics.module';
   controllers: [
     AppController
   ],
-  providers: [],
+  providers: [
+    EventGateway
+  ],
 })
 export class AppModule {}

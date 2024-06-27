@@ -26,6 +26,7 @@ import { RoleModule } from 'src/role/role.module';
     signOptions: { expiresIn: '1h' },
   }),],
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [AuthService],
+  exports: [AuthService]
 })
 export class AuthModule {}
