@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post } from 'src/post/schema/post.schema';
@@ -17,13 +17,16 @@ export class StatisticsService {
   ) {}
 
   // statistics user folow rank
-  async statisticsUserFollowRankService(): Promise<any> {
-    const users = await this.userModel.find();
-    const ranks = await this.rankModel.find();
-    const statistics = [];
+async statisticsUserFollowRankService(): Promise<any> {
+  const users = await this.userModel.find();
+  const ranks = await this.rankModel.find();
+  const statistics = [];
+  try {
     for (const rank of ranks) {
+      if (!rank._id) continue;
+
       const userFollowRank = users.filter(
-        (user) => user.rankID.toString() === rank._id.toString(),
+        (user) => user.rankID && user.rankID.toString() === rank._id.toString(),
       );
       statistics.push({
         rankName: rank.rankName,
@@ -31,7 +34,10 @@ export class StatisticsService {
       });
     }
     return statistics;
+  } catch (err) {
+    throw new Error(err);
   }
+}
 
   async statisticsTopPost(
     filter: string,

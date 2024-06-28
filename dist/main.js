@@ -9943,14 +9943,21 @@ let StatisticsService = class StatisticsService {
         const users = await this.userModel.find();
         const ranks = await this.rankModel.find();
         const statistics = [];
-        for (const rank of ranks) {
-            const userFollowRank = users.filter((user) => user.rankID.toString() === rank._id.toString());
-            statistics.push({
-                rankName: rank.rankName,
-                totalUserFollowRank: userFollowRank.length,
-            });
+        try {
+            for (const rank of ranks) {
+                if (!rank._id)
+                    continue;
+                const userFollowRank = users.filter((user) => user.rankID && user.rankID.toString() === rank._id.toString());
+                statistics.push({
+                    rankName: rank.rankName,
+                    totalUserFollowRank: userFollowRank.length,
+                });
+            }
+            return statistics;
         }
-        return statistics;
+        catch (err) {
+            throw new Error(err);
+        }
     }
     async statisticsTopPost(filter, start, end) {
         const posts = await this.postModel.find();
@@ -10492,7 +10499,7 @@ exports.EventGateway = EventGateway = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("258c89874bf7500ac825")
+/******/ 		__webpack_require__.h = () => ("16e660013eb78e43ee57")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
