@@ -58,12 +58,24 @@ export class DebtService {
     if (dueDate && dueDate < new Date()) {
       throw new BadRequestException('Due date must be in the future or today');
     }
-    debt.debtor = debtor || debt.debtor;
-    debt.creditor = creditor || debt.creditor;
-    debt.amount = amount || debt.amount;
-    debt.type = type || debt.type;
-    debt.dueDate = dueDate || debt.dueDate;
-    debt.description = description || debt.description;
+   if (debtor) {
+      debt.debtor = debtor;
+    }
+    if (creditor) {
+      debt.creditor = creditor;
+    }
+    if (amount) {
+      debt.amount = amount;
+    }
+    if (type) {
+      debt.type = type;
+    }
+    if (dueDate) {
+      debt.dueDate = dueDate;
+    }
+    if (description) {
+      debt.description = description;
+    }
     return debt.save();
   }
 
@@ -80,7 +92,7 @@ export class DebtService {
     const encryptedKey = findUser.encryptKey;
     const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
 
-    debt.isEncrypted = false;
+    debt.isEncrypted = debt.isEncrypted;
     debt.debtor = this.encryptionService.decryptData(debt.debtor, decryptedKey);
     debt.creditor = this.encryptionService.decryptData(debt.creditor, decryptedKey);
     debt.description = debt.description

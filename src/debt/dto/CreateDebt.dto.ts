@@ -39,8 +39,4 @@ export class CreateDebtDto {
   @IsOptional()
   dueDate: Date;
 
-  @ApiProperty({ example: false, description: 'Is the debt encrypted', required: false })
-  @IsOptional()
-  @IsBoolean()
-  isEncrypted: boolean;
 }

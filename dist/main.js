@@ -6752,12 +6752,24 @@ let DebtService = class DebtService {
         if (dueDate && dueDate < new Date()) {
             throw new common_1.BadRequestException('Due date must be in the future or today');
         }
-        debt.debtor = debtor || debt.debtor;
-        debt.creditor = creditor || debt.creditor;
-        debt.amount = amount || debt.amount;
-        debt.type = type || debt.type;
-        debt.dueDate = dueDate || debt.dueDate;
-        debt.description = description || debt.description;
+        if (debtor) {
+            debt.debtor = debtor;
+        }
+        if (creditor) {
+            debt.creditor = creditor;
+        }
+        if (amount) {
+            debt.amount = amount;
+        }
+        if (type) {
+            debt.type = type;
+        }
+        if (dueDate) {
+            debt.dueDate = dueDate;
+        }
+        if (description) {
+            debt.description = description;
+        }
         return debt.save();
     }
     async deleteDebtService(debtId, userId) {
@@ -6771,7 +6783,7 @@ let DebtService = class DebtService {
         const findUser = await this.usersService.findUserByIdService(userId);
         const encryptedKey = findUser.encryptKey;
         const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
-        debt.isEncrypted = false;
+        debt.isEncrypted = debt.isEncrypted;
         debt.debtor = this.encryptionService.decryptData(debt.debtor, decryptedKey);
         debt.creditor = this.encryptionService.decryptData(debt.creditor, decryptedKey);
         debt.description = debt.description
@@ -6886,7 +6898,7 @@ __decorate([
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
 ], Debt.prototype, "dueDate", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Boolean, required: false }),
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Boolean, required: false, default: false }),
     __metadata("design:type", Boolean)
 ], Debt.prototype, "isEncrypted", void 0);
 exports.Debt = Debt = __decorate([
@@ -7136,12 +7148,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
 ], CreateDebtDto.prototype, "dueDate", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ example: false, description: 'Is the debt encrypted', required: false }),
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], CreateDebtDto.prototype, "isEncrypted", void 0);
 
 
 /***/ }),
@@ -10306,7 +10312,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EventGateway = void 0;
 const websockets_1 = __webpack_require__(114);
@@ -10317,9 +10323,12 @@ let EventGateway = class EventGateway {
     constructor(authService, scheduleService) {
         this.authService = authService;
         this.scheduleService = scheduleService;
+        this.clients = new Map();
+        this.startConditionCheck();
     }
     handleDisconnect(socket) {
         console.log('Socket disconnected', 'Socket ID:', socket.id, 'User ID:', socket.data?._id);
+        this.clients.delete(socket.id);
     }
     async handleConnection(socket) {
         const authHeader = socket.handshake.headers.authorization;
@@ -10332,6 +10341,7 @@ let EventGateway = class EventGateway {
                         socket.data = { _id: userId };
                         console.log('Socket connected', 'Socket ID:', socket.id, 'User ID:', userId);
                         socket.join(userId);
+                        this.clients.set(socket.id, { socket, lastSchedules: null });
                     }
                     else {
                         console.log('Authentication failed - disconnecting socket');
@@ -10353,6 +10363,19 @@ let EventGateway = class EventGateway {
             socket.disconnect();
         }
     }
+    afterInit(server) {
+        console.log('Socket server initialized');
+    }
+    startConditionCheck() {
+        setInterval(async () => {
+            try {
+                await this.checkConditionAndNotifyClients();
+            }
+            catch (error) {
+                console.error('Error checking condition:', error);
+            }
+        }, 5000);
+    }
     handleMessage(socket, data) {
         console.log('Message received:', data);
         const userId = socket.data?._id;
@@ -10363,24 +10386,29 @@ let EventGateway = class EventGateway {
             console.error('User ID is undefined');
         }
     }
-    async getSchedule(socket) {
-        const userId = socket.data?._id;
-        if (userId) {
-            try {
-                const schedules = await this.scheduleService.notifyScheduleService(userId);
-                console.log('Schedules:', schedules);
-                this.server.to(userId).emit('schedules', schedules);
+    async checkConditionAndNotifyClients() {
+        for (const [socketId, client] of this.clients.entries()) {
+            const userId = client.socket.data?._id;
+            if (userId) {
+                try {
+                    const schedules = await this.scheduleService.notifyScheduleService(userId);
+                    if (JSON.stringify(schedules) !== JSON.stringify(client.lastSchedules)) {
+                        console.log('Schedules updated for user:', userId);
+                        this.server.to(userId).emit('schedules', schedules);
+                        client.lastSchedules = schedules;
+                    }
+                    else {
+                        console.log('Schedules not changed for user', userId);
+                    }
+                }
+                catch (error) {
+                    console.error('Error getting schedules for user', userId, ':', error);
+                }
             }
-            catch (error) {
-                console.error('Error getting schedules:', error);
+            else {
+                console.error('User ID is undefined for socket ID:', socketId);
             }
         }
-        else {
-            console.error('User ID is undefined');
-        }
-    }
-    afterInit(server) {
-        console.log('Socket server initialized');
     }
 };
 exports.EventGateway = EventGateway;
@@ -10396,13 +10424,6 @@ __decorate([
     __metadata("design:paramtypes", [typeof (_d = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _d : Object, Object]),
     __metadata("design:returntype", void 0)
 ], EventGateway.prototype, "handleMessage", null);
-__decorate([
-    (0, websockets_1.SubscribeMessage)('getSchedule'),
-    __param(0, (0, websockets_1.ConnectedSocket)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _e : Object]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
-], EventGateway.prototype, "getSchedule", null);
 exports.EventGateway = EventGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: true }),
     __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object])
@@ -10471,7 +10492,7 @@ exports.EventGateway = EventGateway = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("1444ae71bef2cccb6d49")
+/******/ 		__webpack_require__.h = () => ("258c89874bf7500ac825")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

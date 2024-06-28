@@ -17,11 +17,15 @@ export class EventGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server;
+  private clients: Map<string, { socket: Socket; lastSchedules: any }> = new Map();
 
   constructor(
     private readonly authService: AuthService,
     private readonly scheduleService: ScheduleService,
-  ) {}
+  ) {
+    // Khởi động kiểm tra điều kiện
+    this.startConditionCheck();
+  }
 
   handleDisconnect(socket: Socket) {
     console.log(
@@ -31,6 +35,7 @@ export class EventGateway
       'User ID:',
       socket.data?._id,
     );
+    this.clients.delete(socket.id);
   }
 
   async handleConnection(socket: Socket): Promise<void> {
@@ -50,6 +55,7 @@ export class EventGateway
               userId,
             );
             socket.join(userId);
+            this.clients.set(socket.id, { socket, lastSchedules: null });
           } else {
             console.log('Authentication failed - disconnecting socket');
             socket.disconnect();
@@ -68,6 +74,20 @@ export class EventGateway
     }
   }
 
+  afterInit(server: Server) {
+    console.log('Socket server initialized');
+  }
+
+  // Hàm khởi động kiểm tra điều kiện
+  startConditionCheck() {
+    setInterval(async () => {
+      try {
+        await this.checkConditionAndNotifyClients();
+      } catch (error) {
+        console.error('Error checking condition:', error);
+      }
+    }, 5000); // Kiểm tra mỗi 5 giây
+  }
   @SubscribeMessage('message')
   handleMessage(
     @ConnectedSocket() socket: Socket,
@@ -81,24 +101,26 @@ export class EventGateway
       console.error('User ID is undefined');
     }
   }
-  @SubscribeMessage('getSchedule')
-  async getSchedule(@ConnectedSocket() socket: Socket): Promise<void> {
-    const userId = socket.data?._id;
-    if (userId) {
-      try {
-        const schedules =
-          await this.scheduleService.notifyScheduleService(userId);
-        console.log('Schedules:', schedules);
-        this.server.to(userId).emit('schedules', schedules);
-      } catch (error) {
-        console.error('Error getting schedules:', error);
+  // Hàm kiểm tra điều kiện và thông báo cho các client nếu có thay đổi
+  async checkConditionAndNotifyClients() {
+    for (const [socketId, client] of this.clients.entries()) {
+      const userId = client.socket.data?._id;
+      if (userId) {
+        try {
+          const schedules = await this.scheduleService.notifyScheduleService(userId);
+          if (JSON.stringify(schedules) !== JSON.stringify(client.lastSchedules)) {
+            console.log('Schedules updated for user:', userId);
+            this.server.to(userId).emit('schedules', schedules);
+            client.lastSchedules = schedules; // Cập nhật trạng thái schedules
+          } else {
+            console.log('Schedules not changed for user', userId);
+          }
+        } catch (error) {
+          console.error('Error getting schedules for user', userId, ':', error);
+        }
+      } else {
+        console.error('User ID is undefined for socket ID:', socketId);
       }
-    } else {
-      console.error('User ID is undefined');
     }
-  }
-
-  afterInit(server: Server) {
-    console.log('Socket server initialized');
   }
 }

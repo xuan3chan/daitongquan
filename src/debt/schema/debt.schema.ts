@@ -28,7 +28,7 @@ export class Debt extends Document {
   @Prop({ type: mongoose.Schema.Types.Date, required: false })
   dueDate: Date;
 
-  @Prop({ type: mongoose.Schema.Types.Boolean, required: false })
+  @Prop({ type: mongoose.Schema.Types.Boolean, required: false,default:false })
   isEncrypted : boolean;
 
 
