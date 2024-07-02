@@ -87,8 +87,7 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string; refreshToken: string; user: any }> {
     try {
-      const user =
-        await this.usersService.findOneEmailOrUsernameService(account);
+      const user =  await this.usersService.findOneEmailOrUsernameService(account);
       const admin = await this.adminService.findOneAdminEmailService(account);
       const accountHolder = user || admin;
 

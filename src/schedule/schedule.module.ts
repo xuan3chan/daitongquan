@@ -6,7 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 import { Schedule,ScheduleSchema } from './schema/schedule.schema';
 import { UsersModule } from 'src/users/users.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
-import { ScheduleGateway } from './schedulel.gateway';
 
 @Module({
   imports: [
@@ -19,7 +18,7 @@ import { ScheduleGateway } from './schedulel.gateway';
     }),
   ],
   controllers: [ScheduleController],
-  providers: [ScheduleService,ScheduleGateway],
+  providers: [ScheduleService],
   exports: [ScheduleService]
 })
 export class ScheduleModule {}

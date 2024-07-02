@@ -8,8 +8,7 @@ import { Model } from 'mongoose';
 import { Schedule, ScheduleDocument } from './schema/schedule.schema';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import { ScheduleGateway } from './schedulel.gateway';
-
+import * as moment from 'moment';
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -17,7 +16,6 @@ export class ScheduleService {
     private scheduleModel: Model<Schedule>,
     private readonly encryptionService: EncryptionService,
     private readonly usersService: UsersService,
-    private readonly scheduleGateway: ScheduleGateway,
   ) {}
 
   async createScheduleService(
@@ -37,7 +35,7 @@ export class ScheduleService {
         'Start date time must be less than end date time',
       );
     }
-
+    
     const newSchedule = new this.scheduleModel({
       userId,
       title,
@@ -50,7 +48,7 @@ export class ScheduleService {
       calendars,
       url,
     });
-
+    console.log('newSchedule', newSchedule);
     try {
       return await newSchedule.save();
     } catch (error) {
@@ -218,11 +216,13 @@ export class ScheduleService {
       });
 
       const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-
-      // Notify the client using the gateway
-      this.scheduleGateway.notifyClient(userId, schedules);
-
-      return schedules;
+      
+    const formattedSchedules = schedules.map(schedule => ({
+  ...schedule.toObject(),
+  startDateTime: moment(schedule.startDateTime).toISOString(),
+  endDateTime: moment(schedule.endDateTime).toISOString(),
+}));
+      return formattedSchedules;
     } catch (error) {
       throw new InternalServerErrorException(
         'Error fetching schedules for notification',
