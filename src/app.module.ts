@@ -24,6 +24,7 @@ import { CommentModule } from './comment/comment.module';
 import { ReportModule } from './report/report.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { EventGateway } from './event.gateway';
+import { StoryModule } from './story/story.module';
 @Module({
   imports: [
     
@@ -51,6 +52,7 @@ import { EventGateway } from './event.gateway';
     CommentModule,
     ReportModule,
     StatisticsModule,
+    StoryModule,
   ],
   controllers: [
     AppController

@@ -44,6 +44,9 @@ export class Schedule {
 
   @Prop({ type: mongoose.Schema.Types.String, required: false })
   url: string;
+
+  @Prop({ type: mongoose.Schema.Types.String, required: false,default:'unRead',enum:['unRead','readed'] })
+  status: string;
     
 }
 

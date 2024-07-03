@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { AuthService } from './auth/auth.service';
 import { ScheduleService } from './schedule/schedule.service';
+import { StoryService } from './story/story.service';
 
 @WebSocketGateway({ cors: true })
 export class EventGateway
@@ -22,9 +23,11 @@ export class EventGateway
   constructor(
     private readonly authService: AuthService,
     private readonly scheduleService: ScheduleService,
+    private readonly storyService: StoryService,
   ) {
     // Khởi động kiểm tra điều kiện
     this.startConditionCheck();
+    this.startConditionStoryCheck();
   }
 
   handleDisconnect(socket: Socket) {
@@ -88,6 +91,16 @@ export class EventGateway
       }
     }, 5000); // Kiểm tra mỗi 5 giây
   }
+
+startConditionStoryCheck() {
+    setInterval(async () => {
+      try {
+        await this.storyService.checkExpiredStoryService();
+      } catch (error) {
+        console.error('Error checking condition:', error);
+      }
+    }, 3600000); 
+}
   @SubscribeMessage('message')
   handleMessage(
     @ConnectedSocket() socket: Socket,
