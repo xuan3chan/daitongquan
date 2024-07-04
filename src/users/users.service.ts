@@ -41,6 +41,13 @@ export class UsersService {
       })
       .exec();
   }
+
+  async findOneUserForMessageService(userId: string): Promise<User> {
+    return this.userModel
+      .findOne({ _id: userId })
+      .select('firstname avatar lastname')
+      .exec();
+  }
   async findOneReTokenService(refreshToken: string): Promise<User> {
     return this.userModel.findOne({ refreshToken }).exec();
   }
@@ -138,7 +145,7 @@ export class UsersService {
     });
     return newUser.save();
   }
-  //view profile lấy _id từ token
+
   async viewProfileService(_id: string): Promise<User> {
     return this.userModel
       .findOne({ _id })

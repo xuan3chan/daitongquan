@@ -24,6 +24,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { RankGuard } from 'src/gaurd/rank.gaurd';
 
 @ApiBearerAuth()
 @ApiTags('story')
@@ -37,7 +38,7 @@ export class StoryController {
     return decodedToken._id;
   }
   @Post()
-  @UseGuards(MemberGuard)
+  @UseGuards(RankGuard)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({

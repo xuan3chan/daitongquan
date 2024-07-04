@@ -1,12 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 
 const ALGORITHM = 'aes-256-ecb';
 const ENCODING = 'base64';
 
 @Injectable()
 export class EncryptionService {
-  constructor() {}
+  private readonly privateKey: string;
+  private readonly publicKey: string;
+  constructor() {
+    if (!fs.existsSync('private.pem') || !fs.existsSync('public.pem')) {
+      const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+      });
+
+      fs.writeFileSync('private.pem', privateKey.export({ type: 'pkcs1', format: 'pem' }));
+      fs.writeFileSync('public.pem', publicKey.export({ type: 'spki', format: 'pem' }));
+    }
+
+    this.privateKey = fs.readFileSync('private.pem', 'utf8');
+    this.publicKey = fs.readFileSync('public.pem', 'utf8');
+  }
 
   private createCipher(password: string) {
     return crypto.createCipheriv(ALGORITHM, password.substr(0, 32), '');
@@ -49,5 +64,21 @@ export class EncryptionService {
     let decryptedData = decipher.update(Buffer.from(data, ENCODING));
     decryptedData = Buffer.concat([decryptedData, decipher.final()]);
     return decryptedData.toString();
+  }
+  rsaEncrypt(text: string): string {
+    const buffer = Buffer.from(text, 'utf8');
+    const encrypted = crypto.publicEncrypt(this.publicKey, buffer);
+    return encrypted.toString('base64');
+  }
+
+  rsaDecrypt(text: string): string {
+    try{
+    const buffer = Buffer.from(text, 'base64');
+    const decrypted = crypto.privateDecrypt(this.privateKey, buffer);
+    return decrypted.toString('utf8');
+    }catch(e){
+      
+      return text;
+    }
   }
 }

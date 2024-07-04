@@ -4,9 +4,11 @@ import { StoryController } from './story.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Story, StorySchema } from './schema/story.schema';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+import { RankModule } from 'src/rank/rank.module';
 
 @Module({
   imports:[
+    RankModule,
     MongooseModule.forFeature([{ name: Story.name, schema: StorySchema }]),
     CloudinaryModule
   ],

@@ -10,6 +10,7 @@ import {
   UploadedFile,
   Delete,
   HttpCode,
+  Param,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../gaurd/auth.gaurd';
@@ -20,19 +21,22 @@ import {
   ApiConsumes,
   ApiOkResponse,
   ApiTags,
-  ApiQuery
+  ApiQuery,
 } from '@nestjs/swagger';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import {PermissionGuard} from '../gaurd/permission.gaurd';
-import { Subject,Action } from 'src/decorator/casl.decorator';
+import { PermissionGuard } from '../gaurd/permission.gaurd';
+import { Subject, Action } from 'src/decorator/casl.decorator';
 import { Request } from 'express';
-import {DeleteUserDto, CreateUserDto, BlockUserDto, UpdateUserProfileDto } from './dto/index';
+import {
+  DeleteUserDto,
+  CreateUserDto,
+  BlockUserDto,
+  UpdateUserProfileDto,
+} from './dto/index';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
-
-
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -52,11 +56,22 @@ export class UsersController {
   @Action('read')
   @Subject('user')
   @ApiOkResponse({ description: 'Get all users' })
-  @ApiBadRequestResponse({ description: 'bad request'})
+  @ApiBadRequestResponse({ description: 'bad request' })
   @UseGuards(PermissionGuard)
   @Get('list-users')
   async findAllController() {
     return this.usersService.listUserService();
+  }
+
+  @Get('view-profile/:userId')
+  @ApiOkResponse({ description: 'Get user by id' })
+  @ApiBadRequestResponse({ description: 'User not found' })
+  @UseGuards(AuthGuard)
+  async viewProfileByIdController(
+    @Param('userId') userId: string,
+  ): Promise<{ data: any }> {
+    const data = await this.usersService.viewProfileService(userId);
+    return { data };
   }
 
   @ApiOkResponse({ description: 'Get user by id' })
@@ -78,7 +93,18 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserProfileDto,
   ): Promise<{ message: string }> {
     const userId = this.getUserIdFromToken(request);
-   const { firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink } = updateUserDto;
+    const {
+      firstname,
+      lastname,
+      email,
+      dateOfBirth,
+      address,
+      gender,
+      phone,
+      nickname,
+      description,
+      hyperlink,
+    } = updateUserDto;
     await this.usersService.updateUserProfileService(
       userId,
       firstname,
@@ -90,7 +116,7 @@ export class UsersController {
       phone,
       nickname,
       description,
-      hyperlink
+      hyperlink,
     );
     return { message: 'User profile updated successfully' };
   }
@@ -129,7 +155,12 @@ export class UsersController {
   @Subject('user')
   @ApiOkResponse({ description: 'Search user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
-  @ApiQuery({ name: 'searchKey', required: true, type: String, description: 'The search key' })
+  @ApiQuery({
+    name: 'searchKey',
+    required: true,
+    type: String,
+    description: 'The search key',
+  })
   async searchUserController(@Req() request: Request): Promise<{ data: any }> {
     const searchKey = request.query.searchKey as string;
     const data = await this.usersService.searchUserService(searchKey);
@@ -142,8 +173,13 @@ export class UsersController {
   @Patch('update-block-user')
   @ApiOkResponse({ description: 'Block user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
-  async blockUserController(@Body() blockUserDto: BlockUserDto): Promise<{ message: string }> {
-    await this.usersService.blockUserService(blockUserDto._id,blockUserDto.isBlock);
+  async blockUserController(
+    @Body() blockUserDto: BlockUserDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.blockUserService(
+      blockUserDto._id,
+      blockUserDto.isBlock,
+    );
     return { message: 'update block user successfully' };
   }
 
@@ -154,7 +190,9 @@ export class UsersController {
   @ApiOkResponse({ description: 'Delete user success' })
   @ApiBadRequestResponse({ description: 'bad request' })
   @HttpCode(200)
-  async deleteUserController(@Body() deleteUserDto:DeleteUserDto): Promise<{ message: string }> {
+  async deleteUserController(
+    @Body() deleteUserDto: DeleteUserDto,
+  ): Promise<{ message: string }> {
     await this.usersService.deleteUserService(deleteUserDto._id);
     return { message: 'delete user successfully' };
   }
@@ -165,9 +203,6 @@ export class UsersController {
   @UseGuards(MemberGuard)
   async attendanceUserController(@Req() request: Request): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-     return await this.usersService.attendanceService(userId);
-    
+    return await this.usersService.attendanceService(userId);
   }
-  
-    
 }

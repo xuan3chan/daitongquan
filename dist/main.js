@@ -262,7 +262,8 @@ const comment_module_1 = __webpack_require__(127);
 const report_module_1 = __webpack_require__(131);
 const statistics_module_1 = __webpack_require__(136);
 const event_gateway_1 = __webpack_require__(140);
-const story_module_1 = __webpack_require__(143);
+const story_module_1 = __webpack_require__(148);
+const message_module_1 = __webpack_require__(152);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -294,6 +295,7 @@ exports.AppModule = AppModule = __decorate([
             report_module_1.ReportModule,
             statistics_module_1.StatisticsModule,
             story_module_1.StoryModule,
+            message_module_1.MessageModule,
         ],
         controllers: [
             app_controller_1.AppController
@@ -393,7 +395,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersController = void 0;
 const common_1 = __webpack_require__(6);
@@ -421,6 +423,10 @@ let UsersController = class UsersController {
     async findAllController() {
         return this.usersService.listUserService();
     }
+    async viewProfileByIdController(userId) {
+        const data = await this.usersService.viewProfileService(userId);
+        return { data };
+    }
     async viewProfileController(request) {
         const userId = this.getUserIdFromToken(request);
         const data = await this.usersService.viewProfileService(userId);
@@ -428,7 +434,7 @@ let UsersController = class UsersController {
     }
     async updateProfileController(request, updateUserDto) {
         const userId = this.getUserIdFromToken(request);
-        const { firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink } = updateUserDto;
+        const { firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink, } = updateUserDto;
         await this.usersService.updateUserProfileService(userId, firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink);
         return { message: 'User profile updated successfully' };
     }
@@ -470,14 +476,24 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "findAllController", null);
 __decorate([
+    (0, common_1.Get)('view-profile/:userId'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get user by id' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'User not found' }),
+    (0, common_1.UseGuards)(auth_gaurd_1.AuthGuard),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], UsersController.prototype, "viewProfileByIdController", null);
+__decorate([
     (0, swagger_1.ApiOkResponse)({ description: 'Get user by id' }),
     (0, swagger_1.ApiBadRequestResponse)({ description: 'User not found' }),
     (0, common_1.UseGuards)(auth_gaurd_1.AuthGuard),
     (0, common_1.Get)('view-profile'),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_c = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _c : Object]),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+    __metadata("design:paramtypes", [typeof (_d = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], UsersController.prototype, "viewProfileController", null);
 __decorate([
     (0, swagger_1.ApiOkResponse)({ description: 'Update success' }),
@@ -487,8 +503,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _e : Object, typeof (_f = typeof index_1.UpdateUserProfileDto !== "undefined" && index_1.UpdateUserProfileDto) === "function" ? _f : Object]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:paramtypes", [typeof (_f = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _f : Object, typeof (_g = typeof index_1.UpdateUserProfileDto !== "undefined" && index_1.UpdateUserProfileDto) === "function" ? _g : Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], UsersController.prototype, "updateProfileController", null);
 __decorate([
     (0, common_1.Patch)('update-avatar'),
@@ -511,8 +527,8 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _h : Object, typeof (_k = typeof Express !== "undefined" && (_j = Express.Multer) !== void 0 && _j.File) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [typeof (_j = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _j : Object, typeof (_l = typeof Express !== "undefined" && (_k = Express.Multer) !== void 0 && _k.File) === "function" ? _l : Object]),
+    __metadata("design:returntype", typeof (_m = typeof Promise !== "undefined" && Promise) === "function" ? _m : Object)
 ], UsersController.prototype, "updateAvatarController", null);
 __decorate([
     (0, common_1.Get)('search'),
@@ -521,11 +537,16 @@ __decorate([
     (0, casl_decorator_1.Subject)('user'),
     (0, swagger_1.ApiOkResponse)({ description: 'Search user success' }),
     (0, swagger_1.ApiBadRequestResponse)({ description: 'bad request' }),
-    (0, swagger_1.ApiQuery)({ name: 'searchKey', required: true, type: String, description: 'The search key' }),
+    (0, swagger_1.ApiQuery)({
+        name: 'searchKey',
+        required: true,
+        type: String,
+        description: 'The search key',
+    }),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_m = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _m : Object]),
-    __metadata("design:returntype", typeof (_o = typeof Promise !== "undefined" && Promise) === "function" ? _o : Object)
+    __metadata("design:paramtypes", [typeof (_o = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _o : Object]),
+    __metadata("design:returntype", typeof (_p = typeof Promise !== "undefined" && Promise) === "function" ? _p : Object)
 ], UsersController.prototype, "searchUserController", null);
 __decorate([
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
@@ -536,8 +557,8 @@ __decorate([
     (0, swagger_1.ApiBadRequestResponse)({ description: 'bad request' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_p = typeof index_1.BlockUserDto !== "undefined" && index_1.BlockUserDto) === "function" ? _p : Object]),
-    __metadata("design:returntype", typeof (_q = typeof Promise !== "undefined" && Promise) === "function" ? _q : Object)
+    __metadata("design:paramtypes", [typeof (_q = typeof index_1.BlockUserDto !== "undefined" && index_1.BlockUserDto) === "function" ? _q : Object]),
+    __metadata("design:returntype", typeof (_r = typeof Promise !== "undefined" && Promise) === "function" ? _r : Object)
 ], UsersController.prototype, "blockUserController", null);
 __decorate([
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
@@ -549,8 +570,8 @@ __decorate([
     (0, common_1.HttpCode)(200),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_r = typeof index_1.DeleteUserDto !== "undefined" && index_1.DeleteUserDto) === "function" ? _r : Object]),
-    __metadata("design:returntype", typeof (_s = typeof Promise !== "undefined" && Promise) === "function" ? _s : Object)
+    __metadata("design:paramtypes", [typeof (_s = typeof index_1.DeleteUserDto !== "undefined" && index_1.DeleteUserDto) === "function" ? _s : Object]),
+    __metadata("design:returntype", typeof (_t = typeof Promise !== "undefined" && Promise) === "function" ? _t : Object)
 ], UsersController.prototype, "deleteUserController", null);
 __decorate([
     (0, common_1.Patch)('attendance-user'),
@@ -559,8 +580,8 @@ __decorate([
     (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_t = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _t : Object]),
-    __metadata("design:returntype", typeof (_u = typeof Promise !== "undefined" && Promise) === "function" ? _u : Object)
+    __metadata("design:paramtypes", [typeof (_u = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _u : Object]),
+    __metadata("design:returntype", typeof (_v = typeof Promise !== "undefined" && Promise) === "function" ? _v : Object)
 ], UsersController.prototype, "attendanceUserController", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('users'),
@@ -620,6 +641,12 @@ let UsersService = class UsersService {
             .findOne({
             username,
         })
+            .exec();
+    }
+    async findOneUserForMessageService(userId) {
+        return this.userModel
+            .findOne({ _id: userId })
+            .select('firstname avatar lastname')
             .exec();
     }
     async findOneReTokenService(refreshToken) {
@@ -1907,10 +1934,21 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EncryptionService = void 0;
 const common_1 = __webpack_require__(6);
 const crypto = __webpack_require__(25);
+const fs = __webpack_require__(36);
 const ALGORITHM = 'aes-256-ecb';
 const ENCODING = 'base64';
 let EncryptionService = class EncryptionService {
-    constructor() { }
+    constructor() {
+        if (!fs.existsSync('private.pem') || !fs.existsSync('public.pem')) {
+            const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+                modulusLength: 2048,
+            });
+            fs.writeFileSync('private.pem', privateKey.export({ type: 'pkcs1', format: 'pem' }));
+            fs.writeFileSync('public.pem', publicKey.export({ type: 'spki', format: 'pem' }));
+        }
+        this.privateKey = fs.readFileSync('private.pem', 'utf8');
+        this.publicKey = fs.readFileSync('public.pem', 'utf8');
+    }
     createCipher(password) {
         return crypto.createCipheriv(ALGORITHM, password.substr(0, 32), '');
     }
@@ -1947,6 +1985,21 @@ let EncryptionService = class EncryptionService {
         let decryptedData = decipher.update(Buffer.from(data, ENCODING));
         decryptedData = Buffer.concat([decryptedData, decipher.final()]);
         return decryptedData.toString();
+    }
+    rsaEncrypt(text) {
+        const buffer = Buffer.from(text, 'utf8');
+        const encrypted = crypto.publicEncrypt(this.publicKey, buffer);
+        return encrypted.toString('base64');
+    }
+    rsaDecrypt(text) {
+        try {
+            const buffer = Buffer.from(text, 'base64');
+            const decrypted = crypto.privateDecrypt(this.privateKey, buffer);
+            return decrypted.toString('utf8');
+        }
+        catch (e) {
+            return text;
+        }
     }
 };
 exports.EncryptionService = EncryptionService;
@@ -5080,6 +5133,7 @@ let AuthService = class AuthService {
                 _id: accountHolder._id,
                 role: accountHolder.role,
                 isBlock: accountHolder.isBlock,
+                rankID: accountHolder.rankID,
                 sub: accountHolder._id,
             };
         }
@@ -7440,8 +7494,6 @@ let ScheduleService = class ScheduleService {
         const nowTime = new Date(new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
         const notificationTime = new Date(nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000);
         try {
-            console.log('nowTime', nowTime);
-            console.log('notificationTime', notificationTime);
             const nonLoopedSchedules = await this.scheduleModel.find({
                 userId,
                 isLoop: false,
@@ -10296,19 +10348,27 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EventGateway = void 0;
 const websockets_1 = __webpack_require__(141);
 const socket_io_1 = __webpack_require__(142);
 const auth_service_1 = __webpack_require__(82);
 const schedule_service_1 = __webpack_require__(111);
-const story_service_1 = __webpack_require__(144);
+const story_service_1 = __webpack_require__(143);
+const message_service_1 = __webpack_require__(145);
+const common_1 = __webpack_require__(6);
+const stream_1 = __webpack_require__(147);
+const users_service_1 = __webpack_require__(11);
+const encryption_service_1 = __webpack_require__(24);
 let EventGateway = class EventGateway {
-    constructor(authService, scheduleService, storyService) {
+    constructor(authService, scheduleService, storyService, messageService, usersService, encryptionService) {
         this.authService = authService;
         this.scheduleService = scheduleService;
         this.storyService = storyService;
+        this.messageService = messageService;
+        this.usersService = usersService;
+        this.encryptionService = encryptionService;
         this.clients = new Map();
         this.startConditionCheck();
         this.startConditionStoryCheck();
@@ -10373,15 +10433,66 @@ let EventGateway = class EventGateway {
             }
         }, 3600000);
     }
-    handleMessage(socket, data) {
-        console.log('Message received:', data);
-        const userId = socket.data?._id;
-        if (userId) {
-            this.server.to(userId).emit('message', 'Hello from the server!');
-        }
-        else {
+    async handleChat(socket, data) {
+        const senderId = socket.data?._id;
+        if (!senderId) {
             console.error('User ID is undefined');
+            throw new common_1.BadRequestException('User ID is undefined.');
         }
+        try {
+            let file = undefined;
+            if (data.file && data.fileName && data.fileType) {
+                file = await this.processFile({
+                    file: data.file,
+                    fileName: data.fileName,
+                    fileType: data.fileType,
+                });
+            }
+            const message = await this.messageService.saveMessage(senderId, data.receiverId, data.content, file);
+            const [detailsSender, detailsReceiver] = await Promise.all([
+                this.usersService.findOneUserForMessageService(senderId),
+                this.usersService.findOneUserForMessageService(data.receiverId),
+            ]);
+            const messageToSend = {
+                _id: message._id,
+                senderId: senderId,
+                receiverId: message.receiverId,
+                senderDetails: detailsSender,
+                receiverDetails: detailsReceiver,
+                content: message.content
+                    ? this.encryptionService.rsaDecrypt(message.content)
+                    : null,
+                image: message.image
+                    ? this.encryptionService.rsaDecrypt(message.image)
+                    : null,
+                createdAt: message.createdAt,
+            };
+            this.server.to(data.receiverId).emit('chat', messageToSend);
+            this.server.to(senderId).emit('chat', messageToSend);
+        }
+        catch (error) {
+            console.error('Error saving message:', error);
+            throw new common_1.BadRequestException('Failed to save message.');
+        }
+    }
+    async processFile(data) {
+        const base64Data = data.file.split(',')[1];
+        const fileBuffer = Buffer.from(base64Data, 'base64');
+        const readableInstanceStream = new stream_1.Readable();
+        readableInstanceStream.push(fileBuffer);
+        readableInstanceStream.push(null);
+        return {
+            buffer: fileBuffer,
+            originalname: data.fileName,
+            mimetype: data.fileType,
+            fieldname: '',
+            encoding: '',
+            size: fileBuffer.length,
+            stream: readableInstanceStream,
+            destination: '',
+            filename: '',
+            path: '',
+        };
     }
     async checkConditionAndNotifyClients() {
         for (const [socketId, client] of this.clients.entries()) {
@@ -10411,19 +10522,19 @@ let EventGateway = class EventGateway {
 exports.EventGateway = EventGateway;
 __decorate([
     (0, websockets_1.WebSocketServer)(),
-    __metadata("design:type", typeof (_d = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _d : Object)
+    __metadata("design:type", typeof (_g = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _g : Object)
 ], EventGateway.prototype, "server", void 0);
 __decorate([
-    (0, websockets_1.SubscribeMessage)('message'),
+    (0, websockets_1.SubscribeMessage)('chat'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _e : Object, Object]),
-    __metadata("design:returntype", void 0)
-], EventGateway.prototype, "handleMessage", null);
+    __metadata("design:paramtypes", [typeof (_h = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _h : Object, Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], EventGateway.prototype, "handleChat", null);
 exports.EventGateway = EventGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: true }),
-    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object, typeof (_c = typeof story_service_1.StoryService !== "undefined" && story_service_1.StoryService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object, typeof (_c = typeof story_service_1.StoryService !== "undefined" && story_service_1.StoryService) === "function" ? _c : Object, typeof (_d = typeof message_service_1.MessageService !== "undefined" && message_service_1.MessageService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _f : Object])
 ], EventGateway);
 
 
@@ -10453,42 +10564,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.StoryModule = void 0;
-const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(144);
-const story_controller_1 = __webpack_require__(146);
-const mongoose_1 = __webpack_require__(7);
-const story_schema_1 = __webpack_require__(145);
-const cloudinary_module_1 = __webpack_require__(51);
-let StoryModule = class StoryModule {
-};
-exports.StoryModule = StoryModule;
-exports.StoryModule = StoryModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            mongoose_1.MongooseModule.forFeature([{ name: story_schema_1.Story.name, schema: story_schema_1.StorySchema }]),
-            cloudinary_module_1.CloudinaryModule
-        ],
-        controllers: [story_controller_1.StoryController],
-        providers: [story_service_1.StoryService],
-        exports: [story_service_1.StoryService]
-    })
-], StoryModule);
-
-
-/***/ }),
-/* 144 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -10501,7 +10576,7 @@ exports.StoryService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const story_schema_1 = __webpack_require__(145);
+const story_schema_1 = __webpack_require__(144);
 const cloudinary_service_1 = __webpack_require__(14);
 let StoryService = class StoryService {
     constructor(storyModel, cloudinaryService) {
@@ -10593,7 +10668,7 @@ exports.StoryService = StoryService = __decorate([
 
 
 /***/ }),
-/* 145 */
+/* 144 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10638,7 +10713,196 @@ exports.StorySchema = mongoose_1.SchemaFactory.createForClass(Story);
 
 
 /***/ }),
+/* 145 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageService = void 0;
+const common_1 = __webpack_require__(6);
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const message_schema_1 = __webpack_require__(146);
+const cloudinary_service_1 = __webpack_require__(14);
+const encryption_service_1 = __webpack_require__(24);
+let MessageService = class MessageService {
+    constructor(messageModel, cloudinaryService, encryptionService) {
+        this.messageModel = messageModel;
+        this.cloudinaryService = cloudinaryService;
+        this.encryptionService = encryptionService;
+    }
+    async saveMessage(senderId, receiverId, content, file) {
+        try {
+            console.log(`Saving message from ${senderId} to ${receiverId}`);
+            let image;
+            if (file) {
+                const imageFile = await this.cloudinaryService.uploadImageService(file);
+                image = this.encryptionService.rsaEncrypt(imageFile.url);
+            }
+            if (!content && !image) {
+                throw new common_1.BadRequestException('Message content or image must be provided.');
+            }
+            const messageData = { senderId, receiverId };
+            if (content)
+                messageData.content = this.encryptionService.rsaEncrypt(content);
+            if (image)
+                messageData.image = image;
+            const message = new this.messageModel(messageData);
+            return message.save();
+        }
+        catch (error) {
+            console.error("Error saving message:", error);
+            throw new common_1.BadRequestException(error.message);
+        }
+    }
+    async getMessagesForUser(userId) {
+        try {
+            const messages = await this.messageModel.find({ $or: [{ senderId: userId }, { receiverId: userId }] });
+            return messages.map(message => {
+                if (message.content)
+                    message.content = this.encryptionService.rsaDecrypt(message.content);
+                if (message.image)
+                    message.image = this.encryptionService.rsaDecrypt(message.image);
+                return message;
+            });
+        }
+        catch (error) {
+            console.error("Error getting messages:", error);
+            throw new common_1.BadRequestException(error.message);
+        }
+    }
+    async deleteMessage(messageId, userId) {
+        try {
+            const message = await this.messageModel.findOneAndDelete({ _id: messageId, $or: [{ senderId: userId }, { receiverId: userId }] });
+            if (message.image)
+                await this.cloudinaryService.deleteImageService(message.image);
+            return message;
+        }
+        catch (error) {
+            console.error("Error deleting message:", error);
+            throw new common_1.BadRequestException(error.message);
+        }
+    }
+};
+exports.MessageService = MessageService;
+exports.MessageService = MessageService = __decorate([
+    (0, common_1.Injectable)(),
+    __param(0, (0, mongoose_1.InjectModel)(message_schema_1.Message.name)),
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object, typeof (_c = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _c : Object])
+], MessageService);
+
+
+/***/ }),
 /* 146 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageSchema = exports.Message = void 0;
+const mongoose_1 = __webpack_require__(7);
+const mongoose_2 = __webpack_require__(12);
+const mongoose_3 = __webpack_require__(12);
+let Message = class Message extends mongoose_2.Document {
+};
+exports.Message = Message;
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    __metadata("design:type", String)
+], Message.prototype, "senderId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    __metadata("design:type", String)
+], Message.prototype, "receiverId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, }),
+    __metadata("design:type", String)
+], Message.prototype, "content", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, }),
+    __metadata("design:type", String)
+], Message.prototype, "image", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.Date, required: true, default: Date.now }),
+    __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
+], Message.prototype, "createdAt", void 0);
+exports.Message = Message = __decorate([
+    (0, mongoose_1.Schema)()
+], Message);
+exports.MessageSchema = mongoose_1.SchemaFactory.createForClass(Message);
+
+
+/***/ }),
+/* 147 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("stream");
+
+/***/ }),
+/* 148 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.StoryModule = void 0;
+const common_1 = __webpack_require__(6);
+const story_service_1 = __webpack_require__(143);
+const story_controller_1 = __webpack_require__(149);
+const mongoose_1 = __webpack_require__(7);
+const story_schema_1 = __webpack_require__(144);
+const cloudinary_module_1 = __webpack_require__(51);
+const rank_module_1 = __webpack_require__(117);
+let StoryModule = class StoryModule {
+};
+exports.StoryModule = StoryModule;
+exports.StoryModule = StoryModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            rank_module_1.RankModule,
+            mongoose_1.MongooseModule.forFeature([{ name: story_schema_1.Story.name, schema: story_schema_1.StorySchema }]),
+            cloudinary_module_1.CloudinaryModule
+        ],
+        controllers: [story_controller_1.StoryController],
+        providers: [story_service_1.StoryService],
+        exports: [story_service_1.StoryService]
+    })
+], StoryModule);
+
+
+/***/ }),
+/* 149 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10659,12 +10923,13 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryController = void 0;
 const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(144);
-const story_dto_1 = __webpack_require__(147);
+const story_service_1 = __webpack_require__(143);
+const story_dto_1 = __webpack_require__(150);
 const member_gaurd_1 = __webpack_require__(50);
 const jwt = __webpack_require__(31);
 const swagger_1 = __webpack_require__(30);
 const platform_express_1 = __webpack_require__(32);
+const rank_gaurd_1 = __webpack_require__(151);
 let StoryController = class StoryController {
     constructor(storyService) {
         this.storyService = storyService;
@@ -10693,7 +10958,7 @@ let StoryController = class StoryController {
 exports.StoryController = StoryController;
 __decorate([
     (0, common_1.Post)(),
-    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, common_1.UseGuards)(rank_gaurd_1.RankGuard),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, swagger_1.ApiConsumes)('multipart/form-data'),
     (0, swagger_1.ApiBody)({
@@ -10764,7 +11029,7 @@ exports.StoryController = StoryController = __decorate([
 
 
 /***/ }),
-/* 147 */
+/* 150 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10795,6 +11060,175 @@ __decorate([
     (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], StoryDto.prototype, "title", void 0);
+
+
+/***/ }),
+/* 151 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RankGuard = void 0;
+const common_1 = __webpack_require__(6);
+const jwt_1 = __webpack_require__(29);
+const rank_service_1 = __webpack_require__(118);
+const auth_gaurd_1 = __webpack_require__(28);
+let RankGuard = class RankGuard extends auth_gaurd_1.AuthGuard {
+    constructor(jwtService, rankService) {
+        super(jwtService);
+        this.rankService = rankService;
+    }
+    async canActivate(context) {
+        const canActivate = await super.canActivate(context);
+        if (!canActivate) {
+            return false;
+        }
+        const request = context.switchToHttp().getRequest();
+        const { role, isBlock, rankID } = request.user;
+        if (role !== 'member' || isBlock) {
+            throw new common_1.UnauthorizedException('Access denied: Invalid role or user is blocked.');
+        }
+        try {
+            const rank = await this.rankService.getRankDetailService(rankID);
+            if (rank.rankName !== 'Gold') {
+                throw new common_1.UnauthorizedException('Access restricted: Gold membership required.');
+            }
+        }
+        catch (error) {
+            throw new common_1.UnauthorizedException('Access denied: Unable to verify user rank.');
+        }
+        return true;
+    }
+};
+exports.RankGuard = RankGuard;
+exports.RankGuard = RankGuard = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof jwt_1.JwtService !== "undefined" && jwt_1.JwtService) === "function" ? _a : Object, typeof (_b = typeof rank_service_1.RankService !== "undefined" && rank_service_1.RankService) === "function" ? _b : Object])
+], RankGuard);
+
+
+/***/ }),
+/* 152 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageModule = void 0;
+const common_1 = __webpack_require__(6);
+const message_service_1 = __webpack_require__(145);
+const message_controller_1 = __webpack_require__(153);
+const mongoose_1 = __webpack_require__(7);
+const message_schema_1 = __webpack_require__(146);
+const cloudinary_module_1 = __webpack_require__(51);
+const encryption_module_1 = __webpack_require__(79);
+let MessageModule = class MessageModule {
+};
+exports.MessageModule = MessageModule;
+exports.MessageModule = MessageModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            encryption_module_1.EncryptionModule,
+            cloudinary_module_1.CloudinaryModule,
+            mongoose_1.MongooseModule.forFeature([{ name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema }]),
+        ],
+        controllers: [message_controller_1.MessageController],
+        providers: [message_service_1.MessageService],
+        exports: [message_service_1.MessageService],
+    })
+], MessageModule);
+
+
+/***/ }),
+/* 153 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+var _a, _b, _c, _d, _e;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageController = void 0;
+const common_1 = __webpack_require__(6);
+const message_service_1 = __webpack_require__(145);
+const jwt = __webpack_require__(31);
+const swagger_1 = __webpack_require__(30);
+let MessageController = class MessageController {
+    constructor(messageService) {
+        this.messageService = messageService;
+    }
+    getUserIdFromToken(request) {
+        const token = request.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.decode(token);
+        return decodedToken._id;
+    }
+    async deleteMessageController(messageId, request) {
+        const userId = this.getUserIdFromToken(request);
+        return this.messageService.deleteMessage(messageId, userId);
+    }
+    async getMessagesForUserController(request) {
+        const userId = this.getUserIdFromToken(request);
+        return this.messageService.getMessagesForUser(userId);
+    }
+};
+exports.MessageController = MessageController;
+__decorate([
+    (0, common_1.Delete)(':messageId'),
+    (0, swagger_1.ApiOkResponse)({
+        description: 'The record has been successfully deleted',
+    }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
+    __param(0, (0, common_1.Param)('messageId')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, typeof (_b = typeof Request !== "undefined" && Request) === "function" ? _b : Object]),
+    __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
+], MessageController.prototype, "deleteMessageController", null);
+__decorate([
+    (0, common_1.Get)('get-messages'),
+    (0, swagger_1.ApiOkResponse)({
+        description: 'The messages have been successfully retrieved',
+    }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_d = typeof Request !== "undefined" && Request) === "function" ? _d : Object]),
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+], MessageController.prototype, "getMessagesForUserController", null);
+exports.MessageController = MessageController = __decorate([
+    (0, swagger_1.ApiTags)('message'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.Controller)('message'),
+    __metadata("design:paramtypes", [typeof (_a = typeof message_service_1.MessageService !== "undefined" && message_service_1.MessageService) === "function" ? _a : Object])
+], MessageController);
 
 
 /***/ })
@@ -10859,7 +11293,7 @@ __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("9a46d4ea629e694d54ff")
+/******/ 		__webpack_require__.h = () => ("1b542f0f3dbd3c29f974")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

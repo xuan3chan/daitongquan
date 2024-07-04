@@ -180,8 +180,8 @@ export class ScheduleService {
     );
 
     try {
-      console.log('nowTime', nowTime);
-      console.log('notificationTime', notificationTime);
+      // console.log('nowTime', nowTime);
+      // console.log('notificationTime', notificationTime);
 
       const nonLoopedSchedules = await this.scheduleModel.find({
         userId,

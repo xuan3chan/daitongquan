@@ -32,6 +32,7 @@ export class AuthService {
         _id: accountHolder._id,
         role: accountHolder.role,
         isBlock: accountHolder.isBlock,
+        rankID: accountHolder.rankID,
         sub: accountHolder._id,
       };
     } else {
@@ -43,6 +44,7 @@ export class AuthService {
         email: accountHolder.email,
         fullname: accountHolder.fullname,
         role: roles,
+       
       };
     }
   }

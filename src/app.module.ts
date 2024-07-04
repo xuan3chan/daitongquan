@@ -25,6 +25,7 @@ import { ReportModule } from './report/report.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { EventGateway } from './event.gateway';
 import { StoryModule } from './story/story.module';
+import { MessageModule } from './message/message.module';
 @Module({
   imports: [
     
@@ -53,6 +54,7 @@ import { StoryModule } from './story/story.module';
     ReportModule,
     StatisticsModule,
     StoryModule,
+    MessageModule,
   ],
   controllers: [
     AppController
