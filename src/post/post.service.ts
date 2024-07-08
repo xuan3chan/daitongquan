@@ -26,8 +26,8 @@ export class PostService {
       content,
     });
     if (file) {
-      const { url } = await this.cloudinaryService.uploadImageService(file);
-      post.postImage = url;
+      const { uploadResult } = await this.cloudinaryService.uploadImageService(content,file);
+      post.postImage = uploadResult.url;
     }
     await this.usersService.updateScoreRankService(userId, true);
     return await post.save();
@@ -49,9 +49,9 @@ export class PostService {
       post.content = content;
     }
     if (file) {
-      await this.cloudinaryService.deleteImageService(post.postImage);
-      const { url } = await this.cloudinaryService.uploadImageService(file);
-      post.postImage = url;
+      await this.cloudinaryService.deleteMediaService(post.postImage);
+      const {uploadResult} = await this.cloudinaryService.uploadImageService(post.content,file);
+      post.postImage = uploadResult.url;
     }
     if (isShow) {
       post.isShow = isShow;
@@ -64,7 +64,7 @@ export class PostService {
     if (!post) {
       throw new BadRequestException('Post not found');
     }
-    await this.cloudinaryService.deleteImageService(post.postImage);
+    await this.cloudinaryService.deleteMediaService(post.postImage);
     return await this.postModel.findByIdAndDelete(postId);
   }
 
@@ -81,7 +81,7 @@ export class PostService {
       throw new BadRequestException('Posts not found');
     }
     posts.forEach(async (post) => {
-      await this.cloudinaryService.deleteImageService(post.postImage);
+      await this.cloudinaryService.deleteMediaService(post.postImage);
     });
     await this.postModel.deleteMany({ _id: { $in: postIds } });
     return posts;

@@ -21,8 +21,8 @@ export class MessageService {
         console.log(`Saving message from ${senderId} to ${receiverId}`);
         let image: string | undefined;
         if (file) {
-          const imageFile = await this.cloudinaryService.uploadImageService(file);
-          image = this.encryptionService.rsaEncrypt(imageFile.url);
+          const imageFile = await this.cloudinaryService.uploadImageService(senderId.toString(),file);
+          image = this.encryptionService.rsaEncrypt(imageFile.uploadResult.url);
           
         }
 
@@ -60,7 +60,7 @@ export class MessageService {
       async deleteMessage(messageId: string, userId: string): Promise<Message> {
         try {
         const message = await this.messageModel.findOneAndDelete({ _id: messageId, $or: [{ senderId: userId }, { receiverId: userId }] });
-        if (message.image) await this.cloudinaryService.deleteImageService(message.image);       
+        if (message.image) await this.cloudinaryService.deleteMediaService(message.image);       
         return message;
         }catch (error) {
           console.error("Error deleting message:", error);

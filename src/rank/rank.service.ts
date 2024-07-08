@@ -7,8 +7,7 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 @Injectable()
 export class RankService {
   constructor(
-    @InjectModel(Rank.name)
-    private RankModel: Model<Rank>,
+    @InjectModel(Rank.name) private RankModel: Model<Rank>,
     private cloudinaryService: CloudinaryService,
   ) {}
 
@@ -24,24 +23,17 @@ export class RankService {
     if (existedRank) {
       throw new BadRequestException('Rank existed');
     }
-    const rankScoreGoal =
-      attendanceScore + numberOfComment + numberOfBlog + numberOfLike;
-
-    const img = await this.cloudinaryService.uploadImageService(file);
-    const rankIcon = img.url;
+    const rankScoreGoal = this.calculateRankScoreGoal(attendanceScore, numberOfComment, numberOfBlog, numberOfLike);
+    const rankIcon = await this.uploadRankIcon(rankName, file);
     const rank = new this.RankModel({
       rankName,
       rankScoreGoal,
-      score: {
-        attendanceScore,
-        numberOfComment,
-        numberOfBlog,
-        numberOfLike,
-      },
+      score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
       rankIcon,
     });
     return rank.save();
   }
+
   async updateRankService(
     rankId: string,
     rankName?: string,
@@ -55,49 +47,52 @@ export class RankService {
     if (!existedRank) {
       throw new BadRequestException('Rank not found');
     }
-    if (rankName) {
-      existedRank.rankName = rankName;
-    }
-    if (attendanceScore) {
-      existedRank.score.attendanceScore = attendanceScore;
-    }
-    if (numberOfComment) {
-      existedRank.score.numberOfComment = numberOfComment;
-    }
-    if (numberOfBlog) {
-      existedRank.score.numberOfBlog = numberOfBlog;
-    }
-    if (numberOfLike) {
-      existedRank.score.numberOfLike = numberOfLike;
-    }
+    this.updateRankDetails(existedRank, { rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike });
     if (file) {
-      await this.cloudinaryService.deleteImageService(existedRank.rankIcon);
-      const img = await this.cloudinaryService.uploadImageService(file);
-      existedRank.rankIcon = img.url;
+      await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
+      existedRank.rankIcon = await this.uploadRankIcon(existedRank.rankName, file);
     }
-    // Recalculate rankScoreGoal
-    existedRank.rankScoreGoal =
-      (existedRank.score.attendanceScore || 0) +
-      (existedRank.score.numberOfComment || 0) +
-      (existedRank.score.numberOfBlog || 0) +
-      (existedRank.score.numberOfLike || 0);
+    existedRank.rankScoreGoal = this.calculateRankScoreGoal(
+      existedRank.score.attendanceScore,
+      existedRank.score.numberOfComment,
+      existedRank.score.numberOfBlog,
+      existedRank.score.numberOfLike,
+    );
     return existedRank.save();
   }
+
   async deleteRankService(rankId: string): Promise<any> {
-    console.log(rankId);
     const existedRank = await this.RankModel.findOne({ _id: rankId });
-  if (!existedRank) {
+    if (!existedRank) {
       throw new BadRequestException('Rank not found');
     }
-    await this.cloudinaryService.deleteImageService(existedRank.rankIcon);
+    await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
     await existedRank.deleteOne();
     return { message: 'Delete rank successfully' };
   }
+
   async getRankService(): Promise<Rank[]> {
     return this.RankModel.find();
   }
-  async getRankDetailService(rankId: string): Promise<Rank> {
-    return this.RankModel.findOne({_id: rankId });
-}
 
+  async getRankDetailService(rankId: string): Promise<Rank> {
+    return this.RankModel.findOne({ _id: rankId });
+  }
+
+  private calculateRankScoreGoal(attendanceScore: number, numberOfComment: number, numberOfBlog: number, numberOfLike: number): number {
+    return attendanceScore + numberOfComment + numberOfBlog + numberOfLike;
+  }
+
+  private async uploadRankIcon(rankName: string, file: Express.Multer.File): Promise<string> {
+    const fileResult = await this.cloudinaryService.uploadImageService(rankName, file);
+    return fileResult.uploadResult.url;
+  }
+
+  private updateRankDetails(rank: Rank, details: { rankName?: string; attendanceScore?: number; numberOfComment?: number; numberOfBlog?: number; numberOfLike?: number }) {
+    if (details.rankName) rank.rankName = details.rankName;
+    if (details.attendanceScore) rank.score.attendanceScore = details.attendanceScore;
+    if (details.numberOfComment) rank.score.numberOfComment = details.numberOfComment;
+    if (details.numberOfBlog) rank.score.numberOfBlog = details.numberOfBlog;
+    if (details.numberOfLike) rank.score.numberOfLike = details.numberOfLike;
+  }
 }

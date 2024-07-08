@@ -17,6 +17,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Readable } from 'stream';
 import { UsersService } from './users/users.service';
 import { EncryptionService } from './encryption/encryption.service';
+import {MailerService} from './mailer/mailer.service';
 
 @WebSocketGateway({ cors: true })
 export class EventGateway
@@ -33,6 +34,7 @@ export class EventGateway
     private readonly messageService: MessageService,
     private readonly usersService: UsersService,
     private readonly encryptionService: EncryptionService,
+    private readonly mailerService: MailerService,
   ) {
     this.startConditionCheck();
     this.startConditionStoryCheck();
@@ -210,8 +212,8 @@ export class EventGateway
             console.log('Schedules updated for user:', userId);
             this.server.to(userId).emit('schedules', schedules);
             client.lastSchedules = schedules;
+            this.mailerService.sendEmailNotification(userId, schedules);
           } else {
-            console.log('Schedules not changed for user', userId);
           }
         } catch (error) {
           console.error('Error getting schedules for user', userId, ':', error);

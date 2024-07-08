@@ -191,7 +191,7 @@ export class UsersService {
   async updateAvatarService(_id: string, avatar: string): Promise<User> {
     // tim url avatar cũ
     const user = await this.userModel.findOne({ _id }).exec();
-    const deleteAvatar = this.cloudinaryService.deleteImageService(user.avatar);
+    const deleteAvatar = this.cloudinaryService.deleteMediaService(user.avatar);
     if (!deleteAvatar) {
       return null;
     }

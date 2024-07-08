@@ -1,107 +1,91 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { v2, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
+import { v2 as cloudinary, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
 import * as streamifier from 'streamifier';
-import * as ffmpeg from 'fluent-ffmpeg';
+
 @Injectable()
 export class CloudinaryService {
   constructor() {
-    v2.config({
+    cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
   }
 
-async uploadImageService(
+  private async uploadFile(
     file: Express.Multer.File,
-): Promise<UploadApiResponse | UploadApiErrorResponse> {
+    options: object,
+  ): Promise<UploadApiResponse | UploadApiErrorResponse> {
     return new Promise((resolve, reject) => {
-        // Check if the file is an image
-        if (!file.mimetype.startsWith('image/')) {
-            reject(new BadRequestException('File is not an image.'));
-            return;
-        }
-
-        // Check if the file size is less than 100MB
-        const fileSizeInMB = file.size / (1024 * 1024);
-        if (fileSizeInMB > 100) {
-            reject(new BadRequestException('File size exceeds the 100MB limit.'));
-            return;
-        }
-
-        const uploadStream = v2.uploader.upload_stream(
-            { folder: 'daitongquan' },
-            (error, result) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(result);
-                }
-            },
-        );
-
-        streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
-}
-  async deleteImageService(url: string) {
-    // Extract the publicId from the URL
-    //e.g. 'http://res.cloudinary.com/dtvhqvucg/image/upload/v1715938535/daitongquan/putnzqkzwviqwfuwlnfx.png'
-    // => 'daitongquan/putnzqkzwviqwfuwlnfx'
-    const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-    console.log(publicId);
-    return new Promise((resolve, reject) => {
-      v2.uploader.destroy(publicId, (error, result) => {
+      const uploadStream = cloudinary.uploader.upload_stream(options, (error, result) => {
         if (error) {
           reject(error);
         } else {
           resolve(result);
         }
       });
-    });
-  }
-  async deleteManyImagesService(urls: string[]) {
-    return Promise.all(urls.map((url) => this.deleteImageService(url)));
-  }
 
-  async uploadVideoService(
-    file: Express.Multer.File,
-  ): Promise<UploadApiResponse | UploadApiErrorResponse> {
-    return new Promise((resolve, reject) => {
-      // Check if the file is a video
-      if (!file.mimetype.startsWith('video/')) {
-        reject(new BadRequestException('File is not a video.'));
-        return;
-      }
-  
-      // Check if the file size is less than 100MB
-      const fileSizeInMB = file.size / (1024 * 1024);
-      if (fileSizeInMB > 100) {
-        reject(new BadRequestException('File size exceeds the 100MB limit.'));
-        return;
-      }
-  
-      const uploadStream = v2.uploader.upload_stream(
-        { resource_type: 'video', folder: 'daitongquan' },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        },
-      );
-  
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
   }
-  async deletMediaService(url: string) {
-    // Extract the publicId from the URL
-    //e.g. 'http://res.cloudinary.com/dtvhqvucg/image/upload/v1715938535/daitongquan/putnzqkzwviqwfuwlnfx.png'
-    // => 'daitongquan/putnzqkzwviqwfuwlnfx'
+
+  private validateFile(
+    file: Express.Multer.File,
+    type: 'image' | 'video',
+    maxSizeMB: number = 100,
+  ): void {
+    if (!file.mimetype.startsWith(type + '/')) {
+      throw new BadRequestException(`File is not a ${type}.`);
+    }
+
+    const fileSizeInMB = file.size / (1024 * 1024);
+    if (fileSizeInMB > maxSizeMB) {
+      throw new BadRequestException(`File size exceeds the ${maxSizeMB}MB limit.`);
+    }
+  }
+
+  async uploadImageService(
+    imageName: string,
+    file: Express.Multer.File,
+  ): Promise<{
+    uploadResult: UploadApiResponse | UploadApiErrorResponse,
+  }> {
+    const timestamp = new Date();
+    this.validateFile(file, 'image');
+    const publicId = `daitongquan/images/${imageName}-${timestamp.getTime()}`;
+    const uploadResult = await this.uploadFile(file, { public_id: publicId });
+
+
+    return { uploadResult };
+  }
+
+  async uploadVideoService(
+    videoName: string,
+    file: Express.Multer.File,
+  ): Promise<{
+    uploadResult: UploadApiResponse | UploadApiErrorResponse,
+    optimizedUrl: string
+  }> {
+    this.validateFile(file, 'video');
+    const publicId = `daitongquan/videos/${videoName}`;
+    const uploadResult = await this.uploadFile(file, { public_id: publicId, resource_type: 'video' });
+
+    const optimizedUrl = cloudinary.url(publicId, {
+      transformation: [
+        { width: 1000, crop: "scale" },
+        { quality: "auto" },
+        { fetch_format: "auto" }
+      ],
+      resource_type: 'video',
+    });
+
+    return { uploadResult, optimizedUrl };
+  }
+
+  async deleteMediaService(url: string): Promise<UploadApiResponse | UploadApiErrorResponse> {
     const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-    console.log(publicId);
     return new Promise((resolve, reject) => {
-      v2.uploader.destroy(publicId, (error, result) => {
+      cloudinary.uploader.destroy(publicId, (error, result) => {
         if (error) {
           reject(error);
         } else {
@@ -111,5 +95,7 @@ async uploadImageService(
     });
   }
 
+  async deleteManyImagesService(urls: string[]): Promise<void> {
+    await Promise.all(urls.map((url) => this.deleteMediaService(url)));
+  }
 }
-

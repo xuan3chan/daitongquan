@@ -143,9 +143,8 @@ export class UsersController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ message: string }> {
     const userId = this.getUserIdFromToken(request);
-    const uploadResult = await this.cloudinaryService.uploadImageService(file);
-    await this.usersService.updateAvatarService(userId, uploadResult.url);
-    console.log('file', uploadResult);
+    const fileResult = await this.cloudinaryService.uploadImageService(userId.toString(),file);
+    await this.usersService.updateAvatarService(userId,fileResult.uploadResult.url);
     return { message: 'Avatar updated successfully' };
   }
 

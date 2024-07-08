@@ -193,7 +193,7 @@ module.exports = function (updatedModules, renewedModules) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core_1 = __webpack_require__(4);
 const app_module_1 = __webpack_require__(5);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const common_1 = __webpack_require__(6);
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
@@ -349,11 +349,11 @@ const mongoose_1 = __webpack_require__(7);
 const user_schema_1 = __webpack_require__(13);
 const config_1 = __webpack_require__(8);
 const cloudinary_module_1 = __webpack_require__(51);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const category_module_1 = __webpack_require__(52);
 const admin_module_1 = __webpack_require__(67);
 const encryption_module_1 = __webpack_require__(79);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 let UsersModule = class UsersModule {
 };
 exports.UsersModule = UsersModule;
@@ -400,12 +400,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersController = void 0;
 const common_1 = __webpack_require__(6);
 const users_service_1 = __webpack_require__(11);
-const auth_gaurd_1 = __webpack_require__(28);
-const swagger_1 = __webpack_require__(30);
-const jwt = __webpack_require__(31);
-const platform_express_1 = __webpack_require__(32);
+const auth_gaurd_1 = __webpack_require__(29);
+const swagger_1 = __webpack_require__(31);
+const jwt = __webpack_require__(32);
+const platform_express_1 = __webpack_require__(33);
 const cloudinary_service_1 = __webpack_require__(14);
-const permission_gaurd_1 = __webpack_require__(33);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 const express_1 = __webpack_require__(43);
 const index_1 = __webpack_require__(44);
@@ -440,9 +440,8 @@ let UsersController = class UsersController {
     }
     async updateAvatarController(request, file) {
         const userId = this.getUserIdFromToken(request);
-        const uploadResult = await this.cloudinaryService.uploadImageService(file);
-        await this.usersService.updateAvatarService(userId, uploadResult.url);
-        console.log('file', uploadResult);
+        const fileResult = await this.cloudinaryService.uploadImageService(userId.toString(), file);
+        await this.usersService.updateAvatarService(userId, fileResult.uploadResult.url);
         return { message: 'Avatar updated successfully' };
     }
     async searchUserController(request) {
@@ -620,7 +619,7 @@ const cloudinary_service_1 = __webpack_require__(14);
 const remove_accents_1 = __webpack_require__(17);
 const category_service_1 = __webpack_require__(18);
 const encryption_service_1 = __webpack_require__(24);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 let UsersService = class UsersService {
     constructor(cloudinaryService, userModel, rankModel, categoryService, encryptionService) {
         this.cloudinaryService = cloudinaryService;
@@ -740,7 +739,7 @@ let UsersService = class UsersService {
     }
     async updateAvatarService(_id, avatar) {
         const user = await this.userModel.findOne({ _id }).exec();
-        const deleteAvatar = this.cloudinaryService.deleteImageService(user.avatar);
+        const deleteAvatar = this.cloudinaryService.deleteMediaService(user.avatar);
         if (!deleteAvatar) {
             return null;
         }
@@ -1073,18 +1072,9 @@ let CloudinaryService = class CloudinaryService {
             api_secret: process.env.CLOUDINARY_API_SECRET,
         });
     }
-    async uploadImageService(file) {
+    async uploadFile(file, options) {
         return new Promise((resolve, reject) => {
-            if (!file.mimetype.startsWith('image/')) {
-                reject(new common_1.BadRequestException('File is not an image.'));
-                return;
-            }
-            const fileSizeInMB = file.size / (1024 * 1024);
-            if (fileSizeInMB > 100) {
-                reject(new common_1.BadRequestException('File size exceeds the 100MB limit.'));
-                return;
-            }
-            const uploadStream = cloudinary_1.v2.uploader.upload_stream({ folder: 'daitongquan' }, (error, result) => {
+            const uploadStream = cloudinary_1.v2.uploader.upload_stream(options, (error, result) => {
                 if (error) {
                     reject(error);
                 }
@@ -1095,9 +1085,38 @@ let CloudinaryService = class CloudinaryService {
             streamifier.createReadStream(file.buffer).pipe(uploadStream);
         });
     }
-    async deleteImageService(url) {
+    validateFile(file, type, maxSizeMB = 100) {
+        if (!file.mimetype.startsWith(type + '/')) {
+            throw new common_1.BadRequestException(`File is not a ${type}.`);
+        }
+        const fileSizeInMB = file.size / (1024 * 1024);
+        if (fileSizeInMB > maxSizeMB) {
+            throw new common_1.BadRequestException(`File size exceeds the ${maxSizeMB}MB limit.`);
+        }
+    }
+    async uploadImageService(imageName, file) {
+        const timestamp = new Date();
+        this.validateFile(file, 'image');
+        const publicId = `daitongquan/images/${imageName}-${timestamp.getTime()}`;
+        const uploadResult = await this.uploadFile(file, { public_id: publicId });
+        return { uploadResult };
+    }
+    async uploadVideoService(videoName, file) {
+        this.validateFile(file, 'video');
+        const publicId = `daitongquan/videos/${videoName}`;
+        const uploadResult = await this.uploadFile(file, { public_id: publicId, resource_type: 'video' });
+        const optimizedUrl = cloudinary_1.v2.url(publicId, {
+            transformation: [
+                { width: 1000, crop: "scale" },
+                { quality: "auto" },
+                { fetch_format: "auto" }
+            ],
+            resource_type: 'video',
+        });
+        return { uploadResult, optimizedUrl };
+    }
+    async deleteMediaService(url) {
         const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-        console.log(publicId);
         return new Promise((resolve, reject) => {
             cloudinary_1.v2.uploader.destroy(publicId, (error, result) => {
                 if (error) {
@@ -1110,43 +1129,7 @@ let CloudinaryService = class CloudinaryService {
         });
     }
     async deleteManyImagesService(urls) {
-        return Promise.all(urls.map((url) => this.deleteImageService(url)));
-    }
-    async uploadVideoService(file) {
-        return new Promise((resolve, reject) => {
-            if (!file.mimetype.startsWith('video/')) {
-                reject(new common_1.BadRequestException('File is not a video.'));
-                return;
-            }
-            const fileSizeInMB = file.size / (1024 * 1024);
-            if (fileSizeInMB > 100) {
-                reject(new common_1.BadRequestException('File size exceeds the 100MB limit.'));
-                return;
-            }
-            const uploadStream = cloudinary_1.v2.uploader.upload_stream({ resource_type: 'video', folder: 'daitongquan' }, (error, result) => {
-                if (error) {
-                    reject(error);
-                }
-                else {
-                    resolve(result);
-                }
-            });
-            streamifier.createReadStream(file.buffer).pipe(uploadStream);
-        });
-    }
-    async deletMediaService(url) {
-        const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-        console.log(publicId);
-        return new Promise((resolve, reject) => {
-            cloudinary_1.v2.uploader.destroy(publicId, (error, result) => {
-                if (error) {
-                    reject(error);
-                }
-                else {
-                    resolve(result);
-                }
-            });
-        });
+        await Promise.all(urls.map((url) => this.deleteMediaService(url)));
     }
 };
 exports.CloudinaryService = CloudinaryService;
@@ -1934,7 +1917,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EncryptionService = void 0;
 const common_1 = __webpack_require__(6);
 const crypto = __webpack_require__(25);
-const fs = __webpack_require__(36);
+const fs = __webpack_require__(26);
 const ALGORITHM = 'aes-256-ecb';
 const ENCODING = 'base64';
 let EncryptionService = class EncryptionService {
@@ -2018,6 +2001,13 @@ module.exports = require("crypto");
 
 /***/ }),
 /* 26 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs");
+
+/***/ }),
+/* 27 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -2034,7 +2024,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankSchema = exports.Rank = void 0;
 const mongoose_1 = __webpack_require__(7);
-const class_validator_1 = __webpack_require__(27);
+const class_validator_1 = __webpack_require__(28);
 const mongoose_2 = __webpack_require__(12);
 const mongoose_3 = __webpack_require__(12);
 let Rank = class Rank extends mongoose_2.Document {
@@ -2073,14 +2063,14 @@ exports.RankSchema = mongoose_1.SchemaFactory.createForClass(Rank);
 
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("class-validator");
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -2098,7 +2088,7 @@ var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthGuard = void 0;
 const common_1 = __webpack_require__(6);
-const jwt_1 = __webpack_require__(29);
+const jwt_1 = __webpack_require__(30);
 let AuthGuard = class AuthGuard {
     constructor(jwtService) {
         this.jwtService = jwtService;
@@ -2133,35 +2123,35 @@ exports.AuthGuard = AuthGuard = __decorate([
 
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("@nestjs/jwt");
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("@nestjs/swagger");
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("jsonwebtoken");
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("@nestjs/platform-express");
 
 /***/ }),
-/* 33 */
+/* 34 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -2180,9 +2170,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PermissionGuard = void 0;
 const common_1 = __webpack_require__(6);
 const core_1 = __webpack_require__(4);
-const abilities_factory_1 = __webpack_require__(34);
-const jwt_1 = __webpack_require__(29);
-const jwt = __webpack_require__(31);
+const abilities_factory_1 = __webpack_require__(35);
+const jwt_1 = __webpack_require__(30);
+const jwt = __webpack_require__(32);
 const admin_service_1 = __webpack_require__(38);
 const TOKEN_NOT_FOUND_MESSAGE = 'Token not found';
 const TOKEN_EXPIRED_MESSAGE = 'Token expired';
@@ -2246,7 +2236,7 @@ exports.PermissionGuard = PermissionGuard = __decorate([
 
 
 /***/ }),
-/* 34 */
+/* 35 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -2259,9 +2249,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AbilityFactory = void 0;
-const ability_1 = __webpack_require__(35);
+const ability_1 = __webpack_require__(36);
 const common_1 = __webpack_require__(6);
-const fs = __webpack_require__(36);
+const fs = __webpack_require__(26);
 const path = __webpack_require__(37);
 let AbilityFactory = class AbilityFactory {
     createForUser(permissions) {
@@ -2304,18 +2294,11 @@ exports.AbilityFactory = AbilityFactory = __decorate([
 
 
 /***/ }),
-/* 35 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("@casl/ability");
-
-/***/ }),
 /* 36 */
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");
+module.exports = require("@casl/ability");
 
 /***/ }),
 /* 37 */
@@ -2623,8 +2606,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeleteUserDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class DeleteUserDto {
 }
 exports.DeleteUserDto = DeleteUserDto;
@@ -2658,9 +2641,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateUserDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const class_transformer_1 = __webpack_require__(47);
-const class_validator_1 = __webpack_require__(27);
+const class_validator_1 = __webpack_require__(28);
 class CreateUserDto {
 }
 exports.CreateUserDto = CreateUserDto;
@@ -2749,8 +2732,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.BlockUserDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class BlockUserDto {
 }
 exports.BlockUserDto = BlockUserDto;
@@ -2793,9 +2776,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateUserProfileDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const class_transformer_1 = __webpack_require__(47);
-const class_validator_1 = __webpack_require__(27);
+const class_validator_1 = __webpack_require__(28);
 class UpdateUserProfileDto {
 }
 exports.UpdateUserProfileDto = UpdateUserProfileDto;
@@ -2905,7 +2888,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MemberGuard = void 0;
 const common_1 = __webpack_require__(6);
-const auth_gaurd_1 = __webpack_require__(28);
+const auth_gaurd_1 = __webpack_require__(29);
 let MemberGuard = class MemberGuard extends auth_gaurd_1.AuthGuard {
     async canActivate(context) {
         try {
@@ -3031,8 +3014,8 @@ exports.CategoryController = void 0;
 const common_1 = __webpack_require__(6);
 const category_service_1 = __webpack_require__(18);
 const CreateCate_dto_1 = __webpack_require__(54);
-const jwt = __webpack_require__(31);
-const swagger_1 = __webpack_require__(30);
+const jwt = __webpack_require__(32);
+const swagger_1 = __webpack_require__(31);
 const member_gaurd_1 = __webpack_require__(50);
 const UpdateCate_dto_1 = __webpack_require__(55);
 let CategoryController = class CategoryController {
@@ -3146,8 +3129,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateCateDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateCateDto {
 }
 exports.CreateCateDto = CreateCateDto;
@@ -3224,8 +3207,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateCateDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateCateDto {
 }
 exports.UpdateCateDto = UpdateCateDto;
@@ -3350,7 +3333,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendinglimitController = void 0;
 const common_1 = __webpack_require__(6);
 const spendinglimit_service_1 = __webpack_require__(20);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const CreateSpendingLimit_dto_1 = __webpack_require__(58);
 const member_gaurd_1 = __webpack_require__(50);
 const UpdateSpendingLimit_dto_1 = __webpack_require__(59);
@@ -3427,8 +3410,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateSpendingLimitDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateSpendingLimitDto {
 }
 exports.CreateSpendingLimitDto = CreateSpendingLimitDto;
@@ -3469,8 +3452,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateSpendingLimitDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateSpendingLimitDto {
 }
 exports.UpdateSpendingLimitDto = UpdateSpendingLimitDto;
@@ -3560,9 +3543,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingnoteController = void 0;
 const common_1 = __webpack_require__(6);
 const spendingnote_service_1 = __webpack_require__(22);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const CreateSpendingNote_dto_1 = __webpack_require__(62);
-const jwt = __webpack_require__(31);
+const jwt = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(50);
 const updateSpendingNote_dto_1 = __webpack_require__(63);
 const DeleteSpendingNote_dto_1 = __webpack_require__(64);
@@ -3852,8 +3835,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateSpendingNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateSpendingNoteDto {
 }
 exports.CreateSpendingNoteDto = CreateSpendingNoteDto;
@@ -3932,8 +3915,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateSpendingNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateSpendingNoteDto {
 }
 exports.UpdateSpendingNoteDto = UpdateSpendingNoteDto;
@@ -4019,8 +4002,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeleteSpendingNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class DeleteSpendingNoteDto {
 }
 exports.DeleteSpendingNoteDto = DeleteSpendingNoteDto;
@@ -4054,9 +4037,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QueryDateSpendingNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const class_transformer_1 = __webpack_require__(47);
-const class_validator_1 = __webpack_require__(27);
+const class_validator_1 = __webpack_require__(28);
 class QueryDateSpendingNoteDto {
 }
 exports.QueryDateSpendingNoteDto = QueryDateSpendingNoteDto;
@@ -4099,8 +4082,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsSpendingDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 const class_transformer_1 = __webpack_require__(47);
 class StatisticsSpendingDto {
 }
@@ -4157,7 +4140,7 @@ const admin_schema_1 = __webpack_require__(39);
 const config_1 = __webpack_require__(8);
 const role_module_1 = __webpack_require__(73);
 const role_schema_1 = __webpack_require__(40);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -4205,8 +4188,8 @@ const createAdmin_dto_1 = __webpack_require__(69);
 const updateAdmin_dto_1 = __webpack_require__(70);
 const deleteAdmin_dto_1 = __webpack_require__(71);
 const blockAdmin_dto_1 = __webpack_require__(72);
-const swagger_1 = __webpack_require__(30);
-const permission_gaurd_1 = __webpack_require__(33);
+const swagger_1 = __webpack_require__(31);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 let AdminController = class AdminController {
     constructor(adminService) {
@@ -4317,8 +4300,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateAdminDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateAdminDto {
 }
 exports.CreateAdminDto = CreateAdminDto;
@@ -4380,8 +4363,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateAdminDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateAdminDto {
 }
 exports.UpdateAdminDto = UpdateAdminDto;
@@ -4451,8 +4434,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeleteAdminDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class DeleteAdminDto {
 }
 exports.DeleteAdminDto = DeleteAdminDto;
@@ -4484,8 +4467,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.BlockAdminDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class BlockAdminDto {
 }
 exports.BlockAdminDto = BlockAdminDto;
@@ -4529,7 +4512,7 @@ const role_controller_1 = __webpack_require__(75);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const role_schema_1 = __webpack_require__(40);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const admin_module_1 = __webpack_require__(67);
 let RoleModule = class RoleModule {
 };
@@ -4668,9 +4651,9 @@ const role_service_1 = __webpack_require__(74);
 const createrole_dto_1 = __webpack_require__(76);
 const updaterole_dto_1 = __webpack_require__(77);
 const deleterole_dto_1 = __webpack_require__(78);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const casl_decorator_1 = __webpack_require__(42);
-const permission_gaurd_1 = __webpack_require__(33);
+const permission_gaurd_1 = __webpack_require__(34);
 let RoleController = class RoleController {
     constructor(roleService) {
         this.roleService = roleService;
@@ -4767,8 +4750,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateRoleDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateRoleDto {
 }
 exports.CreateRoleDto = CreateRoleDto;
@@ -4813,8 +4796,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateRoleDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateRoleDto {
 }
 exports.UpdateRoleDto = UpdateRoleDto;
@@ -4869,8 +4852,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeleteRoleDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class DeleteRoleDto {
 }
 exports.DeleteRoleDto = DeleteRoleDto;
@@ -4934,7 +4917,7 @@ const common_1 = __webpack_require__(6);
 const auth_controller_1 = __webpack_require__(81);
 const auth_service_1 = __webpack_require__(82);
 const users_module_1 = __webpack_require__(9);
-const jwt_1 = __webpack_require__(29);
+const jwt_1 = __webpack_require__(30);
 const config_1 = __webpack_require__(8);
 const mailer_module_1 = __webpack_require__(92);
 const seed_module_1 = __webpack_require__(94);
@@ -4990,7 +4973,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthController = void 0;
 const common_1 = __webpack_require__(6);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const auth_service_1 = __webpack_require__(82);
 const index_1 = __webpack_require__(86);
 let AuthController = class AuthController {
@@ -5110,7 +5093,7 @@ var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AuthService = void 0;
 const common_1 = __webpack_require__(6);
-const jwt_1 = __webpack_require__(29);
+const jwt_1 = __webpack_require__(30);
 const users_service_1 = __webpack_require__(11);
 const mailer_service_1 = __webpack_require__(83);
 const crypto_1 = __webpack_require__(25);
@@ -5337,15 +5320,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MailerService = void 0;
 const common_1 = __webpack_require__(6);
 const nodemailer = __webpack_require__(84);
+const users_service_1 = __webpack_require__(11);
 let MailerService = class MailerService {
-    constructor() {
+    constructor(usersService) {
+        this.usersService = usersService;
         this.transporter = nodemailer.createTransport({
             service: 'gmail',
-            from: 'support@nextfilm.co',
+            from: 'support@daiquangia.com',
             auth: {
                 user: process.env.MAIL_USER,
                 pass: process.env.MAIL_PASSWORD,
@@ -5354,7 +5340,6 @@ let MailerService = class MailerService {
     }
     async sendEmailWithCode(email, code) {
         const mailOptions = {
-            from: 'support@nextfilm.co',
             to: email,
             subject: 'DaiQuanGia - Password Reset Instructions',
             html: `
@@ -5426,11 +5411,80 @@ let MailerService = class MailerService {
         const info = await this.transporter.sendMail(mailOptions);
         console.log('Message sent: %s', info.messageId, code);
     }
+    async sendEmailNotification(userId, schedule) {
+        const user = await this.usersService.findUserByIdService(userId);
+        const email = user.email;
+        const mailOptions = {
+            to: email,
+            subject: 'DaiQuanGia - Notification',
+            html: `
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+          color: #fff;
+        }
+      </style>
+      <body style="background-color: #25293c">
+        <div
+          style="
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #2f3349;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+          "
+        >
+          <div
+            style="
+              background-color: #7367f0;
+              text-align: center;
+              color: #fff;
+              margin-bottom: 10px;
+              height: 100px;
+              border-top-left-radius: 10px;
+              border-top-right-radius: 10px;
+            "
+          >
+            <h1 style="text-transform: uppercase; padding-top: 27px">
+              Dai quan gia
+            </h1>
+          </div>
+          <div style="padding: 20px">
+            <h4 style="margin-bottom: 10px; color: #fff">Dear user,</h4>
+            <p style="color: #fff">
+              You have a new schedule notification.
+            </p>
+            <p style="margin-bottom: 10px; color: #fff">
+              <strong>Title:</strong> ${schedule[0].title}
+            </p>
+            <p style="margin-bottom: 10px; color: #fff">
+              <strong>Location:</strong> ${schedule[0].location}
+            </p>
+            <p style="margin-bottom: 10px; color: #fff">
+              <strong>Start:</strong> ${new Date(schedule[0].startDateTime).toLocaleString()}
+            </p>
+            <p style="margin-bottom: 10px; color: #fff">
+              <strong>End:</strong> ${new Date(schedule[0].endDateTime).toLocaleString()}
+            </p>
+            <p style="margin-bottom: 10px; color: #fff">
+              <strong>Note:</strong> ${schedule[0].note}
+            </p>
+            <p style="color: #fff">
+              Thank you, DaiQuanGia Support Team
+            </p>
+          </div>
+        </div>`,
+        };
+        const info = await this.transporter.sendMail(mailOptions);
+        console.log('Message sent: %s', info.messageId);
+    }
 };
 exports.MailerService = MailerService;
 exports.MailerService = MailerService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [])
+    __metadata("design:paramtypes", [typeof (_a = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _a : Object])
 ], MailerService);
 
 
@@ -5547,8 +5601,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RegisterDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class RegisterDto {
 }
 exports.RegisterDto = RegisterDto;
@@ -5621,8 +5675,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.LoginDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class LoginDto {
 }
 exports.LoginDto = LoginDto;
@@ -5663,8 +5717,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RefreshTokenDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class RefreshTokenDto {
 }
 exports.RefreshTokenDto = RefreshTokenDto;
@@ -5696,8 +5750,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ForgotPasswordDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class ForgotPasswordDto {
 }
 exports.ForgotPasswordDto = ForgotPasswordDto;
@@ -5731,8 +5785,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ResetPasswordDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class ResetPasswordDto {
 }
 exports.ResetPasswordDto = ResetPasswordDto;
@@ -5776,12 +5830,14 @@ const common_1 = __webpack_require__(6);
 const mailer_service_1 = __webpack_require__(83);
 const mailer_controller_1 = __webpack_require__(93);
 const config_1 = __webpack_require__(8);
+const users_module_1 = __webpack_require__(9);
 let MailerModule = class MailerModule {
 };
 exports.MailerModule = MailerModule;
 exports.MailerModule = MailerModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            users_module_1.UsersModule,
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: '.env',
@@ -6251,8 +6307,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteController = void 0;
 const incomenote_service_1 = __webpack_require__(96);
 const common_1 = __webpack_require__(6);
-const swagger_1 = __webpack_require__(30);
-const jwt = __webpack_require__(31);
+const swagger_1 = __webpack_require__(31);
+const jwt = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(50);
 const express_1 = __webpack_require__(43);
 const CreateIncomeNote_dto_1 = __webpack_require__(99);
@@ -6479,8 +6535,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateIncomeNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateIncomeNoteDto {
 }
 exports.CreateIncomeNoteDto = CreateIncomeNoteDto;
@@ -6558,8 +6614,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateIncomeNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateIncomeNoteDto {
 }
 exports.UpdateIncomeNoteDto = UpdateIncomeNoteDto;
@@ -6637,8 +6693,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QueryDateDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class QueryDateDto {
 }
 exports.QueryDateDto = QueryDateDto;
@@ -6679,8 +6735,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsIncomeNoteDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 const class_transformer_1 = __webpack_require__(47);
 class StatisticsIncomeNoteDto {
 }
@@ -6732,7 +6788,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeleteManyIncomeDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 class DeleteManyIncomeDto {
 }
 exports.DeleteManyIncomeDto = DeleteManyIncomeDto;
@@ -7022,8 +7078,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtController = void 0;
 const common_1 = __webpack_require__(6);
 const debt_service_1 = __webpack_require__(105);
-const jwt = __webpack_require__(31);
-const swagger_1 = __webpack_require__(30);
+const jwt = __webpack_require__(32);
+const swagger_1 = __webpack_require__(31);
 const member_gaurd_1 = __webpack_require__(50);
 const CreateDebt_dto_1 = __webpack_require__(108);
 const UpdateDebt_dto_1 = __webpack_require__(109);
@@ -7191,8 +7247,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateDebtDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateDebtDto {
 }
 exports.CreateDebtDto = CreateDebtDto;
@@ -7260,8 +7316,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UpdateDebtDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class UpdateDebtDto {
 }
 exports.UpdateDebtDto = UpdateDebtDto;
@@ -7708,9 +7764,9 @@ exports.ScheduleController = void 0;
 const common_1 = __webpack_require__(6);
 const schedule_service_1 = __webpack_require__(111);
 const express_1 = __webpack_require__(43);
-const jwt = __webpack_require__(31);
+const jwt = __webpack_require__(32);
 const schedule_dto_1 = __webpack_require__(115);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const member_gaurd_1 = __webpack_require__(50);
 let ScheduleController = class ScheduleController {
     constructor(scheduleService) {
@@ -7891,9 +7947,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ViewScheduleDto = exports.DeleteManyDto = exports.UpdateScheduleDto = exports.CreateScheduleDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const class_transformer_1 = __webpack_require__(47);
-const class_validator_1 = __webpack_require__(27);
+const class_validator_1 = __webpack_require__(28);
 class CreateScheduleDto {
 }
 exports.CreateScheduleDto = CreateScheduleDto;
@@ -8074,9 +8130,9 @@ const rank_service_1 = __webpack_require__(118);
 const rank_controller_1 = __webpack_require__(119);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 const cloudinary_module_1 = __webpack_require__(51);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const admin_module_1 = __webpack_require__(67);
 let RankModule = class RankModule {
 };
@@ -8123,7 +8179,7 @@ exports.RankService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 const cloudinary_service_1 = __webpack_require__(14);
 let RankService = class RankService {
     constructor(RankModel, cloudinaryService) {
@@ -8135,18 +8191,12 @@ let RankService = class RankService {
         if (existedRank) {
             throw new common_1.BadRequestException('Rank existed');
         }
-        const rankScoreGoal = attendanceScore + numberOfComment + numberOfBlog + numberOfLike;
-        const img = await this.cloudinaryService.uploadImageService(file);
-        const rankIcon = img.url;
+        const rankScoreGoal = this.calculateRankScoreGoal(attendanceScore, numberOfComment, numberOfBlog, numberOfLike);
+        const rankIcon = await this.uploadRankIcon(rankName, file);
         const rank = new this.RankModel({
             rankName,
             rankScoreGoal,
-            score: {
-                attendanceScore,
-                numberOfComment,
-                numberOfBlog,
-                numberOfLike,
-            },
+            score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
             rankIcon,
         });
         return rank.save();
@@ -8156,40 +8206,20 @@ let RankService = class RankService {
         if (!existedRank) {
             throw new common_1.BadRequestException('Rank not found');
         }
-        if (rankName) {
-            existedRank.rankName = rankName;
-        }
-        if (attendanceScore) {
-            existedRank.score.attendanceScore = attendanceScore;
-        }
-        if (numberOfComment) {
-            existedRank.score.numberOfComment = numberOfComment;
-        }
-        if (numberOfBlog) {
-            existedRank.score.numberOfBlog = numberOfBlog;
-        }
-        if (numberOfLike) {
-            existedRank.score.numberOfLike = numberOfLike;
-        }
+        this.updateRankDetails(existedRank, { rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike });
         if (file) {
-            await this.cloudinaryService.deleteImageService(existedRank.rankIcon);
-            const img = await this.cloudinaryService.uploadImageService(file);
-            existedRank.rankIcon = img.url;
+            await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
+            existedRank.rankIcon = await this.uploadRankIcon(existedRank.rankName, file);
         }
-        existedRank.rankScoreGoal =
-            (existedRank.score.attendanceScore || 0) +
-                (existedRank.score.numberOfComment || 0) +
-                (existedRank.score.numberOfBlog || 0) +
-                (existedRank.score.numberOfLike || 0);
+        existedRank.rankScoreGoal = this.calculateRankScoreGoal(existedRank.score.attendanceScore, existedRank.score.numberOfComment, existedRank.score.numberOfBlog, existedRank.score.numberOfLike);
         return existedRank.save();
     }
     async deleteRankService(rankId) {
-        console.log(rankId);
         const existedRank = await this.RankModel.findOne({ _id: rankId });
         if (!existedRank) {
             throw new common_1.BadRequestException('Rank not found');
         }
-        await this.cloudinaryService.deleteImageService(existedRank.rankIcon);
+        await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
         await existedRank.deleteOne();
         return { message: 'Delete rank successfully' };
     }
@@ -8198,6 +8228,25 @@ let RankService = class RankService {
     }
     async getRankDetailService(rankId) {
         return this.RankModel.findOne({ _id: rankId });
+    }
+    calculateRankScoreGoal(attendanceScore, numberOfComment, numberOfBlog, numberOfLike) {
+        return attendanceScore + numberOfComment + numberOfBlog + numberOfLike;
+    }
+    async uploadRankIcon(rankName, file) {
+        const fileResult = await this.cloudinaryService.uploadImageService(rankName, file);
+        return fileResult.uploadResult.url;
+    }
+    updateRankDetails(rank, details) {
+        if (details.rankName)
+            rank.rankName = details.rankName;
+        if (details.attendanceScore)
+            rank.score.attendanceScore = details.attendanceScore;
+        if (details.numberOfComment)
+            rank.score.numberOfComment = details.numberOfComment;
+        if (details.numberOfBlog)
+            rank.score.numberOfBlog = details.numberOfBlog;
+        if (details.numberOfLike)
+            rank.score.numberOfLike = details.numberOfLike;
     }
 };
 exports.RankService = RankService;
@@ -8230,10 +8279,10 @@ var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankController = void 0;
 const common_1 = __webpack_require__(6);
-const swagger_1 = __webpack_require__(30);
-const platform_express_1 = __webpack_require__(32);
+const swagger_1 = __webpack_require__(31);
+const platform_express_1 = __webpack_require__(33);
 const rank_service_1 = __webpack_require__(118);
-const permission_gaurd_1 = __webpack_require__(33);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 let RankController = class RankController {
     constructor(rankService) {
@@ -8375,7 +8424,7 @@ const config_1 = __webpack_require__(8);
 const post_schema_1 = __webpack_require__(122);
 const cloudinary_module_1 = __webpack_require__(51);
 const users_module_1 = __webpack_require__(9);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const admin_module_1 = __webpack_require__(67);
 const favoritePost_schema_1 = __webpack_require__(125);
 const comment_schema_1 = __webpack_require__(126);
@@ -8446,8 +8495,8 @@ let PostService = class PostService {
             content,
         });
         if (file) {
-            const { url } = await this.cloudinaryService.uploadImageService(file);
-            post.postImage = url;
+            const { uploadResult } = await this.cloudinaryService.uploadImageService(content, file);
+            post.postImage = uploadResult.url;
         }
         await this.usersService.updateScoreRankService(userId, true);
         return await post.save();
@@ -8461,9 +8510,9 @@ let PostService = class PostService {
             post.content = content;
         }
         if (file) {
-            await this.cloudinaryService.deleteImageService(post.postImage);
-            const { url } = await this.cloudinaryService.uploadImageService(file);
-            post.postImage = url;
+            await this.cloudinaryService.deleteMediaService(post.postImage);
+            const { uploadResult } = await this.cloudinaryService.uploadImageService(post.content, file);
+            post.postImage = uploadResult.url;
         }
         if (isShow) {
             post.isShow = isShow;
@@ -8475,7 +8524,7 @@ let PostService = class PostService {
         if (!post) {
             throw new common_1.BadRequestException('Post not found');
         }
-        await this.cloudinaryService.deleteImageService(post.postImage);
+        await this.cloudinaryService.deleteMediaService(post.postImage);
         return await this.postModel.findByIdAndDelete(postId);
     }
     async viewDetailPostService(postId) {
@@ -8487,7 +8536,7 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Posts not found');
         }
         posts.forEach(async (post) => {
-            await this.cloudinaryService.deleteImageService(post.postImage);
+            await this.cloudinaryService.deleteMediaService(post.postImage);
         });
         await this.postModel.deleteMany({ _id: { $in: postIds } });
         return posts;
@@ -8742,13 +8791,13 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostController = void 0;
 const common_1 = __webpack_require__(6);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const post_service_1 = __webpack_require__(121);
-const platform_express_1 = __webpack_require__(32);
-const jwt = __webpack_require__(31);
+const platform_express_1 = __webpack_require__(33);
+const jwt = __webpack_require__(32);
 const post_dto_1 = __webpack_require__(124);
 const member_gaurd_1 = __webpack_require__(50);
-const permission_gaurd_1 = __webpack_require__(33);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 let PostController = class PostController {
     constructor(postService) {
@@ -9027,8 +9076,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.deleteManyPostDto = exports.UpdatePostDto = exports.CreatePostDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreatePostDto {
 }
 exports.CreatePostDto = CreatePostDto;
@@ -9373,9 +9422,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentController = void 0;
 const common_1 = __webpack_require__(6);
 const comment_service_1 = __webpack_require__(128);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const comment_dto_1 = __webpack_require__(130);
-const jwt = __webpack_require__(31);
+const jwt = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(50);
 let CommentController = class CommentController {
     constructor(commentService) {
@@ -9516,8 +9565,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReplyCommentDto = exports.UpdateCommentDto = exports.CreateCommentDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateCommentDto {
 }
 exports.CreateCommentDto = CreateCommentDto;
@@ -9574,7 +9623,7 @@ const report_controller_1 = __webpack_require__(134);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const report_schema_1 = __webpack_require__(133);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const admin_module_1 = __webpack_require__(67);
 const user_schema_1 = __webpack_require__(13);
 const post_schema_1 = __webpack_require__(122);
@@ -9756,12 +9805,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportController = void 0;
 const common_1 = __webpack_require__(6);
 const report_service_1 = __webpack_require__(132);
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 const member_gaurd_1 = __webpack_require__(50);
 const express_1 = __webpack_require__(43);
-const jwt = __webpack_require__(31);
+const jwt = __webpack_require__(32);
 const report_dto_1 = __webpack_require__(135);
-const permission_gaurd_1 = __webpack_require__(33);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 let ReportController = class ReportController {
     constructor(reportService) {
@@ -9864,8 +9913,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreateReportDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class CreateReportDto {
 }
 exports.CreateReportDto = CreateReportDto;
@@ -9909,9 +9958,9 @@ const statistics_controller_1 = __webpack_require__(138);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const user_schema_1 = __webpack_require__(13);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 const admin_module_1 = __webpack_require__(67);
-const abilities_factory_1 = __webpack_require__(34);
+const abilities_factory_1 = __webpack_require__(35);
 const post_schema_1 = __webpack_require__(122);
 let StatisticsModule = class StatisticsModule {
 };
@@ -9960,7 +10009,7 @@ exports.StatisticsService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const rank_schema_1 = __webpack_require__(26);
+const rank_schema_1 = __webpack_require__(27);
 const user_schema_1 = __webpack_require__(13);
 let StatisticsService = class StatisticsService {
     constructor(userModel, rankModel, postModel) {
@@ -10177,8 +10226,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
 const statistics_service_1 = __webpack_require__(137);
-const swagger_1 = __webpack_require__(30);
-const permission_gaurd_1 = __webpack_require__(33);
+const swagger_1 = __webpack_require__(31);
+const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 const querydate_dto_1 = __webpack_require__(139);
 let StatisticsController = class StatisticsController {
@@ -10306,7 +10355,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.QueryDto = void 0;
-const swagger_1 = __webpack_require__(30);
+const swagger_1 = __webpack_require__(31);
 class QueryDto {
 }
 exports.QueryDto = QueryDto;
@@ -10348,7 +10397,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EventGateway = void 0;
 const websockets_1 = __webpack_require__(141);
@@ -10361,14 +10410,16 @@ const common_1 = __webpack_require__(6);
 const stream_1 = __webpack_require__(147);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(24);
+const mailer_service_1 = __webpack_require__(83);
 let EventGateway = class EventGateway {
-    constructor(authService, scheduleService, storyService, messageService, usersService, encryptionService) {
+    constructor(authService, scheduleService, storyService, messageService, usersService, encryptionService, mailerService) {
         this.authService = authService;
         this.scheduleService = scheduleService;
         this.storyService = storyService;
         this.messageService = messageService;
         this.usersService = usersService;
         this.encryptionService = encryptionService;
+        this.mailerService = mailerService;
         this.clients = new Map();
         this.startConditionCheck();
         this.startConditionStoryCheck();
@@ -10504,9 +10555,9 @@ let EventGateway = class EventGateway {
                         console.log('Schedules updated for user:', userId);
                         this.server.to(userId).emit('schedules', schedules);
                         client.lastSchedules = schedules;
+                        this.mailerService.sendEmailNotification(userId, schedules);
                     }
                     else {
-                        console.log('Schedules not changed for user', userId);
                     }
                 }
                 catch (error) {
@@ -10522,19 +10573,19 @@ let EventGateway = class EventGateway {
 exports.EventGateway = EventGateway;
 __decorate([
     (0, websockets_1.WebSocketServer)(),
-    __metadata("design:type", typeof (_g = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _g : Object)
+    __metadata("design:type", typeof (_h = typeof socket_io_1.Server !== "undefined" && socket_io_1.Server) === "function" ? _h : Object)
 ], EventGateway.prototype, "server", void 0);
 __decorate([
     (0, websockets_1.SubscribeMessage)('chat'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _h : Object, Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [typeof (_j = typeof socket_io_1.Socket !== "undefined" && socket_io_1.Socket) === "function" ? _j : Object, Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], EventGateway.prototype, "handleChat", null);
 exports.EventGateway = EventGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: true }),
-    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object, typeof (_c = typeof story_service_1.StoryService !== "undefined" && story_service_1.StoryService) === "function" ? _c : Object, typeof (_d = typeof message_service_1.MessageService !== "undefined" && message_service_1.MessageService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _f : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof auth_service_1.AuthService !== "undefined" && auth_service_1.AuthService) === "function" ? _a : Object, typeof (_b = typeof schedule_service_1.ScheduleService !== "undefined" && schedule_service_1.ScheduleService) === "function" ? _b : Object, typeof (_c = typeof story_service_1.StoryService !== "undefined" && story_service_1.StoryService) === "function" ? _c : Object, typeof (_d = typeof message_service_1.MessageService !== "undefined" && message_service_1.MessageService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _f : Object, typeof (_g = typeof mailer_service_1.MailerService !== "undefined" && mailer_service_1.MailerService) === "function" ? _g : Object])
 ], EventGateway);
 
 
@@ -10598,20 +10649,26 @@ let StoryService = class StoryService {
         }
     }
     async createStoryService(userId, title, file) {
+        if (!file) {
+            throw new common_1.BadRequestException('No file provided');
+        }
         try {
             const checkFileType = await this.checkFile(file);
             let mediaUrl;
             const uploadService = checkFileType === 'image'
                 ? this.cloudinaryService.uploadImageService
                 : this.cloudinaryService.uploadVideoService;
-            const fileUpload = await uploadService.call(this.cloudinaryService, file);
-            mediaUrl = fileUpload.url;
+            const fileUpload = await uploadService.call(this.cloudinaryService, title, file);
+            mediaUrl = fileUpload.uploadResult.url;
             const newStory = new this.storyModel({ userId, title, mediaUrl });
             return await newStory.save();
         }
         catch (error) {
             console.error('Error in createStoryService:', error);
-            if (error.http_code === 400) {
+            if (error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            else if (error.http_code === 400) {
                 throw new common_1.BadRequestException('Invalid file type or upload error');
             }
             else {
@@ -10629,7 +10686,7 @@ let StoryService = class StoryService {
                 throw new common_1.BadRequestException('Story not found or user does not have permission to delete this story.');
             }
             if (story.mediaUrl) {
-                await this.cloudinaryService.deletMediaService(story.mediaUrl);
+                await this.cloudinaryService.deleteMediaService(story.mediaUrl);
             }
             await this.storyModel.findByIdAndDelete(storyId);
             return { message: 'Story deleted successfully' };
@@ -10750,8 +10807,8 @@ let MessageService = class MessageService {
             console.log(`Saving message from ${senderId} to ${receiverId}`);
             let image;
             if (file) {
-                const imageFile = await this.cloudinaryService.uploadImageService(file);
-                image = this.encryptionService.rsaEncrypt(imageFile.url);
+                const imageFile = await this.cloudinaryService.uploadImageService(senderId.toString(), file);
+                image = this.encryptionService.rsaEncrypt(imageFile.uploadResult.url);
             }
             if (!content && !image) {
                 throw new common_1.BadRequestException('Message content or image must be provided.');
@@ -10789,7 +10846,7 @@ let MessageService = class MessageService {
         try {
             const message = await this.messageModel.findOneAndDelete({ _id: messageId, $or: [{ senderId: userId }, { receiverId: userId }] });
             if (message.image)
-                await this.cloudinaryService.deleteImageService(message.image);
+                await this.cloudinaryService.deleteMediaService(message.image);
             return message;
         }
         catch (error) {
@@ -10926,9 +10983,9 @@ const common_1 = __webpack_require__(6);
 const story_service_1 = __webpack_require__(143);
 const story_dto_1 = __webpack_require__(150);
 const member_gaurd_1 = __webpack_require__(50);
-const jwt = __webpack_require__(31);
-const swagger_1 = __webpack_require__(30);
-const platform_express_1 = __webpack_require__(32);
+const jwt = __webpack_require__(32);
+const swagger_1 = __webpack_require__(31);
+const platform_express_1 = __webpack_require__(33);
 const rank_gaurd_1 = __webpack_require__(151);
 let StoryController = class StoryController {
     constructor(storyService) {
@@ -11045,8 +11102,8 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryDto = void 0;
-const swagger_1 = __webpack_require__(30);
-const class_validator_1 = __webpack_require__(27);
+const swagger_1 = __webpack_require__(31);
+const class_validator_1 = __webpack_require__(28);
 class StoryDto {
 }
 exports.StoryDto = StoryDto;
@@ -11081,9 +11138,9 @@ var _a, _b;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankGuard = void 0;
 const common_1 = __webpack_require__(6);
-const jwt_1 = __webpack_require__(29);
+const jwt_1 = __webpack_require__(30);
 const rank_service_1 = __webpack_require__(118);
-const auth_gaurd_1 = __webpack_require__(28);
+const auth_gaurd_1 = __webpack_require__(29);
 let RankGuard = class RankGuard extends auth_gaurd_1.AuthGuard {
     constructor(jwtService, rankService) {
         super(jwtService);
@@ -11179,8 +11236,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageController = void 0;
 const common_1 = __webpack_require__(6);
 const message_service_1 = __webpack_require__(145);
-const jwt = __webpack_require__(31);
-const swagger_1 = __webpack_require__(30);
+const jwt = __webpack_require__(32);
+const swagger_1 = __webpack_require__(31);
 let MessageController = class MessageController {
     constructor(messageService) {
         this.messageService = messageService;
@@ -11293,7 +11350,7 @@ exports.MessageController = MessageController = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("1b542f0f3dbd3c29f974")
+/******/ 		__webpack_require__.h = () => ("d45a72dabb0956a537f1")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
