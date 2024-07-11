@@ -7742,7 +7742,7 @@ const mongoose_2 = __webpack_require__(12);
 const schedule_schema_1 = __webpack_require__(114);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(24);
-const moment = __webpack_require__(115);
+const moment_1 = __webpack_require__(115);
 let ScheduleService = class ScheduleService {
     constructor(scheduleModel, encryptionService, usersService) {
         this.scheduleModel = scheduleModel;
@@ -7880,8 +7880,8 @@ let ScheduleService = class ScheduleService {
             const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
             const formattedSchedules = schedules.map(schedule => ({
                 ...schedule.toObject(),
-                startDateTime: moment(schedule.startDateTime).toISOString(),
-                endDateTime: moment(schedule.endDateTime).toISOString(),
+                startDateTime: (0, moment_1.default)(schedule.startDateTime).toISOString(),
+                endDateTime: (0, moment_1.default)(schedule.endDateTime).toISOString(),
             }));
             return formattedSchedules;
         }
@@ -12127,7 +12127,7 @@ module.exports = require("zlib");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("1ee68f2856b949652301")
+/******/ 		__webpack_require__.h = () => ("93dd8ad0097820d0c01c")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

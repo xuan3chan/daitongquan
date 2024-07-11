@@ -8,7 +8,7 @@ import { Model } from 'mongoose';
 import { Schedule, ScheduleDocument } from './schema/schedule.schema';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import * as moment from 'moment';
+import moment from 'moment';
 @Injectable()
 export class ScheduleService {
   constructor(
