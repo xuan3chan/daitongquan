@@ -212,7 +212,7 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api', app, document);
-    await app.listen(3001);
+    await app.listen(3000);
 }
 bootstrap();
 
@@ -11551,7 +11551,7 @@ module.exports = require("redis");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("aa9d562f5dc6168b3918")
+/******/ 		__webpack_require__.h = () => ("efc78759f3d58918065b")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
