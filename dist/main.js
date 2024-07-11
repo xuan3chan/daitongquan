@@ -7878,7 +7878,7 @@ let ScheduleService = class ScheduleService {
                     startTotalMinutes <= notificationTotalMinutes);
             });
             const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-            const formattedSchedules = schedules.map(schedule => ({
+            const formattedSchedules = schedules.map((schedule) => ({
                 ...schedule.toObject(),
                 startDateTime: (0, moment_1.default)(schedule.startDateTime).toISOString(),
                 endDateTime: (0, moment_1.default)(schedule.endDateTime).toISOString(),
@@ -12127,7 +12127,7 @@ module.exports = require("zlib");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("93dd8ad0097820d0c01c")
+/******/ 		__webpack_require__.h = () => ("ea2dcfb5e55fff6f642f")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

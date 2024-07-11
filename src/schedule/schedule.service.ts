@@ -168,67 +168,66 @@ export class ScheduleService {
   });
 }
 
-  async notifyScheduleService(userId: string): Promise<any> {
-    const TIMEZONE_OFFSET_HOURS = 7;
-    const NOTIFICATION_TIME_MINUTES = 15;
+async notifyScheduleService(userId: string): Promise<any> {
+  const TIMEZONE_OFFSET_HOURS = 7;
+  const NOTIFICATION_TIME_MINUTES = 15;
 
-    const nowTime = new Date(
-      new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
-    );
-    const notificationTime = new Date(
-      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
-    );
+  const nowTime = new Date(
+    new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
+  );
+  const notificationTime = new Date(
+    nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
+  );
 
-    try {
-      // console.log('nowTime', nowTime);
-      // console.log('notificationTime', notificationTime);
+  try {
+    const nonLoopedSchedules = await this.scheduleModel.find({
+      userId,
+      isLoop: false,
+      startDateTime: { $gte: nowTime, $lte: notificationTime },
+    });
 
-      const nonLoopedSchedules = await this.scheduleModel.find({
-        userId,
-        isLoop: false,
-        startDateTime: { $gte: nowTime, $lte: notificationTime },
-      });
+    const loopedSchedules = await this.scheduleModel.find({
+      userId,
+      isLoop: true,
+    });
 
-      const loopedSchedules = await this.scheduleModel.find({
-        userId,
-        isLoop: true,
-      });
+    const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
+      const startDateTime = new Date(schedule.startDateTime);
+      const startHours = startDateTime.getUTCHours();
+      const startMinutes = startDateTime.getUTCMinutes();
 
-      const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
-        const startDateTime = new Date(schedule.startDateTime);
-        const startHours = startDateTime.getUTCHours();
-        const startMinutes = startDateTime.getUTCMinutes();
+      const nowHours = nowTime.getUTCHours();
+      const nowMinutes = nowTime.getUTCMinutes();
+      const notificationHours = notificationTime.getUTCHours();
+      const notificationMinutes = notificationTime.getUTCMinutes();
 
-        const nowHours = nowTime.getUTCHours();
-        const nowMinutes = nowTime.getUTCMinutes();
-        const notificationHours = notificationTime.getUTCHours();
-        const notificationMinutes = notificationTime.getUTCMinutes();
+      const nowTotalMinutes = nowHours * 60 + nowMinutes;
+      const notificationTotalMinutes =
+        notificationHours * 60 + notificationMinutes;
+      const startTotalMinutes = startHours * 60 + startMinutes;
 
-        const nowTotalMinutes = nowHours * 60 + nowMinutes;
-        const notificationTotalMinutes =
-          notificationHours * 60 + notificationMinutes;
-        const startTotalMinutes = startHours * 60 + startMinutes;
-
-        return (
-          startTotalMinutes >= nowTotalMinutes &&
-          startTotalMinutes <= notificationTotalMinutes
-        );
-      });
-
-      const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-      
-    const formattedSchedules = schedules.map(schedule => ({
-  ...schedule.toObject(),
-  startDateTime: moment(schedule.startDateTime).toISOString(),
-  endDateTime: moment(schedule.endDateTime).toISOString(),
-}));
-      return formattedSchedules;
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Error fetching schedules for notification',
+      return (
+        startTotalMinutes >= nowTotalMinutes &&
+        startTotalMinutes <= notificationTotalMinutes
       );
-    }
+    });
+
+    const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
+
+    // Format dates using moment
+    const formattedSchedules = schedules.map((schedule) => ({
+      ...schedule.toObject(),
+      startDateTime: moment(schedule.startDateTime).toISOString(),
+      endDateTime: moment(schedule.endDateTime).toISOString(),
+    }));
+
+    return formattedSchedules;
+  } catch (error) {
+    throw new InternalServerErrorException(
+      'Error fetching schedules for notification',
+    );
   }
+}
 
   async enableEncryptionService(
     scheduleId: string,
