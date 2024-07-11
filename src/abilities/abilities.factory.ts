@@ -14,7 +14,7 @@ export class AbilityFactory {
       const permissionForRole = this.getPermissionsForRole([permission]);
       return acc.concat(permissionForRole);
     }, []);
-    console.log(rolePermissions);
+    // console.log(rolePermissions);
     return defineAbility((can, cannot) => {
       rolePermissions.forEach(({ action, subject }) => {
         can(action, subject);
@@ -22,7 +22,7 @@ export class AbilityFactory {
     });
   }
   private getPermissionsForRole(permissionIDs: number[]) {
-    console.log(permissionIDs);
+    // console.log(permissionIDs);
     let allPermissions;
     try {
       const filePath = path.resolve('./src/config/permission.json');

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Inject, Patch, Post, Put, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import {CreateAdminDto} from './dto/createAdmin.dto';
 import {UpdateAdminDto} from './dto/updateAdmin.dto';
@@ -7,12 +7,15 @@ import {BlockAdminDto} from './dto/blockAdmin.dto';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {PermissionGuard} from '../gaurd/permission.gaurd';
 import { Subject,Action } from 'src/decorator/casl.decorator';
+import { CacheInterceptor } from '@nestjs/cache-manager';
+
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService,
+  ) {}
   
   @Subject('admin')
   @Action('create')
@@ -47,6 +50,7 @@ export class AdminController {
 
   @Action('read')
   @Subject('admin')
+  // @UseInterceptors(CacheInterceptor)
   @UseGuards(PermissionGuard)
   @ApiOkResponse({description: 'Admin listed successfully'})
   @ApiBadRequestResponse({description: 'bad request'})

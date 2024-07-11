@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+  redis-primary:
+    container_name: redis-primary
+    image: redislabs/rejson:latest
+    restart: always
+    ports:
+      - '6380:6379'
+    volumes:
+      - ./redis/redis-primary:/data/redis
+    env_file:
+      - .env
+    networks:
+      - redis-network
+  redis-slave:
+    image: redislabs/rejson:latest
+    container_name: redis-slave
+    restart: always
+    ports:
+      - '6381:6379'
+    volumes:
+      - ./redis/redis-slave:/data/redis
+    command: redis-server --slaveof redis-primary 6379
+    depends_on:
+      - redis-primary
+    networks:
+      - redis-network
+networks:
+  redis-network:
+    driver: bridge

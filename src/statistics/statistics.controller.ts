@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import {
   ApiBadGatewayResponse,
@@ -6,15 +6,19 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { PermissionGuard } from 'src/gaurd/permission.gaurd';
+import { PermissionGuard } from 'src/gaurd/permission.gaurd'; // Correct import path
 import { Action, Subject } from 'src/decorator/casl.decorator';
 import { QueryDto } from './dto/querydate.dto';
+import { RedisService } from 'src/redis/redis.service'; // Import the RedisService
 
 @ApiTags('statistics')
 @ApiBearerAuth()
 @Controller('statistics')
 export class StatisticsController {
-  constructor(private readonly statisticsService: StatisticsService) {}
+  constructor(
+    private readonly statisticsService: StatisticsService,
+    private readonly redisService: RedisService, // Inject the RedisService
+  ) {}
 
   @Get('user-follow-rank')
   @UseGuards(PermissionGuard)
@@ -23,7 +27,15 @@ export class StatisticsController {
   @ApiOkResponse({ description: 'Get all statistics' })
   @ApiBadGatewayResponse({ description: 'Bad gateway' })
   async statisticsUserFollowRankController(): Promise<any> {
-    return this.statisticsService.statisticsUserFollowRankService();
+    const cacheKey = 'user-follow-rank';
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    console.log(cachedData)
+    const data = await this.statisticsService.statisticsUserFollowRankService();
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
 
   @Get('top-post')
@@ -37,7 +49,14 @@ export class StatisticsController {
     @Query('start') start: number,
     @Query('end') end: number,
   ): Promise<any> {
-    return this.statisticsService.statisticsTopPost(filter, start, end);
+    const cacheKey = `top-post-${filter}-${start}-${end}`;
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    const data = await this.statisticsService.statisticsTopPost(filter, start, end);
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
 
   @Get('user')
@@ -50,7 +69,14 @@ export class StatisticsController {
     @Query('filter') filter: string,
     @Query('numberOfItem') numberOfItem: number,
   ): Promise<any> {
-    return this.statisticsService.statisticsUserService(filter, numberOfItem);
+    const cacheKey = `user-${filter}-${numberOfItem}`;
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
 
   @Get('post')
@@ -63,7 +89,14 @@ export class StatisticsController {
     @Query('filter') filter: string,
     @Query('numberOfItem') numberOfItem: number,
   ): Promise<any> {
-    return this.statisticsService.statisticsPostService(filter, numberOfItem);
+    const cacheKey = `post-${filter}-${numberOfItem}`;
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
 
   @Get('user-option-day')
@@ -73,13 +106,21 @@ export class StatisticsController {
   @ApiOkResponse({ description: 'Get all statistics' })
   @ApiBadGatewayResponse({ description: 'Bad gateway' })
   async statisticsUserOptionDayController(
-  @Query() dto: QueryDto,
+    @Query() dto: QueryDto,
   ): Promise<any> {
-    return this.statisticsService.statisticsUserOptionDayService(
+    const cacheKey = `user-option-day-${dto.start}-${dto.end}`;
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    const data = await this.statisticsService.statisticsUserOptionDayService(
       dto.start,
       dto.end,
     );
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
+
   @Get('post-option-day')
   @UseGuards(PermissionGuard)
   @Action('read')
@@ -89,9 +130,16 @@ export class StatisticsController {
   async statisticsPostOptionDayController(
     @Query() dto: QueryDto,
   ): Promise<any> {
-    return this.statisticsService.statisticsPostOptionDayService(
+    const cacheKey = `post-option-day-${dto.start}-${dto.end}`;
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    const data = await this.statisticsService.statisticsPostOptionDayService(
       dto.start,
       dto.end,
     );
+    await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
   }
 }

@@ -26,6 +26,7 @@ import { StatisticsModule } from './statistics/statistics.module';
 import { EventGateway } from './event.gateway';
 import { StoryModule } from './story/story.module';
 import { MessageModule } from './message/message.module';
+import { RedisCacheModule } from './redis/redis.module';
 @Module({
   imports: [
     
@@ -55,6 +56,7 @@ import { MessageModule } from './message/message.module';
     StatisticsModule,
     StoryModule,
     MessageModule,
+    RedisCacheModule,
   ],
   controllers: [
     AppController
