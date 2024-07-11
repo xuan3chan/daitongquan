@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, InternalServerErrorException, Query, UseGuards } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import {
   ApiBadGatewayResponse,
@@ -28,26 +28,19 @@ export class StatisticsController {
   @ApiBadGatewayResponse({ description: 'Bad gateway' })
   async statisticsUserFollowRankController(): Promise<any> {
     const cacheKey = 'user-follow-rank';
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsUserFollowRankService();
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    console.log('run here')
-    const data = await this.statisticsService.statisticsUserFollowRankService();
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
-  @Get('user-follow-rank2')
-  @UseGuards(PermissionGuard)
-  @Action('read')
-  @Subject('dashboard')
-  @ApiOkResponse({ description: 'Get all statistics' })
-  @ApiBadGatewayResponse({ description: 'Bad gateway' })
-  async statisticsUserFollowRankController2(): Promise<any> {
-    
-    const data = await this.statisticsService.statisticsUserFollowRankService();
-    return data;
-  }
+
 
   @Get('top-post')
   @UseGuards(PermissionGuard)
@@ -61,13 +54,17 @@ export class StatisticsController {
     @Query('end') end: number,
   ): Promise<any> {
     const cacheKey = `top-post-${filter}-${start}-${end}`;
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsTopPost(filter, start, end);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    const data = await this.statisticsService.statisticsTopPost(filter, start, end);
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
 
   @Get('user')
@@ -81,13 +78,17 @@ export class StatisticsController {
     @Query('numberOfItem') numberOfItem: number,
   ): Promise<any> {
     const cacheKey = `user-${filter}-${numberOfItem}`;
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
 
   @Get('post')
@@ -101,13 +102,17 @@ export class StatisticsController {
     @Query('numberOfItem') numberOfItem: number,
   ): Promise<any> {
     const cacheKey = `post-${filter}-${numberOfItem}`;
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
 
   @Get('user-option-day')
@@ -120,16 +125,20 @@ export class StatisticsController {
     @Query() dto: QueryDto,
   ): Promise<any> {
     const cacheKey = `user-option-day-${dto.start}-${dto.end}`;
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsUserOptionDayService(
+        dto.start,
+        dto.end,
+      );
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    const data = await this.statisticsService.statisticsUserOptionDayService(
-      dto.start,
-      dto.end,
-    );
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
 
   @Get('post-option-day')
@@ -142,15 +151,19 @@ export class StatisticsController {
     @Query() dto: QueryDto,
   ): Promise<any> {
     const cacheKey = `post-option-day-${dto.start}-${dto.end}`;
-    const cachedData = await this.redisService.get(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData);
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.statisticsService.statisticsPostOptionDayService(
+        dto.start,
+        dto.end,
+      );
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
     }
-    const data = await this.statisticsService.statisticsPostOptionDayService(
-      dto.start,
-      dto.end,
-    );
-    await this.redisService.set(cacheKey, JSON.stringify(data));
-    return data;
   }
 }

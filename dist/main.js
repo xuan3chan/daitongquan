@@ -10528,7 +10528,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
@@ -10545,68 +10545,93 @@ let StatisticsController = class StatisticsController {
     }
     async statisticsUserFollowRankController() {
         const cacheKey = 'user-follow-rank';
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsUserFollowRankService();
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        console.log('run here');
-        const data = await this.statisticsService.statisticsUserFollowRankService();
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
-    }
-    async statisticsUserFollowRankController2() {
-        const data = await this.statisticsService.statisticsUserFollowRankService();
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsTopPostController(filter, start, end) {
         const cacheKey = `top-post-${filter}-${start}-${end}`;
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsTopPost(filter, start, end);
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        const data = await this.statisticsService.statisticsTopPost(filter, start, end);
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsUserController(filter, numberOfItem) {
         const cacheKey = `user-${filter}-${numberOfItem}`;
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsPostController(filter, numberOfItem) {
         const cacheKey = `post-${filter}-${numberOfItem}`;
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsUserOptionDayController(dto) {
         const cacheKey = `user-option-day-${dto.start}-${dto.end}`;
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsUserOptionDayService(dto.start, dto.end);
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        const data = await this.statisticsService.statisticsUserOptionDayService(dto.start, dto.end);
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsPostOptionDayController(dto) {
         const cacheKey = `post-option-day-${dto.start}-${dto.end}`;
-        const cachedData = await this.redisService.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await this.statisticsService.statisticsPostOptionDayService(dto.start, dto.end);
+            await this.redisService.set(cacheKey, JSON.stringify(data));
+            return data;
         }
-        const data = await this.statisticsService.statisticsPostOptionDayService(dto.start, dto.end);
-        await this.redisService.set(cacheKey, JSON.stringify(data));
-        return data;
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
 };
 exports.StatisticsController = StatisticsController;
@@ -10622,17 +10647,6 @@ __decorate([
     __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], StatisticsController.prototype, "statisticsUserFollowRankController", null);
 __decorate([
-    (0, common_1.Get)('user-follow-rank2'),
-    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
-    (0, casl_decorator_1.Action)('read'),
-    (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
-    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
-], StatisticsController.prototype, "statisticsUserFollowRankController2", null);
-__decorate([
     (0, common_1.Get)('top-post'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
@@ -10644,7 +10658,7 @@ __decorate([
     __param(2, (0, common_1.Query)('end')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number, Number]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
 ], StatisticsController.prototype, "statisticsTopPostController", null);
 __decorate([
     (0, common_1.Get)('user'),
@@ -10657,7 +10671,7 @@ __decorate([
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], StatisticsController.prototype, "statisticsUserController", null);
 __decorate([
     (0, common_1.Get)('post'),
@@ -10670,7 +10684,7 @@ __decorate([
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], StatisticsController.prototype, "statisticsPostController", null);
 __decorate([
     (0, common_1.Get)('user-option-day'),
@@ -10681,8 +10695,8 @@ __decorate([
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _h : Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [typeof (_g = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _g : Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], StatisticsController.prototype, "statisticsUserOptionDayController", null);
 __decorate([
     (0, common_1.Get)('post-option-day'),
@@ -10693,8 +10707,8 @@ __decorate([
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [typeof (_j = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _j : Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], StatisticsController.prototype, "statisticsPostOptionDayController", null);
 exports.StatisticsController = StatisticsController = __decorate([
     (0, swagger_1.ApiTags)('statistics'),
@@ -12113,7 +12127,7 @@ module.exports = require("zlib");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("7e07066014344c353f22")
+/******/ 		__webpack_require__.h = () => ("1ee68f2856b949652301")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
