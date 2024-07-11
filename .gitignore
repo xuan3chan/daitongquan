@@ -4,6 +4,7 @@
 /node_modules
 /build
 /README.md
+/main.js
 # Logs
 logs
 *.log
@@ -57,3 +58,5 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .vercel
 src/socke.html
+dist/main.js
+dist/main.js

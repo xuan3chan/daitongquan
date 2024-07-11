@@ -3,12 +3,14 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import * as compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe());
+  app.use(compression());
+    app.useGlobalPipes(new ValidationPipe());
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => app.close());

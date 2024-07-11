@@ -195,10 +195,12 @@ const core_1 = __webpack_require__(4);
 const app_module_1 = __webpack_require__(5);
 const swagger_1 = __webpack_require__(31);
 const common_1 = __webpack_require__(6);
+const compression = __webpack_require__(73);
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors();
     app.setGlobalPrefix('api');
+    app.use(compression());
     app.useGlobalPipes(new common_1.ValidationPipe());
     if (true) {
         module.hot.accept();
@@ -4493,7 +4495,301 @@ __decorate([
 
 
 /***/ }),
-/* 73 */,
+/* 73 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/*!
+ * compression
+ * Copyright(c) 2010 Sencha Inc.
+ * Copyright(c) 2011 TJ Holowaychuk
+ * Copyright(c) 2014 Jonathan Ong
+ * Copyright(c) 2014-2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+
+
+/**
+ * Module dependencies.
+ * @private
+ */
+
+var accepts = __webpack_require__(80)
+var Buffer = (__webpack_require__(142).Buffer)
+var bytes = __webpack_require__(160)
+var compressible = __webpack_require__(161)
+var debug = __webpack_require__(163)('compression')
+var onHeaders = __webpack_require__(164)
+var vary = __webpack_require__(165)
+var zlib = __webpack_require__(166)
+
+/**
+ * Module exports.
+ */
+
+module.exports = compression
+module.exports.filter = shouldCompress
+
+/**
+ * Module variables.
+ * @private
+ */
+
+var cacheControlNoTransformRegExp = /(?:^|,)\s*?no-transform\s*?(?:,|$)/
+
+/**
+ * Compress response data with gzip / deflate.
+ *
+ * @param {Object} [options]
+ * @return {Function} middleware
+ * @public
+ */
+
+function compression (options) {
+  var opts = options || {}
+
+  // options
+  var filter = opts.filter || shouldCompress
+  var threshold = bytes.parse(opts.threshold)
+
+  if (threshold == null) {
+    threshold = 1024
+  }
+
+  return function compression (req, res, next) {
+    var ended = false
+    var length
+    var listeners = []
+    var stream
+
+    var _end = res.end
+    var _on = res.on
+    var _write = res.write
+
+    // flush
+    res.flush = function flush () {
+      if (stream) {
+        stream.flush()
+      }
+    }
+
+    // proxy
+
+    res.write = function write (chunk, encoding) {
+      if (ended) {
+        return false
+      }
+
+      if (!this._header) {
+        this._implicitHeader()
+      }
+
+      return stream
+        ? stream.write(toBuffer(chunk, encoding))
+        : _write.call(this, chunk, encoding)
+    }
+
+    res.end = function end (chunk, encoding) {
+      if (ended) {
+        return false
+      }
+
+      if (!this._header) {
+        // estimate the length
+        if (!this.getHeader('Content-Length')) {
+          length = chunkLength(chunk, encoding)
+        }
+
+        this._implicitHeader()
+      }
+
+      if (!stream) {
+        return _end.call(this, chunk, encoding)
+      }
+
+      // mark ended
+      ended = true
+
+      // write Buffer for Node.js 0.8
+      return chunk
+        ? stream.end(toBuffer(chunk, encoding))
+        : stream.end()
+    }
+
+    res.on = function on (type, listener) {
+      if (!listeners || type !== 'drain') {
+        return _on.call(this, type, listener)
+      }
+
+      if (stream) {
+        return stream.on(type, listener)
+      }
+
+      // buffer listeners for future stream
+      listeners.push([type, listener])
+
+      return this
+    }
+
+    function nocompress (msg) {
+      debug('no compression: %s', msg)
+      addListeners(res, _on, listeners)
+      listeners = null
+    }
+
+    onHeaders(res, function onResponseHeaders () {
+      // determine if request is filtered
+      if (!filter(req, res)) {
+        nocompress('filtered')
+        return
+      }
+
+      // determine if the entity should be transformed
+      if (!shouldTransform(req, res)) {
+        nocompress('no transform')
+        return
+      }
+
+      // vary
+      vary(res, 'Accept-Encoding')
+
+      // content-length below threshold
+      if (Number(res.getHeader('Content-Length')) < threshold || length < threshold) {
+        nocompress('size below threshold')
+        return
+      }
+
+      var encoding = res.getHeader('Content-Encoding') || 'identity'
+
+      // already encoded
+      if (encoding !== 'identity') {
+        nocompress('already encoded')
+        return
+      }
+
+      // head
+      if (req.method === 'HEAD') {
+        nocompress('HEAD request')
+        return
+      }
+
+      // compression method
+      var accept = accepts(req)
+      var method = accept.encoding(['gzip', 'deflate', 'identity'])
+
+      // we really don't prefer deflate
+      if (method === 'deflate' && accept.encoding(['gzip'])) {
+        method = accept.encoding(['gzip', 'identity'])
+      }
+
+      // negotiation failed
+      if (!method || method === 'identity') {
+        nocompress('not acceptable')
+        return
+      }
+
+      // compression stream
+      debug('%s compression', method)
+      stream = method === 'gzip'
+        ? zlib.createGzip(opts)
+        : zlib.createDeflate(opts)
+
+      // add buffered listeners to stream
+      addListeners(stream, stream.on, listeners)
+
+      // header fields
+      res.setHeader('Content-Encoding', method)
+      res.removeHeader('Content-Length')
+
+      // compression
+      stream.on('data', function onStreamData (chunk) {
+        if (_write.call(res, chunk) === false) {
+          stream.pause()
+        }
+      })
+
+      stream.on('end', function onStreamEnd () {
+        _end.call(res)
+      })
+
+      _on.call(res, 'drain', function onResponseDrain () {
+        stream.resume()
+      })
+    })
+
+    next()
+  }
+}
+
+/**
+ * Add bufferred listeners to stream
+ * @private
+ */
+
+function addListeners (stream, on, listeners) {
+  for (var i = 0; i < listeners.length; i++) {
+    on.apply(stream, listeners[i])
+  }
+}
+
+/**
+ * Get the length of a given chunk
+ */
+
+function chunkLength (chunk, encoding) {
+  if (!chunk) {
+    return 0
+  }
+
+  return !Buffer.isBuffer(chunk)
+    ? Buffer.byteLength(chunk, encoding)
+    : chunk.length
+}
+
+/**
+ * Default filter function.
+ * @private
+ */
+
+function shouldCompress (req, res) {
+  var type = res.getHeader('Content-Type')
+
+  if (type === undefined || !compressible(type)) {
+    debug('%s not compressible', type)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Determine if the entity should be transformed.
+ * @private
+ */
+
+function shouldTransform (req, res) {
+  var cacheControl = res.getHeader('Cache-Control')
+
+  // Don't compress for Cache-Control: no-transform
+  // https://tools.ietf.org/html/rfc7234#section-5.2.2.4
+  return !cacheControl ||
+    !cacheControlNoTransformRegExp.test(cacheControl)
+}
+
+/**
+ * Coerce arguments to Buffer
+ * @private
+ */
+
+function toBuffer (chunk, encoding) {
+  return !Buffer.isBuffer(chunk)
+    ? Buffer.from(chunk, encoding)
+    : chunk
+}
+
+
+/***/ }),
 /* 74 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -4870,7 +5166,13 @@ __decorate([
 
 
 /***/ }),
-/* 80 */,
+/* 80 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("accepts");
+
+/***/ }),
 /* 81 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -10226,7 +10528,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
@@ -10247,9 +10549,13 @@ let StatisticsController = class StatisticsController {
         if (cachedData) {
             return JSON.parse(cachedData);
         }
-        console.log(cachedData);
+        console.log('run here');
         const data = await this.statisticsService.statisticsUserFollowRankService();
         await this.redisService.set(cacheKey, JSON.stringify(data));
+        return data;
+    }
+    async statisticsUserFollowRankController2() {
+        const data = await this.statisticsService.statisticsUserFollowRankService();
         return data;
     }
     async statisticsTopPostController(filter, start, end) {
@@ -10316,6 +10622,17 @@ __decorate([
     __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], StatisticsController.prototype, "statisticsUserFollowRankController", null);
 __decorate([
+    (0, common_1.Get)('user-follow-rank2'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+], StatisticsController.prototype, "statisticsUserFollowRankController2", null);
+__decorate([
     (0, common_1.Get)('top-post'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
@@ -10327,7 +10644,7 @@ __decorate([
     __param(2, (0, common_1.Query)('end')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number, Number]),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], StatisticsController.prototype, "statisticsTopPostController", null);
 __decorate([
     (0, common_1.Get)('user'),
@@ -10340,7 +10657,7 @@ __decorate([
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], StatisticsController.prototype, "statisticsUserController", null);
 __decorate([
     (0, common_1.Get)('post'),
@@ -10353,7 +10670,7 @@ __decorate([
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], StatisticsController.prototype, "statisticsPostController", null);
 __decorate([
     (0, common_1.Get)('user-option-day'),
@@ -10364,8 +10681,8 @@ __decorate([
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_g = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _g : Object]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:paramtypes", [typeof (_h = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _h : Object]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], StatisticsController.prototype, "statisticsUserOptionDayController", null);
 __decorate([
     (0, common_1.Get)('post-option-day'),
@@ -10376,8 +10693,8 @@ __decorate([
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_j = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _j : Object]),
-    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
+    __metadata("design:paramtypes", [typeof (_k = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _k : Object]),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
 ], StatisticsController.prototype, "statisticsPostOptionDayController", null);
 exports.StatisticsController = StatisticsController = __decorate([
     (0, swagger_1.ApiTags)('statistics'),
@@ -10430,7 +10747,13 @@ __decorate([
 
 
 /***/ }),
-/* 142 */,
+/* 142 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("safe-buffer");
+
+/***/ }),
 /* 143 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -11489,6 +11812,245 @@ exports.RedisService = RedisService = __decorate([
 "use strict";
 module.exports = require("redis");
 
+/***/ }),
+/* 160 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("bytes");
+
+/***/ }),
+/* 161 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/*!
+ * compressible
+ * Copyright(c) 2013 Jonathan Ong
+ * Copyright(c) 2014 Jeremiah Senkpiel
+ * Copyright(c) 2015 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+
+
+/**
+ * Module dependencies.
+ * @private
+ */
+
+var db = __webpack_require__(162)
+
+/**
+ * Module variables.
+ * @private
+ */
+
+var COMPRESSIBLE_TYPE_REGEXP = /^text\/|\+(?:json|text|xml)$/i
+var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/
+
+/**
+ * Module exports.
+ * @public
+ */
+
+module.exports = compressible
+
+/**
+ * Checks if a type is compressible.
+ *
+ * @param {string} type
+ * @return {Boolean} compressible
+ * @public
+ */
+
+function compressible (type) {
+  if (!type || typeof type !== 'string') {
+    return false
+  }
+
+  // strip parameters
+  var match = EXTRACT_TYPE_REGEXP.exec(type)
+  var mime = match && match[1].toLowerCase()
+  var data = db[mime]
+
+  // return database information
+  if (data && data.compressible !== undefined) {
+    return data.compressible
+  }
+
+  // fallback to regexp or unknown
+  return COMPRESSIBLE_TYPE_REGEXP.test(mime) || undefined
+}
+
+
+/***/ }),
+/* 162 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("mime-db");
+
+/***/ }),
+/* 163 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("debug");
+
+/***/ }),
+/* 164 */
+/***/ ((module) => {
+
+"use strict";
+/*!
+ * on-headers
+ * Copyright(c) 2014 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+
+
+/**
+ * Module exports.
+ * @public
+ */
+
+module.exports = onHeaders
+
+/**
+ * Create a replacement writeHead method.
+ *
+ * @param {function} prevWriteHead
+ * @param {function} listener
+ * @private
+ */
+
+function createWriteHead (prevWriteHead, listener) {
+  var fired = false
+
+  // return function with core name and argument list
+  return function writeHead (statusCode) {
+    // set headers from arguments
+    var args = setWriteHeadHeaders.apply(this, arguments)
+
+    // fire listener
+    if (!fired) {
+      fired = true
+      listener.call(this)
+
+      // pass-along an updated status code
+      if (typeof args[0] === 'number' && this.statusCode !== args[0]) {
+        args[0] = this.statusCode
+        args.length = 1
+      }
+    }
+
+    return prevWriteHead.apply(this, args)
+  }
+}
+
+/**
+ * Execute a listener when a response is about to write headers.
+ *
+ * @param {object} res
+ * @return {function} listener
+ * @public
+ */
+
+function onHeaders (res, listener) {
+  if (!res) {
+    throw new TypeError('argument res is required')
+  }
+
+  if (typeof listener !== 'function') {
+    throw new TypeError('argument listener must be a function')
+  }
+
+  res.writeHead = createWriteHead(res.writeHead, listener)
+}
+
+/**
+ * Set headers contained in array on the response object.
+ *
+ * @param {object} res
+ * @param {array} headers
+ * @private
+ */
+
+function setHeadersFromArray (res, headers) {
+  for (var i = 0; i < headers.length; i++) {
+    res.setHeader(headers[i][0], headers[i][1])
+  }
+}
+
+/**
+ * Set headers contained in object on the response object.
+ *
+ * @param {object} res
+ * @param {object} headers
+ * @private
+ */
+
+function setHeadersFromObject (res, headers) {
+  var keys = Object.keys(headers)
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i]
+    if (k) res.setHeader(k, headers[k])
+  }
+}
+
+/**
+ * Set headers and other properties on the response object.
+ *
+ * @param {number} statusCode
+ * @private
+ */
+
+function setWriteHeadHeaders (statusCode) {
+  var length = arguments.length
+  var headerIndex = length > 1 && typeof arguments[1] === 'string'
+    ? 2
+    : 1
+
+  var headers = length >= headerIndex + 1
+    ? arguments[headerIndex]
+    : undefined
+
+  this.statusCode = statusCode
+
+  if (Array.isArray(headers)) {
+    // handle array case
+    setHeadersFromArray(this, headers)
+  } else if (headers) {
+    // handle object case
+    setHeadersFromObject(this, headers)
+  }
+
+  // copy leading arguments
+  var args = new Array(Math.min(length, headerIndex))
+  for (var i = 0; i < args.length; i++) {
+    args[i] = arguments[i]
+  }
+
+  return args
+}
+
+
+/***/ }),
+/* 165 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("vary");
+
+/***/ }),
+/* 166 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("zlib");
+
 /***/ })
 /******/ 	]);
 /************************************************************************/
@@ -11551,7 +12113,7 @@ module.exports = require("redis");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("efc78759f3d58918065b")
+/******/ 		__webpack_require__.h = () => ("7e07066014344c353f22")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

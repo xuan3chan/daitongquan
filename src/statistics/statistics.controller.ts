@@ -32,9 +32,20 @@ export class StatisticsController {
     if (cachedData) {
       return JSON.parse(cachedData);
     }
-    console.log(cachedData)
+    console.log('run here')
     const data = await this.statisticsService.statisticsUserFollowRankService();
     await this.redisService.set(cacheKey, JSON.stringify(data));
+    return data;
+  }
+  @Get('user-follow-rank2')
+  @UseGuards(PermissionGuard)
+  @Action('read')
+  @Subject('dashboard')
+  @ApiOkResponse({ description: 'Get all statistics' })
+  @ApiBadGatewayResponse({ description: 'Bad gateway' })
+  async statisticsUserFollowRankController2(): Promise<any> {
+    
+    const data = await this.statisticsService.statisticsUserFollowRankService();
     return data;
   }
 
