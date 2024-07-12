@@ -6,9 +6,11 @@ import { ConfigModule } from '@nestjs/config';
 import { DebtSchema } from './schema/debt.schema';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { UsersModule } from 'src/users/users.module';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
+    RedisCacheModule,
     UsersModule,
     EncryptionModule,
     MongooseModule.forFeature([{ name: 'Debt', schema: DebtSchema}]),

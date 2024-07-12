@@ -1,22 +1,41 @@
-import { Body, Controller, Delete, Get, HttpCode, Inject, Patch, Post, Put, UseGuards, UseInterceptors } from '@nestjs/common';
+import { 
+  Body, 
+  Controller, 
+  Delete, 
+  Get, 
+  HttpCode, 
+  Inject, 
+  Patch, 
+  Post, 
+  Put, 
+  UseGuards, 
+  UseInterceptors 
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
-import {CreateAdminDto} from './dto/createAdmin.dto';
-import {UpdateAdminDto} from './dto/updateAdmin.dto';
-import {DeleteAdminDto} from './dto/deleteAdmin.dto'; 
-import {BlockAdminDto} from './dto/blockAdmin.dto';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import {PermissionGuard} from '../gaurd/permission.gaurd';
-import { Subject,Action } from 'src/decorator/casl.decorator';
-import { CacheInterceptor } from '@nestjs/cache-manager';
-
+import { CreateAdminDto } from './dto/createAdmin.dto';
+import { UpdateAdminDto } from './dto/updateAdmin.dto';
+import { DeleteAdminDto } from './dto/deleteAdmin.dto'; 
+import { BlockAdminDto } from './dto/blockAdmin.dto';
+import { 
+  ApiBadRequestResponse, 
+  ApiBearerAuth, 
+  ApiCreatedResponse, 
+  ApiOkResponse, 
+  ApiTags 
+} from '@nestjs/swagger';
+import { PermissionGuard } from '../gaurd/permission.gaurd';
+import { Subject, Action } from 'src/decorator/casl.decorator';
+import { RedisService } from 'src/redis/redis.service';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService,
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly redisService: RedisService// Inject RedisService
   ) {}
-  
+
   @Subject('admin')
   @Action('create')
   @UseGuards(PermissionGuard)
@@ -24,9 +43,20 @@ export class AdminController {
   @ApiBadRequestResponse({description: 'bad request'})
   @HttpCode(201)
   @Post()
-  async createAdminController(@Body()createAdminDto: CreateAdminDto) {
-    return this.adminService.createAdminService(createAdminDto.fullname,createAdminDto.email, createAdminDto.password, createAdminDto.roleId);
+  async createAdminController(@Body() createAdminDto: CreateAdminDto) {
+    const result = await this.adminService.createAdminService(
+      createAdminDto.fullname, 
+      createAdminDto.email, 
+      createAdminDto.password, 
+      createAdminDto.roleId
+    );
+    
+    // Cache the created admin in Redis
+    await this.redisService.set(`admin:${result.id}`, JSON.stringify(result));
+    
+    return result;
   }
+
   @Action('update')
   @Subject('admin')
   @UseGuards(PermissionGuard)
@@ -35,7 +65,18 @@ export class AdminController {
   @HttpCode(200)
   @Put()
   async updateAdmincontroller(@Body() updateAdminDto: UpdateAdminDto) {
-    return this.adminService.updateAdminService(updateAdminDto.id, updateAdminDto.fullname, updateAdminDto.email, updateAdminDto.password, updateAdminDto.roleId);
+    const result = await this.adminService.updateAdminService(
+      updateAdminDto.id, 
+      updateAdminDto.fullname, 
+      updateAdminDto.email, 
+      updateAdminDto.password, 
+      updateAdminDto.roleId
+    );
+
+    // Update the cached admin in Redis
+    await this.redisService.set(`admin:${updateAdminDto.id}`, JSON.stringify(result));
+    
+    return result;
   }
 
   @Action('delete')
@@ -45,20 +86,36 @@ export class AdminController {
   @ApiBadRequestResponse({description: 'bad request'})
   @Delete()
   async deleteAdminController(@Body() deleteAdminDto: DeleteAdminDto) {
-    return this.adminService.deleteAdminService(deleteAdminDto.id);
+    const result = await this.adminService.deleteAdminService(deleteAdminDto.id);
+
+    // Remove the admin from the Redis cache
+    await this.redisService.delJSON(`admin:${deleteAdminDto.id}`);
+    
+    return result;
   }
 
   @Action('read')
   @Subject('admin')
-  // @UseInterceptors(CacheInterceptor)
   @UseGuards(PermissionGuard)
   @ApiOkResponse({description: 'Admin listed successfully'})
   @ApiBadRequestResponse({description: 'bad request'})
   @HttpCode(200)
   @Get()
   async listAdminController() {
-    return this.adminService.listAdminService();
+    // Check if admins are cached in Redis
+    const cachedAdmins = await this.redisService.get('admin:all');
+    if (cachedAdmins) {
+      return JSON.parse(cachedAdmins);
+    }
+
+    const result = await this.adminService.listAdminService();
+
+    // Cache the list of admins in Redis
+    await this.redisService.set('admin:all', JSON.stringify(result));
+    
+    return result;
   }
+
   @Action('block')
   @Subject('admin')
   @UseGuards(PermissionGuard)
@@ -67,6 +124,19 @@ export class AdminController {
   @HttpCode(200)
   @Patch('update-block')
   async blockAdminController(@Body() blockAdminDto: BlockAdminDto) {
-    return this.adminService.blockAdminService(blockAdminDto.id, blockAdminDto.isBlock);
+    const result = await this.adminService.blockAdminService(
+      blockAdminDto.id, 
+      blockAdminDto.isBlock
+    );
+
+    // Update the cached admin block status in Redis
+    const cachedAdmin = await this.redisService.get(`admin:${blockAdminDto.id}`);
+    if (cachedAdmin) {
+      const admin = JSON.parse(cachedAdmin);
+      admin.isBlock = blockAdminDto.isBlock;
+      await this.redisService.set(`admin:${blockAdminDto.id}`, JSON.stringify(admin));
+    }
+    
+    return result;
   }
 }

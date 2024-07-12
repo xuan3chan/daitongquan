@@ -1,19 +1,22 @@
-import { Body,Post, Controller, Req, UseGuards, Put, Delete, Get, Param } from '@nestjs/common';
+import { Body, Post, Controller, Req, UseGuards, Put, Delete, Get, Param, InternalServerErrorException } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCateDto } from './dto/CreateCate.dto';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { MemberGuard } from '../gaurd/member.gaurd';
-import { UpdateCateDto} from './dto/UpdateCate.dto';
-
+import { ApiBearerAuth, ApiTags, ApiCreatedResponse, ApiBadRequestResponse } from '@nestjs/swagger';
+import { MemberGuard } from '../gaurd/member.gaurd'; // Ensure correct import path for your guard
+import { UpdateCateDto } from './dto/UpdateCate.dto';
+import { RedisService } from '../redis/redis.service'; // Ensure correct import path for your RedisService
 
 @ApiTags('category')
 @ApiBearerAuth()
 @Controller('category')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
-  
+  constructor(
+    private readonly categoryService: CategoryService,
+    private readonly redisService: RedisService,
+  ) {}
+
   private getUserIdFromToken(request: Request): string {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>
     const decodedToken = jwt.decode(token) as JwtPayload;
@@ -22,6 +25,10 @@ export class CategoryController {
 
   @Post()
   @UseGuards(MemberGuard)
+  @ApiCreatedResponse({
+    description: 'The record has been successfully created.',
+  })
+  @ApiBadRequestResponse({ description: 'Bad Request' })
   async createCateController(
     @Req() request: Request,
     @Body() createCateDto: CreateCateDto,
@@ -40,6 +47,10 @@ export class CategoryController {
 
   @Put()
   @UseGuards(MemberGuard)
+  @ApiCreatedResponse({
+    description: 'The record has been successfully updated.',
+  })
+  @ApiBadRequestResponse({ description: 'Bad Request' })
   async updateCateController(
     @Req() request: Request,
     @Body() updateCateDto: UpdateCateDto,
@@ -55,28 +66,57 @@ export class CategoryController {
       updateCateDto.status,
     );
   }
-  @Delete(':CateId')
+
+  @Delete(':cateId')
   @UseGuards(MemberGuard)
+  @ApiCreatedResponse({
+    description: 'The record has been successfully deleted.',
+  })
+  @ApiBadRequestResponse({ description: 'Bad Request' })
   async deleteCateController(
     @Req() request: Request,
-    @Param('CateId') CateId: string,
+    @Param('cateId') cateId: string,
   ): Promise<any> {
-   const userId = this.getUserIdFromToken(request);
-    return this.categoryService.deleteCateService(userId, CateId);
+    const userId = this.getUserIdFromToken(request);
+    return this.categoryService.deleteCateService(userId, cateId);
   }
+
   @Get()
   @UseGuards(MemberGuard)
   async viewCateController(@Req() request: Request): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.categoryService.viewSpendingCateService(userId);
+    const cacheKey = `category-${userId}`;
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.categoryService.viewSpendingCateService(userId);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
+    }
   }
+
   @Get('/income')
   @UseGuards(MemberGuard)
-  async getCateByTypeIcomeController(
+  async getCateByTypeIncomeController(
     @Req() request: Request,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.categoryService.getCateByTypeIcomeService(userId);
+    const cacheKey = `category-income-${userId}`;
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.categoryService.getCateByTypeIcomeService(userId);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
+    }
   }
 
   @Get('/spend')
@@ -85,7 +125,17 @@ export class CategoryController {
     @Req() request: Request,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.categoryService.getCateByTypeSpendingService(userId);
+    const cacheKey = `category-spend-${userId}`;
+    try {
+      const cachedData = await this.redisService.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+      const data = await this.categoryService.getCateByTypeSpendingService(userId);
+      await this.redisService.set(cacheKey, JSON.stringify(data));
+      return data;
+    } catch (error) {
+      throw new InternalServerErrorException('Error retrieving data');
+    }
   }
-  
 }

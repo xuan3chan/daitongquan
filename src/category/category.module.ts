@@ -6,9 +6,11 @@ import { ConfigModule } from '@nestjs/config';
 import { Category, CategorySchema } from './schema/category.schema';
 import { SpendingLimitModule } from 'src/spendinglimit/spendinglimit.module';
 import { SpendingNoteModule } from 'src/spendingnote/spendingnote.module';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
+    RedisCacheModule,
     MongooseModule.forFeature([{ name: Category.name, schema: CategorySchema }]),
     ConfigModule.forRoot({
       isGlobal: true,

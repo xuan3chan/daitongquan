@@ -5,12 +5,15 @@ import { CreateCommentDto, ReplyCommentDto, UpdateCommentDto } from './dto/comme
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
+import { RedisService } from 'src/redis/redis.service';
 
 @ApiTags('comment')
 @ApiBearerAuth()
 @Controller('comment')
 export class CommentController {
-  constructor(private readonly commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService,
+  private readonly redisService: RedisService, // Inject the Redis
+  ) {}
 
   private getUserIdFromToken(request: Request): string {
     const token = (request.headers as any).authorization.split(' ')[1]; // Bearer <token>
@@ -65,7 +68,13 @@ export class CommentController {
   @ApiBadGatewayResponse({ description: 'Bad Request' })
   @ApiOkResponse({ description: 'Success' })
   async getCommentController(@Param('postId') postId: string) {
-    return this.commentService.getCommentService(postId);
+    const cachedComments = await this.redisService.get(`comments:${postId}`);
+    if (cachedComments) {
+      return JSON.parse(cachedComments);
+    }
+    const comments = await this.commentService.getCommentService(postId);
+    await this.redisService.set(`comments:${postId}`, JSON.stringify(comments), 3600);
+    return comments;
   }
 
   @Post('reply/:commentId')

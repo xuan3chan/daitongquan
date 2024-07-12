@@ -41,6 +41,19 @@ export class StatisticsController {
     }
   }
 
+  //dont use redis
+  @Get('user-follow-rank2')
+  @UseGuards(PermissionGuard)
+  @Action('read')
+  @Subject('dashboard')
+  @ApiOkResponse({ description: 'Get all statistics' })
+  @ApiBadGatewayResponse({ description: 'Bad gateway' })
+  async statisticsUserFollowRankController2(): Promise<any> {
+    return this.statisticsService.statisticsUserFollowRankService();
+  }
+  
+
+
 
   @Get('top-post')
   @UseGuards(PermissionGuard)
