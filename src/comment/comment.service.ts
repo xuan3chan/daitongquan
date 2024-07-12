@@ -62,10 +62,10 @@ export class CommentService {
       _id: commentId,
       userId,
     });
-    //get post id from comment
+    const sizeReplyComment = result.repliesComment.length;
     const postId = result.postId;
     await this.postModel.findByIdAndUpdate(postId, {
-      $inc: { commentCount: -1 },
+      $inc: { commentCount: -(sizeReplyComment+1) },
     });
 
     return {
@@ -168,8 +168,7 @@ async CreateReplyCommentService(
     commentId: string,
     replyCommentId: string,
   ): Promise<{ message: string }> {
-    // Validate IDs
-
+    
     // Find the main comment by its ID
     const comment = await this.commentModel.findById(commentId);
     if (!comment) {

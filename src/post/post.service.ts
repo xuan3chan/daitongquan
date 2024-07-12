@@ -69,7 +69,9 @@ export class PostService {
   }
 
   async viewDetailPostService(postId: string): Promise<Post> {
-    return await this.postModel.findById(postId);
+    return await this.postModel.findById(postId)
+    .populate('userReaction.userId', 'firstname lastname avatar')
+    .populate('userId', 'firstname lastname avatar rankID');
   }
 
   async deleteManyPostService(
@@ -120,7 +122,7 @@ export class PostService {
     return await this.postModel
       .find({ status: 'active', isShow: true })
       .populate('userReaction.userId', 'firstname lastname avatar')
-      .populate('userId', 'firstname lastname avatar')
+      .populate('userId', 'firstname lastname avatar rankID')
       .sort({ createdAt: -1 });
 }
   async viewListPostService(): Promise<Post[]> {
