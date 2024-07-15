@@ -1101,7 +1101,8 @@ let CloudinaryService = class CloudinaryService {
     async uploadImageService(imageName, file) {
         const timestamp = new Date();
         this.validateFile(file, 'image');
-        const newImageName = imageName.replace(/[^a-zA-Z0-9]/g, '');
+        const normalizedImageName = imageName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '');
         const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
         const uploadResult = await this.uploadFile(file, { public_id: publicId });
         return { uploadResult };
@@ -11762,7 +11763,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("ff7e687a314f1b02731c")
+/******/ 		__webpack_require__.h = () => ("1c23fb37a964c2ee55ee")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

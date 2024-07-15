@@ -52,12 +52,14 @@ export class CloudinaryService {
   }> {
     const timestamp = new Date();
     this.validateFile(file, 'image');
-    // cat chuoi bo dau va khoang trang
-    const newImageName = imageName.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // Normalize the string to remove diacritics (accents) and then remove non-alphanumeric characters
+    const normalizedImageName = imageName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '');
+    
     const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
     const uploadResult = await this.uploadFile(file, { public_id: publicId });
-
-
+  
     return { uploadResult };
   }
 
