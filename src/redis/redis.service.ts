@@ -69,7 +69,7 @@ export class RedisService
       if (ttl) {
         await this.client.set(key, value, { PX: ttl });
       } else {
-        await this.client.set(key, value, { PX: 60 * 60 * 1000 });
+        await this.client.set(key, value, { PX: 60 });
       }
     } catch (err) {
       this.logger.error(`Error setting key ${key}: `, err);
@@ -152,6 +152,15 @@ export class RedisService
     } catch (err) {
       this.logger.error(`Error setting TTL for key ${key}: `, err);
       throw new InternalServerErrorException(`Error setting TTL for key ${key}`);
+    }
+  }
+
+  async flushAll(): Promise<void> {
+    try {
+      await this.client.flushAll();
+    } catch (err) {
+      this.logger.error('Error flushing all keys: ', err);
+      throw new InternalServerErrorException('Error flushing all keys');
     }
   }
 }

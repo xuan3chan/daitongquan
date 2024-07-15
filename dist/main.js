@@ -247,12 +247,12 @@ const users_module_1 = __webpack_require__(9);
 const auth_module_1 = __webpack_require__(83);
 const mailer_module_1 = __webpack_require__(95);
 const seed_module_1 = __webpack_require__(97);
-const role_module_1 = __webpack_require__(75);
-const admin_module_1 = __webpack_require__(67);
+const role_module_1 = __webpack_require__(76);
+const admin_module_1 = __webpack_require__(70);
 const cloudinary_module_1 = __webpack_require__(51);
 const category_module_1 = __webpack_require__(52);
-const spendinglimit_module_1 = __webpack_require__(56);
-const spendingnote_module_1 = __webpack_require__(60);
+const spendinglimit_module_1 = __webpack_require__(58);
+const spendingnote_module_1 = __webpack_require__(62);
 const incomenote_module_1 = __webpack_require__(98);
 const encryption_module_1 = __webpack_require__(82);
 const debt_module_1 = __webpack_require__(107);
@@ -266,7 +266,7 @@ const statistics_module_1 = __webpack_require__(139);
 const event_gateway_1 = __webpack_require__(143);
 const story_module_1 = __webpack_require__(151);
 const message_module_1 = __webpack_require__(155);
-const redis_module_1 = __webpack_require__(81);
+const redis_module_1 = __webpack_require__(69);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -355,7 +355,7 @@ const config_1 = __webpack_require__(8);
 const cloudinary_module_1 = __webpack_require__(51);
 const abilities_factory_1 = __webpack_require__(35);
 const category_module_1 = __webpack_require__(52);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 const encryption_module_1 = __webpack_require__(82);
 const rank_schema_1 = __webpack_require__(27);
 let UsersModule = class UsersModule {
@@ -1101,7 +1101,8 @@ let CloudinaryService = class CloudinaryService {
     async uploadImageService(imageName, file) {
         const timestamp = new Date();
         this.validateFile(file, 'image');
-        const publicId = `daitongquan/images/${imageName}-${timestamp.getTime()}`;
+        const newImageName = imageName.replace(/[^a-zA-Z0-9]/g, '');
+        const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
         const uploadResult = await this.uploadFile(file, { public_id: publicId });
         return { uploadResult };
     }
@@ -2969,9 +2970,9 @@ const category_controller_1 = __webpack_require__(53);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const category_schema_1 = __webpack_require__(19);
-const spendinglimit_module_1 = __webpack_require__(56);
-const spendingnote_module_1 = __webpack_require__(60);
-const redis_module_1 = __webpack_require__(81);
+const spendinglimit_module_1 = __webpack_require__(58);
+const spendingnote_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let CategoryModule = class CategoryModule {
 };
 exports.CategoryModule = CategoryModule;
@@ -3022,7 +3023,7 @@ const jwt = __webpack_require__(32);
 const swagger_1 = __webpack_require__(31);
 const member_gaurd_1 = __webpack_require__(50);
 const UpdateCate_dto_1 = __webpack_require__(55);
-const redis_service_1 = __webpack_require__(73);
+const redis_service_1 = __webpack_require__(56);
 let CategoryController = class CategoryController {
     constructor(categoryService, redisService) {
         this.categoryService = categoryService;
@@ -3335,11 +3336,185 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RedisService = void 0;
+const common_1 = __webpack_require__(6);
+const redis_1 = __webpack_require__(57);
+let RedisService = class RedisService {
+    constructor(config, logger) {
+        this.config = config;
+        this.logger = logger;
+        this.client = this.initializeClient();
+        this.client.on('error', (err) => {
+            this.logger.error('Redis Client Error', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        });
+    }
+    initializeClient() {
+        return (0, redis_1.createClient)({
+            ...this.config,
+            socket: {
+                reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+                connectTimeout: 5000,
+                keepAlive: 5000,
+            },
+        });
+    }
+    async isConnected() {
+        try {
+            const ping = await this.client.ping();
+            if (ping !== 'PONG') {
+                throw new common_1.InternalServerErrorException('Redis connection error');
+            }
+        }
+        catch (err) {
+            this.logger.error('Redis ping error: ', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        }
+    }
+    async connect() {
+        try {
+            await this.client.connect();
+            this.logger.log('Redis connected...');
+            return this.client;
+        }
+        catch (err) {
+            this.logger.error('Redis connection error: ', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        }
+    }
+    async set(key, value, ttl) {
+        try {
+            if (ttl) {
+                await this.client.set(key, value, { PX: ttl });
+            }
+            else {
+                await this.client.set(key, value, { PX: 60 });
+            }
+        }
+        catch (err) {
+            this.logger.error(`Error setting key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting key ${key}`);
+        }
+    }
+    async get(key) {
+        try {
+            return await this.client.get(key);
+        }
+        catch (err) {
+            this.logger.error(`Error getting key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting key ${key}`);
+        }
+    }
+    async hSet(key, value) {
+        try {
+            return await this.client.hSet(key, value);
+        }
+        catch (err) {
+            this.logger.error(`Error setting hash key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting hash key ${key}`);
+        }
+    }
+    async hGetAll(key) {
+        try {
+            return await this.client.hGetAll(key);
+        }
+        catch (err) {
+            this.logger.error(`Error getting all hash values for key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting all hash values for key ${key}`);
+        }
+    }
+    async getJSON(key, path) {
+        try {
+            const result = await this.client.json.get(key, { path });
+            return result ? JSON.parse(JSON.stringify(result))[0] : null;
+        }
+        catch (err) {
+            this.logger.error(`Error getting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async setJSON(key, path = '$', value) {
+        try {
+            return await this.client.json.set(key, path, value);
+        }
+        catch (err) {
+            this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async delJSON(key, path) {
+        try {
+            return await this.client.json.DEL(key, path);
+        }
+        catch (err) {
+            this.logger.error(`Error deleting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error deleting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async exists(keys) {
+        try {
+            return await this.client.exists(keys);
+        }
+        catch (err) {
+            this.logger.error(`Error checking existence of key(s) ${keys}: `, err);
+            throw new common_1.InternalServerErrorException(`Error checking existence of key(s) ${keys}`);
+        }
+    }
+    async setTTL(key, ttl) {
+        try {
+            await this.client.pExpire(key, ttl);
+        }
+        catch (err) {
+            this.logger.error(`Error setting TTL for key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting TTL for key ${key}`);
+        }
+    }
+    async flushAll() {
+        try {
+            await this.client.flushAll();
+        }
+        catch (err) {
+            this.logger.error('Error flushing all keys: ', err);
+            throw new common_1.InternalServerErrorException('Error flushing all keys');
+        }
+    }
+};
+exports.RedisService = RedisService;
+exports.RedisService = RedisService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof redis_1.RedisClientOptions !== "undefined" && redis_1.RedisClientOptions) === "function" ? _a : Object, typeof (_b = typeof common_1.Logger !== "undefined" && common_1.Logger) === "function" ? _b : Object])
+], RedisService);
+
+
+/***/ }),
+/* 57 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("redis");
+
+/***/ }),
+/* 58 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingLimitModule = void 0;
 const common_1 = __webpack_require__(6);
 const spendinglimit_service_1 = __webpack_require__(20);
-const spendinglimit_controller_1 = __webpack_require__(57);
+const spendinglimit_controller_1 = __webpack_require__(59);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const spendinglimit_schema_1 = __webpack_require__(21);
@@ -3365,7 +3540,7 @@ exports.SpendingLimitModule = SpendingLimitModule = __decorate([
 
 
 /***/ }),
-/* 57 */
+/* 59 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3388,9 +3563,9 @@ exports.SpendinglimitController = void 0;
 const common_1 = __webpack_require__(6);
 const spendinglimit_service_1 = __webpack_require__(20);
 const swagger_1 = __webpack_require__(31);
-const CreateSpendingLimit_dto_1 = __webpack_require__(58);
+const CreateSpendingLimit_dto_1 = __webpack_require__(60);
 const member_gaurd_1 = __webpack_require__(50);
-const UpdateSpendingLimit_dto_1 = __webpack_require__(59);
+const UpdateSpendingLimit_dto_1 = __webpack_require__(61);
 let SpendinglimitController = class SpendinglimitController {
     constructor(spendinglimitService) {
         this.spendinglimitService = spendinglimitService;
@@ -3448,7 +3623,7 @@ exports.SpendinglimitController = SpendinglimitController = __decorate([
 
 
 /***/ }),
-/* 58 */
+/* 60 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3490,7 +3665,7 @@ __decorate([
 
 
 /***/ }),
-/* 59 */
+/* 61 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3532,7 +3707,7 @@ __decorate([
 
 
 /***/ }),
-/* 60 */
+/* 62 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3547,12 +3722,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingNoteModule = void 0;
 const common_1 = __webpack_require__(6);
 const spendingnote_service_1 = __webpack_require__(22);
-const spendingnote_controller_1 = __webpack_require__(61);
+const spendingnote_controller_1 = __webpack_require__(63);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const spendingnote_schema_1 = __webpack_require__(23);
 const category_module_1 = __webpack_require__(52);
-const spendinglimit_module_1 = __webpack_require__(56);
+const spendinglimit_module_1 = __webpack_require__(58);
 let SpendingNoteModule = class SpendingNoteModule {
 };
 exports.SpendingNoteModule = SpendingNoteModule;
@@ -3575,7 +3750,7 @@ exports.SpendingNoteModule = SpendingNoteModule = __decorate([
 
 
 /***/ }),
-/* 61 */
+/* 63 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3598,14 +3773,14 @@ exports.SpendingnoteController = void 0;
 const common_1 = __webpack_require__(6);
 const spendingnote_service_1 = __webpack_require__(22);
 const swagger_1 = __webpack_require__(31);
-const CreateSpendingNote_dto_1 = __webpack_require__(62);
+const CreateSpendingNote_dto_1 = __webpack_require__(64);
 const jwt = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(50);
-const updateSpendingNote_dto_1 = __webpack_require__(63);
-const DeleteSpendingNote_dto_1 = __webpack_require__(64);
-const FilterSpendingNote_dto_1 = __webpack_require__(65);
+const updateSpendingNote_dto_1 = __webpack_require__(65);
+const DeleteSpendingNote_dto_1 = __webpack_require__(66);
+const FilterSpendingNote_dto_1 = __webpack_require__(67);
 const express_1 = __webpack_require__(43);
-const StatictisSpendingNote_dto_1 = __webpack_require__(66);
+const StatictisSpendingNote_dto_1 = __webpack_require__(68);
 let SpendingnoteController = class SpendingnoteController {
     constructor(spendingnoteService) {
         this.spendingnoteService = spendingnoteService;
@@ -3872,7 +4047,7 @@ exports.SpendingnoteController = SpendingnoteController = __decorate([
 
 
 /***/ }),
-/* 62 */
+/* 64 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3952,7 +4127,7 @@ __decorate([
 
 
 /***/ }),
-/* 63 */
+/* 65 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4040,7 +4215,7 @@ __decorate([
 
 
 /***/ }),
-/* 64 */
+/* 66 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4074,7 +4249,7 @@ __decorate([
 
 
 /***/ }),
-/* 65 */
+/* 67 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4120,7 +4295,7 @@ __decorate([
 
 
 /***/ }),
-/* 66 */
+/* 68 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4173,7 +4348,55 @@ __decorate([
 
 
 /***/ }),
-/* 67 */
+/* 69 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RedisCacheModule = void 0;
+const common_1 = __webpack_require__(6);
+const config_1 = __webpack_require__(8);
+const redis_service_1 = __webpack_require__(56);
+let RedisCacheModule = class RedisCacheModule {
+};
+exports.RedisCacheModule = RedisCacheModule;
+exports.RedisCacheModule = RedisCacheModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot({
+                envFilePath: '.env',
+                isGlobal: true,
+            }),
+        ],
+        providers: [
+            {
+                provide: redis_service_1.RedisService,
+                useFactory: async (config) => {
+                    const logger = new common_1.Logger('REDIS');
+                    const cacheService = new redis_service_1.RedisService({
+                        url: `redis://${config.get('REDIS_HOST')}:${+config.get('REDIS_PORT')}`,
+                        password: config.get('REDIS_PASSWORD'),
+                    }, logger);
+                    await cacheService.connect();
+                    return cacheService;
+                },
+                inject: [config_1.ConfigService],
+            },
+        ],
+        exports: [redis_service_1.RedisService],
+    })
+], RedisCacheModule);
+
+
+/***/ }),
+/* 70 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4188,14 +4411,14 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AdminModule = void 0;
 const common_1 = __webpack_require__(6);
 const admin_service_1 = __webpack_require__(38);
-const admin_controller_1 = __webpack_require__(68);
+const admin_controller_1 = __webpack_require__(71);
 const mongoose_1 = __webpack_require__(7);
 const admin_schema_1 = __webpack_require__(39);
 const config_1 = __webpack_require__(8);
-const role_module_1 = __webpack_require__(75);
+const role_module_1 = __webpack_require__(76);
 const role_schema_1 = __webpack_require__(40);
 const abilities_factory_1 = __webpack_require__(35);
-const redis_module_1 = __webpack_require__(81);
+const redis_module_1 = __webpack_require__(69);
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -4218,7 +4441,7 @@ exports.AdminModule = AdminModule = __decorate([
 
 
 /***/ }),
-/* 68 */
+/* 71 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4240,14 +4463,14 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.AdminController = void 0;
 const common_1 = __webpack_require__(6);
 const admin_service_1 = __webpack_require__(38);
-const createAdmin_dto_1 = __webpack_require__(69);
-const updateAdmin_dto_1 = __webpack_require__(70);
-const deleteAdmin_dto_1 = __webpack_require__(71);
-const blockAdmin_dto_1 = __webpack_require__(72);
+const createAdmin_dto_1 = __webpack_require__(72);
+const updateAdmin_dto_1 = __webpack_require__(73);
+const deleteAdmin_dto_1 = __webpack_require__(74);
+const blockAdmin_dto_1 = __webpack_require__(75);
 const swagger_1 = __webpack_require__(31);
 const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
-const redis_service_1 = __webpack_require__(73);
+const redis_service_1 = __webpack_require__(56);
 let AdminController = class AdminController {
     constructor(adminService, redisService) {
         this.adminService = adminService;
@@ -4361,7 +4584,7 @@ exports.AdminController = AdminController = __decorate([
 
 
 /***/ }),
-/* 69 */
+/* 72 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4424,7 +4647,7 @@ __decorate([
 
 
 /***/ }),
-/* 70 */
+/* 73 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4495,7 +4718,7 @@ __decorate([
 
 
 /***/ }),
-/* 71 */
+/* 74 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4528,7 +4751,7 @@ __decorate([
 
 
 /***/ }),
-/* 72 */
+/* 75 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4570,172 +4793,7 @@ __decorate([
 
 
 /***/ }),
-/* 73 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-var _a, _b;
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RedisService = void 0;
-const common_1 = __webpack_require__(6);
-const redis_1 = __webpack_require__(74);
-let RedisService = class RedisService {
-    constructor(config, logger) {
-        this.config = config;
-        this.logger = logger;
-        this.client = this.initializeClient();
-        this.client.on('error', (err) => {
-            this.logger.error('Redis Client Error', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        });
-    }
-    initializeClient() {
-        return (0, redis_1.createClient)({
-            ...this.config,
-            socket: {
-                reconnectStrategy: (retries) => Math.min(retries * 50, 500),
-                connectTimeout: 5000,
-                keepAlive: 5000,
-            },
-        });
-    }
-    async isConnected() {
-        try {
-            const ping = await this.client.ping();
-            if (ping !== 'PONG') {
-                throw new common_1.InternalServerErrorException('Redis connection error');
-            }
-        }
-        catch (err) {
-            this.logger.error('Redis ping error: ', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        }
-    }
-    async connect() {
-        try {
-            await this.client.connect();
-            this.logger.log('Redis connected...');
-            return this.client;
-        }
-        catch (err) {
-            this.logger.error('Redis connection error: ', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        }
-    }
-    async set(key, value, ttl) {
-        try {
-            if (ttl) {
-                await this.client.set(key, value, { PX: ttl });
-            }
-            else {
-                await this.client.set(key, value, { PX: 60 * 60 * 1000 });
-            }
-        }
-        catch (err) {
-            this.logger.error(`Error setting key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting key ${key}`);
-        }
-    }
-    async get(key) {
-        try {
-            return await this.client.get(key);
-        }
-        catch (err) {
-            this.logger.error(`Error getting key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting key ${key}`);
-        }
-    }
-    async hSet(key, value) {
-        try {
-            return await this.client.hSet(key, value);
-        }
-        catch (err) {
-            this.logger.error(`Error setting hash key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting hash key ${key}`);
-        }
-    }
-    async hGetAll(key) {
-        try {
-            return await this.client.hGetAll(key);
-        }
-        catch (err) {
-            this.logger.error(`Error getting all hash values for key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting all hash values for key ${key}`);
-        }
-    }
-    async getJSON(key, path) {
-        try {
-            const result = await this.client.json.get(key, { path });
-            return result ? JSON.parse(JSON.stringify(result))[0] : null;
-        }
-        catch (err) {
-            this.logger.error(`Error getting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async setJSON(key, path = '$', value) {
-        try {
-            return await this.client.json.set(key, path, value);
-        }
-        catch (err) {
-            this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async delJSON(key, path) {
-        try {
-            return await this.client.json.DEL(key, path);
-        }
-        catch (err) {
-            this.logger.error(`Error deleting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error deleting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async exists(keys) {
-        try {
-            return await this.client.exists(keys);
-        }
-        catch (err) {
-            this.logger.error(`Error checking existence of key(s) ${keys}: `, err);
-            throw new common_1.InternalServerErrorException(`Error checking existence of key(s) ${keys}`);
-        }
-    }
-    async setTTL(key, ttl) {
-        try {
-            await this.client.pExpire(key, ttl);
-        }
-        catch (err) {
-            this.logger.error(`Error setting TTL for key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting TTL for key ${key}`);
-        }
-    }
-};
-exports.RedisService = RedisService;
-exports.RedisService = RedisService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof redis_1.RedisClientOptions !== "undefined" && redis_1.RedisClientOptions) === "function" ? _a : Object, typeof (_b = typeof common_1.Logger !== "undefined" && common_1.Logger) === "function" ? _b : Object])
-], RedisService);
-
-
-/***/ }),
-/* 74 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("redis");
-
-/***/ }),
-/* 75 */
+/* 76 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4749,13 +4807,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RoleModule = void 0;
 const common_1 = __webpack_require__(6);
-const role_service_1 = __webpack_require__(76);
-const role_controller_1 = __webpack_require__(77);
+const role_service_1 = __webpack_require__(77);
+const role_controller_1 = __webpack_require__(78);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const role_schema_1 = __webpack_require__(40);
 const abilities_factory_1 = __webpack_require__(35);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 let RoleModule = class RoleModule {
 };
 exports.RoleModule = RoleModule;
@@ -4777,7 +4835,7 @@ exports.RoleModule = RoleModule = __decorate([
 
 
 /***/ }),
-/* 76 */
+/* 77 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4868,7 +4926,7 @@ exports.RoleService = RoleService = __decorate([
 
 
 /***/ }),
-/* 77 */
+/* 78 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4889,10 +4947,10 @@ var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RoleController = void 0;
 const common_1 = __webpack_require__(6);
-const role_service_1 = __webpack_require__(76);
-const createrole_dto_1 = __webpack_require__(78);
-const updaterole_dto_1 = __webpack_require__(79);
-const deleterole_dto_1 = __webpack_require__(80);
+const role_service_1 = __webpack_require__(77);
+const createrole_dto_1 = __webpack_require__(79);
+const updaterole_dto_1 = __webpack_require__(80);
+const deleterole_dto_1 = __webpack_require__(81);
 const swagger_1 = __webpack_require__(31);
 const casl_decorator_1 = __webpack_require__(42);
 const permission_gaurd_1 = __webpack_require__(34);
@@ -4976,7 +5034,7 @@ exports.RoleController = RoleController = __decorate([
 
 
 /***/ }),
-/* 78 */
+/* 79 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -5022,7 +5080,7 @@ __decorate([
 
 
 /***/ }),
-/* 79 */
+/* 80 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -5078,7 +5136,7 @@ __decorate([
 
 
 /***/ }),
-/* 80 */
+/* 81 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -5108,54 +5166,6 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], DeleteRoleDto.prototype, "id", void 0);
-
-
-/***/ }),
-/* 81 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RedisCacheModule = void 0;
-const common_1 = __webpack_require__(6);
-const config_1 = __webpack_require__(8);
-const redis_service_1 = __webpack_require__(73);
-let RedisCacheModule = class RedisCacheModule {
-};
-exports.RedisCacheModule = RedisCacheModule;
-exports.RedisCacheModule = RedisCacheModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            config_1.ConfigModule.forRoot({
-                envFilePath: '.env',
-                isGlobal: true,
-            }),
-        ],
-        providers: [
-            {
-                provide: redis_service_1.RedisService,
-                useFactory: async (config) => {
-                    const logger = new common_1.Logger('REDIS');
-                    const cacheService = new redis_service_1.RedisService({
-                        url: `redis://${config.get('REDIS_HOST')}:${+config.get('REDIS_PORT')}`,
-                        password: config.get('REDIS_PASSWORD'),
-                    }, logger);
-                    await cacheService.connect();
-                    return cacheService;
-                },
-                inject: [config_1.ConfigService],
-            },
-        ],
-        exports: [redis_service_1.RedisService],
-    })
-], RedisCacheModule);
 
 
 /***/ }),
@@ -5211,8 +5221,8 @@ const jwt_1 = __webpack_require__(30);
 const config_1 = __webpack_require__(8);
 const mailer_module_1 = __webpack_require__(95);
 const seed_module_1 = __webpack_require__(97);
-const admin_module_1 = __webpack_require__(67);
-const role_module_1 = __webpack_require__(75);
+const admin_module_1 = __webpack_require__(70);
+const role_module_1 = __webpack_require__(76);
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -5390,7 +5400,7 @@ const crypto_1 = __webpack_require__(25);
 const bcrypt = __webpack_require__(41);
 const seeds_service_1 = __webpack_require__(88);
 const admin_service_1 = __webpack_require__(38);
-const role_service_1 = __webpack_require__(76);
+const role_service_1 = __webpack_require__(77);
 let AuthService = class AuthService {
     constructor(usersService, jwtService, mailerService, seedsService, adminService, roleService) {
         this.usersService = usersService;
@@ -7113,7 +7123,7 @@ const config_1 = __webpack_require__(8);
 const debt_schema_1 = __webpack_require__(109);
 const encryption_module_1 = __webpack_require__(82);
 const users_module_1 = __webpack_require__(9);
-const redis_module_1 = __webpack_require__(81);
+const redis_module_1 = __webpack_require__(69);
 let DebtModule = class DebtModule {
 };
 exports.DebtModule = DebtModule;
@@ -7375,7 +7385,7 @@ const member_gaurd_1 = __webpack_require__(50);
 const debt_service_1 = __webpack_require__(108);
 const CreateDebt_dto_1 = __webpack_require__(111);
 const UpdateDebt_dto_1 = __webpack_require__(112);
-const redis_service_1 = __webpack_require__(73);
+const redis_service_1 = __webpack_require__(56);
 let DebtController = class DebtController {
     constructor(debtService, redisService) {
         this.debtService = debtService;
@@ -8461,7 +8471,7 @@ const config_1 = __webpack_require__(8);
 const rank_schema_1 = __webpack_require__(27);
 const cloudinary_module_1 = __webpack_require__(51);
 const abilities_factory_1 = __webpack_require__(35);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 let RankModule = class RankModule {
 };
 exports.RankModule = RankModule;
@@ -8753,7 +8763,7 @@ const post_schema_1 = __webpack_require__(125);
 const cloudinary_module_1 = __webpack_require__(51);
 const users_module_1 = __webpack_require__(9);
 const abilities_factory_1 = __webpack_require__(35);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 const favoritePost_schema_1 = __webpack_require__(128);
 const comment_schema_1 = __webpack_require__(129);
 let PostModule = class PostModule {
@@ -8901,7 +8911,7 @@ let PostService = class PostService {
     }
     async viewListPostService() {
         return await this.postModel.find()
-            .populate('userId', 'firstname lastname avatar')
+            .populate('userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
     }
     async viewMyPostService(userId) {
@@ -8987,7 +8997,7 @@ let PostService = class PostService {
         try {
             const favoritePosts = await this.favoritePostModel.find({ userId });
             const postIds = favoritePosts.map((post) => post.postId);
-            return await this.postModel.find({ _id: { $in: postIds } });
+            return await this.postModel.find({ _id: { $in: postIds } }).populate('userId', 'firstname lastname avatar rankID');
         }
         catch (error) {
             console.error(error);
@@ -9558,7 +9568,7 @@ const comment_schema_1 = __webpack_require__(129);
 const post_module_1 = __webpack_require__(123);
 const users_module_1 = __webpack_require__(9);
 const post_schema_1 = __webpack_require__(125);
-const redis_module_1 = __webpack_require__(81);
+const redis_module_1 = __webpack_require__(69);
 let CommentModule = class CommentModule {
 };
 exports.CommentModule = CommentModule;
@@ -9759,7 +9769,7 @@ const swagger_1 = __webpack_require__(31);
 const comment_dto_1 = __webpack_require__(133);
 const jwt = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(50);
-const redis_service_1 = __webpack_require__(73);
+const redis_service_1 = __webpack_require__(56);
 let CommentController = class CommentController {
     constructor(commentService, redisService) {
         this.commentService = commentService;
@@ -9965,7 +9975,7 @@ const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const report_schema_1 = __webpack_require__(136);
 const abilities_factory_1 = __webpack_require__(35);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 const user_schema_1 = __webpack_require__(13);
 const post_schema_1 = __webpack_require__(125);
 let ReportModule = class ReportModule {
@@ -10300,10 +10310,10 @@ const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const user_schema_1 = __webpack_require__(13);
 const rank_schema_1 = __webpack_require__(27);
-const admin_module_1 = __webpack_require__(67);
+const admin_module_1 = __webpack_require__(70);
 const abilities_factory_1 = __webpack_require__(35);
 const post_schema_1 = __webpack_require__(125);
-const redis_module_1 = __webpack_require__(81);
+const redis_module_1 = __webpack_require__(69);
 let StatisticsModule = class StatisticsModule {
 };
 exports.StatisticsModule = StatisticsModule;
@@ -10565,6 +10575,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var StatisticsController_1;
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
@@ -10574,103 +10585,66 @@ const swagger_1 = __webpack_require__(31);
 const permission_gaurd_1 = __webpack_require__(34);
 const casl_decorator_1 = __webpack_require__(42);
 const querydate_dto_1 = __webpack_require__(142);
-const redis_service_1 = __webpack_require__(73);
-let StatisticsController = class StatisticsController {
+const redis_service_1 = __webpack_require__(56);
+let StatisticsController = StatisticsController_1 = class StatisticsController {
     constructor(statisticsService, redisService) {
         this.statisticsService = statisticsService;
         this.redisService = redisService;
+        this.logger = new common_1.Logger(StatisticsController_1.name);
+    }
+    async getCachedData(cacheKey, ttl, fetchFunction) {
+        try {
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+            const data = await fetchFunction();
+            await this.redisService.set(cacheKey, JSON.stringify(data), ttl);
+            return data;
+        }
+        catch (error) {
+            this.logger.error(`Error retrieving data for cacheKey: ${cacheKey}`, error.stack);
+            throw new common_1.InternalServerErrorException('Error retrieving data');
+        }
     }
     async statisticsUserFollowRankController() {
         const cacheKey = 'user-follow-rank';
-        try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsUserFollowRankService();
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
-        }
-    }
-    async statisticsUserFollowRankController2() {
-        return this.statisticsService.statisticsUserFollowRankService();
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsUserFollowRankService());
     }
     async statisticsTopPostController(filter, start, end) {
         const cacheKey = `top-post-${filter}-${start}-${end}`;
-        try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsTopPost(filter, start, end);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
-        }
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsTopPost(filter, start, end));
     }
     async statisticsUserController(filter, numberOfItem) {
         const cacheKey = `user-${filter}-${numberOfItem}`;
-        try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsUserService(filter, numberOfItem);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
-        }
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsUserService(filter, numberOfItem));
     }
     async statisticsPostController(filter, numberOfItem) {
         const cacheKey = `post-${filter}-${numberOfItem}`;
-        try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsPostService(filter, numberOfItem);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
-        }
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsPostService(filter, numberOfItem));
     }
     async statisticsUserOptionDayController(dto) {
         const cacheKey = `user-option-day-${dto.start}-${dto.end}`;
-        try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsUserOptionDayService(dto.start, dto.end);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
-        }
-        catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
-        }
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsUserOptionDayService(dto.start, dto.end));
     }
     async statisticsPostOptionDayController(dto) {
         const cacheKey = `post-option-day-${dto.start}-${dto.end}`;
+        const ttl = 60;
+        return this.getCachedData(cacheKey, ttl, () => this.statisticsService.statisticsPostOptionDayService(dto.start, dto.end));
+    }
+    async flushCache() {
         try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.statisticsService.statisticsPostOptionDayService(dto.start, dto.end);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
-            return data;
+            await this.redisService.flushAll();
+            return { message: 'Cache flushed successfully' };
         }
         catch (error) {
-            throw new common_1.InternalServerErrorException('Error retrieving data');
+            this.logger.error('Error flushing cache', error.stack);
+            throw new common_1.InternalServerErrorException('Error flushing cache');
         }
     }
 };
@@ -10680,88 +10654,87 @@ __decorate([
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get user follow rank statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", typeof (_c = typeof Promise !== "undefined" && Promise) === "function" ? _c : Object)
 ], StatisticsController.prototype, "statisticsUserFollowRankController", null);
 __decorate([
-    (0, common_1.Get)('user-follow-rank2'),
-    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
-    (0, casl_decorator_1.Action)('read'),
-    (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
-    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
-], StatisticsController.prototype, "statisticsUserFollowRankController2", null);
-__decorate([
     (0, common_1.Get)('top-post'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get top post statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)('filter')),
     __param(1, (0, common_1.Query)('start')),
     __param(2, (0, common_1.Query)('end')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number, Number]),
-    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
+    __metadata("design:returntype", typeof (_d = typeof Promise !== "undefined" && Promise) === "function" ? _d : Object)
 ], StatisticsController.prototype, "statisticsTopPostController", null);
 __decorate([
     (0, common_1.Get)('user'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get user statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)('filter')),
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], StatisticsController.prototype, "statisticsUserController", null);
 __decorate([
     (0, common_1.Get)('post'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get post statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)('filter')),
     __param(1, (0, common_1.Query)('numberOfItem')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Number]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
 ], StatisticsController.prototype, "statisticsPostController", null);
 __decorate([
     (0, common_1.Get)('user-option-day'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get user option day statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _h : Object]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:paramtypes", [typeof (_g = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _g : Object]),
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], StatisticsController.prototype, "statisticsUserOptionDayController", null);
 __decorate([
     (0, common_1.Get)('post-option-day'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Action)('read'),
     (0, casl_decorator_1.Subject)('dashboard'),
-    (0, swagger_1.ApiOkResponse)({ description: 'Get all statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Get post option day statistics' }),
     (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _k : Object]),
-    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+    __metadata("design:paramtypes", [typeof (_j = typeof querydate_dto_1.QueryDto !== "undefined" && querydate_dto_1.QueryDto) === "function" ? _j : Object]),
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], StatisticsController.prototype, "statisticsPostOptionDayController", null);
-exports.StatisticsController = StatisticsController = __decorate([
+__decorate([
+    (0, common_1.Get)('flush-cache'),
+    (0, casl_decorator_1.Action)('read'),
+    (0, casl_decorator_1.Subject)('dashboard'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Flush all cache' }),
+    (0, swagger_1.ApiBadGatewayResponse)({ description: 'Bad gateway' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", typeof (_l = typeof Promise !== "undefined" && Promise) === "function" ? _l : Object)
+], StatisticsController.prototype, "flushCache", null);
+exports.StatisticsController = StatisticsController = StatisticsController_1 = __decorate([
     (0, swagger_1.ApiTags)('statistics'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('statistics'),
@@ -11789,7 +11762,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("28f80e2be628b3a2714b")
+/******/ 		__webpack_require__.h = () => ("ff7e687a314f1b02731c")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

@@ -52,7 +52,9 @@ export class CloudinaryService {
   }> {
     const timestamp = new Date();
     this.validateFile(file, 'image');
-    const publicId = `daitongquan/images/${imageName}-${timestamp.getTime()}`;
+    // cat chuoi bo dau va khoang trang
+    const newImageName = imageName.replace(/[^a-zA-Z0-9]/g, '');
+    const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
     const uploadResult = await this.uploadFile(file, { public_id: publicId });
 
 

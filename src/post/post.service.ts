@@ -127,7 +127,7 @@ export class PostService {
 }
   async viewListPostService(): Promise<Post[]> {
     return await this.postModel.find()
-    .populate('userId', 'firstname lastname avatar')
+    .populate('userId', 'firstname lastname avatar rankID')
     .sort({ createdAt: -1 });
   }
 
@@ -242,7 +242,8 @@ export class PostService {
     try {
       const favoritePosts = await this.favoritePostModel.find({ userId });
       const postIds = favoritePosts.map((post) => post.postId);
-      return await this.postModel.find({ _id: { $in: postIds } });
+      return await this.postModel.find({ _id: { $in: postIds } }).populate('userId', 'firstname lastname avatar rankID')
+      ;
     } catch (error) {
       console.error(error);
       throw new BadRequestException('Error while viewing favorite post');
