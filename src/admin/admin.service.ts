@@ -18,6 +18,7 @@ export class AdminService {
     password: string,
     roleId: string[],
   ): Promise<Admin> {
+    //sle
     const duplicate = await this.adminModel.findOne({ email }).exec();
     const findRole = await this.roleModel.find({ _id: { $in: roleId } }).exec();
     console.log(findRole);
@@ -35,6 +36,7 @@ export class AdminService {
       role: roleId,
     });
     return admin.save();
+    
   }
   async updateAdminService(
   id: string,
