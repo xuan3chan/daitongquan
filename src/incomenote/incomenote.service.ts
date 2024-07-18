@@ -2,20 +2,32 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { IncomeNote } from './schema/incomenote.schema';
+import { IncomeNote, IncomeNoteDocument } from './schema/incomenote.schema';
 import { CategoryService } from '../category/category.service';
 import { remove as removeAccents } from 'remove-accents';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class IncomenoteService {
   constructor(
     @InjectModel(IncomeNote.name)
-    private incomeNoteModel: Model<IncomeNote>,
+    private incomeNoteModel: Model<IncomeNoteDocument>,
     private categoryService: CategoryService,
+    private redisService: RedisService,
   ) {}
+
+  private async deleteCache(key: string) {
+    await this.redisService.delJSON(key, '$');
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
+
   async createIncomeNoteService(
     userId: string,
     cateId: string,
@@ -32,6 +44,7 @@ export class IncomenoteService {
     if (!checkExist) {
       throw new NotFoundException('Category not found');
     }
+
     const newIncomeNote = new this.incomeNoteModel({
       cateId,
       userId,
@@ -41,8 +54,11 @@ export class IncomenoteService {
       method,
       amount,
     });
+
+    await this.deleteCache(`incomeNotes:${userId}`);
     return newIncomeNote.save();
   }
+
   async updateIncomeNoteService(
     userId: string,
     incomeNoteId: string,
@@ -60,54 +76,84 @@ export class IncomenoteService {
     if (!checkExist) {
       throw new NotFoundException('Category not found');
     }
-    return this.incomeNoteModel.findOneAndUpdate(
-      { _id: incomeNoteId },
+
+    const updatedIncomeNote = await this.incomeNoteModel.findOneAndUpdate(
+      { _id: incomeNoteId, userId },
       { cateId, title, content, incomeDate, method, amount },
       { new: true },
     );
+
+    if (!updatedIncomeNote) {
+      throw new NotFoundException('Income note not found');
+    }
+
+    await this.deleteCache(`incomeNotes:${userId}`);
+    return updatedIncomeNote;
   }
+
   async deleteIncomeNoteService(
     userId: string,
     incomeNoteId: string,
-  ): Promise<any> {
-    // find incomenoteid and userId
-    const incomeNote = await this.incomeNoteModel.findOne({
+  ): Promise<{ message: string }> {
+    const incomeNote = await this.incomeNoteModel.findOneAndDelete({
       _id: incomeNoteId,
       userId,
     });
     if (!incomeNote) {
       throw new NotFoundException('Income note not found');
     }
-    await this.incomeNoteModel.findByIdAndDelete(incomeNoteId);
-    return { message: 'Income note deleted' };
+
+    await this.deleteCache(`incomeNotes:${userId}`);
+    return { message: 'Income note deleted successfully' };
   }
   async deleteManyIncomeNoteService(
     userId: string,
-    incomeNoteIds: string[],
-  ): Promise<any> {
-    // find incomenoteid and userId
-    const incomeNote = await this.incomeNoteModel.find({
-      _id: { $in: incomeNoteIds },
-      userId,
-    });
-    if (!incomeNote) {
-      throw new NotFoundException('Income note not found');
+    filter: any,
+  ): Promise<{ message: string }> {
+    const deleteFilter = { userId, ...filter };
+    const result = await this.incomeNoteModel.deleteMany(deleteFilter).exec();
+
+    if (result.deletedCount === 0) {
+      throw new NotFoundException('No income notes found to delete');
     }
-    await this.incomeNoteModel.deleteMany({ _id: { $in: incomeNoteIds } });
-    return { message: 'Income note deleted' };
+
+    await this.deleteCache(`incomeNotes:${userId}`);
+    return {
+      message: `Deleted ${result.deletedCount} income notes successfully`,
+    };
   }
 
-  async viewAllIncomeNoteService(userId: string): Promise<{ totalAmount: number, incomeNotes: IncomeNote[] }> {
+  async viewAllIncomeNoteService(
+    userId: string,
+  ): Promise<{ totalAmount: number; incomeNotes: IncomeNote[] }> {
+    const cachedIncomeNotes = await this.redisService.getJSON(
+      `incomeNotes:${userId}`,
+      '$',
+    );
+    if (cachedIncomeNotes) {
+      return JSON.parse(cachedIncomeNotes as string);
+    }
     const incomeNotes = await this.incomeNoteModel.find({ userId });
     const totalAmount = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
+
+    await this.setCache(`incomeNotes:${userId}`, { totalAmount, incomeNotes });
     return { totalAmount, incomeNotes };
-}
+  }
+
   async getIncomeNoteByCategoryService(
     userId: string,
     cateId: string,
   ): Promise<IncomeNote[]> {
-    return this.incomeNoteModel.find({ userId, cateId });
+    const cachedIncomeNotes = await this.redisService.getJSON(`incomeNotes:${userId}:${cateId}`,'$');
+    if (cachedIncomeNotes) {
+      console.log('Income notes fetched from cache successfully.');
+      return JSON.parse(cachedIncomeNotes as string);
+    }
+    console.log('non cache.');
+    const incomeNotes = await this.incomeNoteModel.find({ userId, cateId });
+    return incomeNotes;
   }
+
   async searchIncomeNoteService(
     searchKey: string,
     userId: string,
@@ -116,13 +162,10 @@ export class IncomenoteService {
       const incomeNotes = await this.incomeNoteModel.find({ userId });
       const preprocessString = (str: string) =>
         str ? removeAccents(str).trim().toLowerCase() : '';
-      // Preprocess the search key
       const preprocessedSearchKey = preprocessString(searchKey || '');
-      // Construct a case-insensitive regex pattern
       const regex = new RegExp(`${preprocessedSearchKey}`, 'i');
-      // Filter the incomeNotes based on the regex
+
       const matchedIncomeNotes = incomeNotes.filter((note) => {
-        // Destructure and preprocess note data
         const { title = '', content = '', amount = '' } = note;
         const [preprocessedTitle, preprocessedContent, preprocessedAmount] = [
           title,
@@ -130,16 +173,17 @@ export class IncomenoteService {
           amount.toString(),
         ].map((field) => preprocessString(field));
 
-        // Test regex pattern against note data
         return (
           regex.test(preprocessedTitle) ||
           regex.test(preprocessedContent) ||
           regex.test(preprocessedAmount)
         );
       });
+
       if (matchedIncomeNotes.length === 0) {
         throw new NotFoundException('No income note found');
       }
+
       return { incomeNotes: matchedIncomeNotes };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -159,15 +203,15 @@ export class IncomenoteService {
       incomeDate: { $gte: startDate, $lte: endDate },
     });
   }
-  async staticticsIncomeNoteByDateService(
+
+  async statisticsIncomeNoteByDateService(
     userId: string,
     startDate: Date,
     endDate: Date,
   ): Promise<any> {
     const incomeNotes = await this.incomeNoteModel.find({ userId });
     const filteredIncomeNotes = incomeNotes.filter(
-      (note) =>
-        note.incomeDate >= startDate && note.incomeDate <= endDate,
+      (note) => note.incomeDate >= startDate && note.incomeDate <= endDate,
     );
     const totalAmount = filteredIncomeNotes.reduce(
       (acc, note) => acc + note.amount,
@@ -178,23 +222,20 @@ export class IncomenoteService {
       totalIncomeNotes: filteredIncomeNotes.length,
     };
   }
-  async staticticsIncomeNoteOptionDayService(
+
+  async statisticsIncomeNoteOptionDayService(
     userId: string,
     startDate: Date,
     endDate: Date,
   ): Promise<any> {
-    // Convert startDate and endDate to Date objects if they are not already
     const start = new Date(startDate);
     const end = new Date(endDate);
-
     const incomeNotes = await this.incomeNoteModel.find({
       userId,
       incomeDate: { $gte: start, $lte: end },
     });
-
     const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-
-    const income = incomeNotes.map(note => ({
+    const income = incomeNotes.map((note) => ({
       title: note.title,
       cost: note.amount,
     }));
@@ -205,26 +246,23 @@ export class IncomenoteService {
       income,
     };
   }
-  async staticticsIncomeNoteOptionMonthService(
-    userId:string,
+
+  async statisticsIncomeNoteOptionMonthService(
+    userId: string,
     month: number,
     year: number,
   ): Promise<any> {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
-
     const incomeNotes = await this.incomeNoteModel.find({
       userId,
       incomeDate: { $gte: startDate, $lte: endDate },
     });
-
     const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-
-    const income = incomeNotes.map(note => ({
+    const income = incomeNotes.map((note) => ({
       title: note.title,
       cost: note.amount,
     }));
-
     return {
       startDate,
       endDate,
@@ -232,25 +270,22 @@ export class IncomenoteService {
       income,
     };
   }
-  async staticticsIncomeNoteOptionYearService(
+
+  async statisticsIncomeNoteOptionYearService(
     userId: string,
     year: number,
   ): Promise<any> {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
-
     const incomeNotes = await this.incomeNoteModel.find({
       userId,
       incomeDate: { $gte: startDate, $lte: endDate },
     });
-
     const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-
-    const income = incomeNotes.map(note => ({
+    const income = incomeNotes.map((note) => ({
       title: note.title,
       cost: note.amount,
     }));
-
     return {
       startDate,
       endDate,
@@ -258,16 +293,17 @@ export class IncomenoteService {
       income,
     };
   }
+
   async statisticIncomeNoteService(
     userId: string,
     filterBy: string,
     numberOfItems: number,
     category?: string,
-  ) {
+  ): Promise<any> {
     let start, end;
     const currentDate = new Date();
     const currentYear = currentDate.getUTCFullYear();
-    const currentMonth = currentDate.getUTCMonth() + 1; // Add 1 to the month
+    const currentMonth = currentDate.getUTCMonth() + 1;
 
     switch (filterBy) {
       case 'month':
@@ -289,70 +325,29 @@ export class IncomenoteService {
         start = new Date(Date.UTC(currentYear - numberOfItems + 1, 0, 1));
         end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
         break;
-      case 'category':
-        start = new Date(Date.UTC(currentYear, 0, 1));
-        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
-        break;
       default:
-        throw new Error('Invalid filter type');
+        throw new BadRequestException(
+          'Invalid filterBy value. Please use "month" or "year".',
+        );
     }
 
-   const query: {
-  incomeDate: { $gte: Date; $lte: Date };
-  userId: string;
-  cateId?: string;
-} = {
-  incomeDate: { $gte: start, $lte: end },
-  userId,
-};
-if (category) {
-  query.cateId = category;
-}
-const incomeNote = await this.incomeNoteModel.find(query);
-    let groupedIncomeDetails = {};
-    if (filterBy === 'month') {
-      let year = currentYear;
-      let month = currentMonth;
-      for (let i = 0; i < numberOfItems; i++) {
-        const key = `${year}-${month < 10 ? '0' + month : month}`; // Add a leading zero to the month if necessary
-        groupedIncomeDetails[key] = {
-          totalCost: 0,
-          items: [],
-        };
-        month -= 1;
-        if (month < 1) {
-          month = 12;
-          year -= 1;
-        }
-      }
-    } else if (filterBy === 'year') {
-      for (let i = 0; i < numberOfItems; i++) {
-        const year = currentYear - i;
-        groupedIncomeDetails[year] = {
-          totalCost: 0,
-          items: [],
-        };
-      }
+    const filter = { userId, incomeDate: { $gte: start, $lte: end } };
+    if (category) {
+      filter['cateId'] = category;
     }
 
-    incomeNote.forEach((note) => {
-      const noteDate = new Date(note.incomeDate);
-      const key =
-        filterBy === 'month'
-          ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1 < 10 ? '0' + (noteDate.getUTCMonth() + 1) : noteDate.getUTCMonth() + 1}` // Add a leading zero to the month if necessary
-          : noteDate.getUTCFullYear();
+    const incomeNotes = await this.incomeNoteModel.find(filter).exec();
+    const total = incomeNotes.reduce((sum, note) => sum + note.amount, 0);
+    const categorizedTotals = incomeNotes.reduce((acc, note) => {
+      acc[note.cateId] = (acc[note.cateId] || 0) + note.amount;
+      return acc;
+    }, {});
 
-      if (groupedIncomeDetails[key]) {
-        groupedIncomeDetails[key].totalCost += note.amount;
-        groupedIncomeDetails[key].items.push({
-          title: note.title,
-          cost: note.amount,
-          category: note.cateId,
-          incomeNote: note.incomeDate,
-        });
-      }
-    });
-
-    return { start, end, groupedIncomeDetails };
+    return {
+      filterBy,
+      total,
+      categorizedTotals,
+      incomeNotes,
+    };
   }
 }

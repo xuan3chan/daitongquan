@@ -36,7 +36,7 @@ export class ReportService {
           path: 'postId',
           populate: {
             path: 'userId',
-            select: 'firstname lastname avatar'
+            select: 'firstname lastname avatar isBlock',
           }
         });
     }

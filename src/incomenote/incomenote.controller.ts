@@ -172,7 +172,7 @@ async getIncomeNoteByCategoryController(
   ): Promise<any> {
     const { startDate, endDate } = query;
     const userId = this.getUserIdFromToken(request);
-    return this.incomenoteService.staticticsIncomeNoteOptionDayService(userId, startDate, endDate);
+    return this.incomenoteService.statisticsIncomeNoteOptionDayService(userId, startDate, endDate);
   }
   @Get('statictics-option-month')
   @UseGuards(MemberGuard)
@@ -182,7 +182,7 @@ async getIncomeNoteByCategoryController(
     @Query('year') year: number,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.incomenoteService.staticticsIncomeNoteOptionMonthService(userId, month, year);
+    return this.incomenoteService.statisticsIncomeNoteOptionMonthService(userId, month, year);
   }
   @Get('statictics-option-year')
   async staticticsIncomeNoteOptionYearController(
@@ -190,7 +190,7 @@ async getIncomeNoteByCategoryController(
     @Query('year') year: number,
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    return this.incomenoteService.staticticsIncomeNoteOptionYearService(userId, year);
+    return this.incomenoteService.statisticsIncomeNoteOptionYearService(userId, year);
   }
   
   @Get('statistics-income')

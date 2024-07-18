@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { EncryptionService } from '../encryption/encryption.service';
 import { UsersService } from 'src/users/users.service';
+import { RedisService } from 'src/redis/redis.service'; // Import RedisService
 
 @Injectable()
 export class DebtService {
@@ -11,7 +12,16 @@ export class DebtService {
     @InjectModel(Debt.name) private debtModel: Model<DebtDocument>,
     private readonly encryptionService: EncryptionService,
     private readonly usersService: UsersService,
+    private readonly redisService: RedisService, // Inject RedisService
   ) {}
+
+  private async deleteCache(key: string) {
+    await this.redisService.delJSON(key, '$');
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
 
   async createDebtService(
     debtor: string,
@@ -38,6 +48,9 @@ export class DebtService {
       dueDate,
     });
 
+    await this.deleteCache(`debts:${userId}:${type}`);
+    await this.deleteCache(`debts:${userId}:due`);
+
     return newDebt.save();
   }
 
@@ -58,7 +71,7 @@ export class DebtService {
     if (dueDate && dueDate < new Date()) {
       throw new BadRequestException('Due date must be in the future or today');
     }
-   if (debtor) {
+    if (debtor) {
       debt.debtor = debtor;
     }
     if (creditor) {
@@ -76,6 +89,10 @@ export class DebtService {
     if (description) {
       debt.description = description;
     }
+
+    await this.deleteCache(`debts:${userId}:${debt.type}`);
+    await this.deleteCache(`debts:${userId}:due`);
+
     return debt.save();
   }
 
@@ -84,6 +101,10 @@ export class DebtService {
     if (!debt) {
       throw new BadRequestException('Debt not found');
     }
+
+    await this.deleteCache(`debts:${userId}:${debt.type}`);
+    await this.deleteCache(`debts:${userId}:due`);
+
     return { message: 'Debt deleted successfully' };
   }
 
@@ -103,6 +124,13 @@ export class DebtService {
   }
 
   async getDebtByTypeService(userId: string, type: string): Promise<Debt[]> {
+    const cachedDebts = await this.redisService.getJSON(`debts:${userId}:${type}`, '$');
+    if (cachedDebts) {
+
+      console.log('Debts fetched from cache successfully.');
+      return JSON.parse(cachedDebts as string);
+    }
+    console.log('Debts fetched from database.');
     const debts = await this.debtModel.find({ userId, type });
     const findUser = await this.usersService.findUserByIdService(userId);
 
@@ -110,17 +138,31 @@ export class DebtService {
       debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt))
     );
 
+    await this.setCache(`debts:${userId}:${type}`, decryptedDebts);
+
     return decryptedDebts;
   }
 
   async getDebtWhenDueService(userId: string): Promise<Debt[]> {
+    const cachedDebts = await this.redisService.getJSON(`debts:${userId}:due`, '$');
+    if (cachedDebts) {
+      console.log('Debts fetched from cache successfully.');
+      return JSON.parse(cachedDebts as string);
+    }
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
     const findUser = await this.usersService.findUserByIdService(userId);
 
-    return Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : Promise.resolve(debt))));
+    const decryptedDebts = await Promise.all(
+      debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt))
+    );
+
+    await this.setCache(`debts:${userId}:due`, decryptedDebts);
+
+    return decryptedDebts;
   }
 
   private async changeEncryptionState(debtId: string, userId: string, encrypt: boolean): Promise<Debt> {
@@ -146,7 +188,12 @@ export class DebtService {
         : this.encryptionService.decryptData(debt.description, decryptedKey)
       : undefined;
 
-    return debt.save();
+    await debt.save();
+
+    await this.deleteCache(`debts:${userId}:${debt.type}`);
+    await this.deleteCache(`debts:${userId}:due`);
+
+    return debt;
   }
 
   async enableEncryptionService(debtId: string, userId: string): Promise<Debt> {

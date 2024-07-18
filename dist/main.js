@@ -6291,6 +6291,7 @@ const category_module_1 = __webpack_require__(54);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const incomenote_schema_1 = __webpack_require__(100);
+const redis_module_1 = __webpack_require__(69);
 let IncomenoteModule = class IncomenoteModule {
 };
 exports.IncomenoteModule = IncomenoteModule;
@@ -6298,6 +6299,7 @@ exports.IncomenoteModule = IncomenoteModule = __decorate([
     (0, common_1.Module)({
         imports: [
             category_module_1.CategoryModule,
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([{ name: incomenote_schema_1.IncomeNote.name, schema: incomenote_schema_1.IncomeNoteSchema }]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
@@ -6328,7 +6330,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteService = void 0;
 const common_1 = __webpack_require__(6);
@@ -6337,10 +6339,18 @@ const mongoose_2 = __webpack_require__(12);
 const incomenote_schema_1 = __webpack_require__(100);
 const category_service_1 = __webpack_require__(18);
 const remove_accents_1 = __webpack_require__(17);
+const redis_service_1 = __webpack_require__(24);
 let IncomenoteService = class IncomenoteService {
-    constructor(incomeNoteModel, categoryService) {
+    constructor(incomeNoteModel, categoryService, redisService) {
         this.incomeNoteModel = incomeNoteModel;
         this.categoryService = categoryService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createIncomeNoteService(userId, cateId, title, content, incomeDate, method, amount) {
         const checkExist = await this.categoryService.findOneCateService(userId, cateId);
@@ -6356,6 +6366,7 @@ let IncomenoteService = class IncomenoteService {
             method,
             amount,
         });
+        await this.deleteCache(`incomeNotes:${userId}`);
         return newIncomeNote.save();
     }
     async updateIncomeNoteService(userId, incomeNoteId, cateId, title, content, incomeDate, method, amount) {
@@ -6363,37 +6374,54 @@ let IncomenoteService = class IncomenoteService {
         if (!checkExist) {
             throw new common_1.NotFoundException('Category not found');
         }
-        return this.incomeNoteModel.findOneAndUpdate({ _id: incomeNoteId }, { cateId, title, content, incomeDate, method, amount }, { new: true });
+        const updatedIncomeNote = await this.incomeNoteModel.findOneAndUpdate({ _id: incomeNoteId, userId }, { cateId, title, content, incomeDate, method, amount }, { new: true });
+        if (!updatedIncomeNote) {
+            throw new common_1.NotFoundException('Income note not found');
+        }
+        await this.deleteCache(`incomeNotes:${userId}`);
+        return updatedIncomeNote;
     }
     async deleteIncomeNoteService(userId, incomeNoteId) {
-        const incomeNote = await this.incomeNoteModel.findOne({
+        const incomeNote = await this.incomeNoteModel.findOneAndDelete({
             _id: incomeNoteId,
             userId,
         });
         if (!incomeNote) {
             throw new common_1.NotFoundException('Income note not found');
         }
-        await this.incomeNoteModel.findByIdAndDelete(incomeNoteId);
-        return { message: 'Income note deleted' };
+        await this.deleteCache(`incomeNotes:${userId}`);
+        return { message: 'Income note deleted successfully' };
     }
-    async deleteManyIncomeNoteService(userId, incomeNoteIds) {
-        const incomeNote = await this.incomeNoteModel.find({
-            _id: { $in: incomeNoteIds },
-            userId,
-        });
-        if (!incomeNote) {
-            throw new common_1.NotFoundException('Income note not found');
+    async deleteManyIncomeNoteService(userId, filter) {
+        const deleteFilter = { userId, ...filter };
+        const result = await this.incomeNoteModel.deleteMany(deleteFilter).exec();
+        if (result.deletedCount === 0) {
+            throw new common_1.NotFoundException('No income notes found to delete');
         }
-        await this.incomeNoteModel.deleteMany({ _id: { $in: incomeNoteIds } });
-        return { message: 'Income note deleted' };
+        await this.deleteCache(`incomeNotes:${userId}`);
+        return {
+            message: `Deleted ${result.deletedCount} income notes successfully`,
+        };
     }
     async viewAllIncomeNoteService(userId) {
+        const cachedIncomeNotes = await this.redisService.getJSON(`incomeNotes:${userId}`, '$');
+        if (cachedIncomeNotes) {
+            return JSON.parse(cachedIncomeNotes);
+        }
         const incomeNotes = await this.incomeNoteModel.find({ userId });
         const totalAmount = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
+        await this.setCache(`incomeNotes:${userId}`, { totalAmount, incomeNotes });
         return { totalAmount, incomeNotes };
     }
     async getIncomeNoteByCategoryService(userId, cateId) {
-        return this.incomeNoteModel.find({ userId, cateId });
+        const cachedIncomeNotes = await this.redisService.getJSON(`incomeNotes:${userId}:${cateId}`, '$');
+        if (cachedIncomeNotes) {
+            console.log('Income notes fetched from cache successfully.');
+            return JSON.parse(cachedIncomeNotes);
+        }
+        console.log('non cache.');
+        const incomeNotes = await this.incomeNoteModel.find({ userId, cateId });
+        return incomeNotes;
     }
     async searchIncomeNoteService(searchKey, userId) {
         try {
@@ -6430,7 +6458,7 @@ let IncomenoteService = class IncomenoteService {
             incomeDate: { $gte: startDate, $lte: endDate },
         });
     }
-    async staticticsIncomeNoteByDateService(userId, startDate, endDate) {
+    async statisticsIncomeNoteByDateService(userId, startDate, endDate) {
         const incomeNotes = await this.incomeNoteModel.find({ userId });
         const filteredIncomeNotes = incomeNotes.filter((note) => note.incomeDate >= startDate && note.incomeDate <= endDate);
         const totalAmount = filteredIncomeNotes.reduce((acc, note) => acc + note.amount, 0);
@@ -6439,7 +6467,7 @@ let IncomenoteService = class IncomenoteService {
             totalIncomeNotes: filteredIncomeNotes.length,
         };
     }
-    async staticticsIncomeNoteOptionDayService(userId, startDate, endDate) {
+    async statisticsIncomeNoteOptionDayService(userId, startDate, endDate) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         const incomeNotes = await this.incomeNoteModel.find({
@@ -6447,7 +6475,7 @@ let IncomenoteService = class IncomenoteService {
             incomeDate: { $gte: start, $lte: end },
         });
         const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-        const income = incomeNotes.map(note => ({
+        const income = incomeNotes.map((note) => ({
             title: note.title,
             cost: note.amount,
         }));
@@ -6458,7 +6486,7 @@ let IncomenoteService = class IncomenoteService {
             income,
         };
     }
-    async staticticsIncomeNoteOptionMonthService(userId, month, year) {
+    async statisticsIncomeNoteOptionMonthService(userId, month, year) {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0);
         const incomeNotes = await this.incomeNoteModel.find({
@@ -6466,7 +6494,7 @@ let IncomenoteService = class IncomenoteService {
             incomeDate: { $gte: startDate, $lte: endDate },
         });
         const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-        const income = incomeNotes.map(note => ({
+        const income = incomeNotes.map((note) => ({
             title: note.title,
             cost: note.amount,
         }));
@@ -6477,7 +6505,7 @@ let IncomenoteService = class IncomenoteService {
             income,
         };
     }
-    async staticticsIncomeNoteOptionYearService(userId, year) {
+    async statisticsIncomeNoteOptionYearService(userId, year) {
         const startDate = new Date(year, 0, 1);
         const endDate = new Date(year, 11, 31);
         const incomeNotes = await this.incomeNoteModel.find({
@@ -6485,7 +6513,7 @@ let IncomenoteService = class IncomenoteService {
             incomeDate: { $gte: startDate, $lte: endDate },
         });
         const total = incomeNotes.reduce((acc, note) => acc + note.amount, 0);
-        const income = incomeNotes.map(note => ({
+        const income = incomeNotes.map((note) => ({
             title: note.title,
             cost: note.amount,
         }));
@@ -6510,70 +6538,32 @@ let IncomenoteService = class IncomenoteService {
                 start = new Date(Date.UTC(currentYear - numberOfItems + 1, 0, 1));
                 end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
                 break;
-            case 'category':
-                start = new Date(Date.UTC(currentYear, 0, 1));
-                end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
-                break;
             default:
-                throw new Error('Invalid filter type');
+                throw new common_1.BadRequestException('Invalid filterBy value. Please use "month" or "year".');
         }
-        const query = {
-            incomeDate: { $gte: start, $lte: end },
-            userId,
-        };
+        const filter = { userId, incomeDate: { $gte: start, $lte: end } };
         if (category) {
-            query.cateId = category;
+            filter['cateId'] = category;
         }
-        const incomeNote = await this.incomeNoteModel.find(query);
-        let groupedIncomeDetails = {};
-        if (filterBy === 'month') {
-            let year = currentYear;
-            let month = currentMonth;
-            for (let i = 0; i < numberOfItems; i++) {
-                const key = `${year}-${month < 10 ? '0' + month : month}`;
-                groupedIncomeDetails[key] = {
-                    totalCost: 0,
-                    items: [],
-                };
-                month -= 1;
-                if (month < 1) {
-                    month = 12;
-                    year -= 1;
-                }
-            }
-        }
-        else if (filterBy === 'year') {
-            for (let i = 0; i < numberOfItems; i++) {
-                const year = currentYear - i;
-                groupedIncomeDetails[year] = {
-                    totalCost: 0,
-                    items: [],
-                };
-            }
-        }
-        incomeNote.forEach((note) => {
-            const noteDate = new Date(note.incomeDate);
-            const key = filterBy === 'month'
-                ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1 < 10 ? '0' + (noteDate.getUTCMonth() + 1) : noteDate.getUTCMonth() + 1}`
-                : noteDate.getUTCFullYear();
-            if (groupedIncomeDetails[key]) {
-                groupedIncomeDetails[key].totalCost += note.amount;
-                groupedIncomeDetails[key].items.push({
-                    title: note.title,
-                    cost: note.amount,
-                    category: note.cateId,
-                    incomeNote: note.incomeDate,
-                });
-            }
-        });
-        return { start, end, groupedIncomeDetails };
+        const incomeNotes = await this.incomeNoteModel.find(filter).exec();
+        const total = incomeNotes.reduce((sum, note) => sum + note.amount, 0);
+        const categorizedTotals = incomeNotes.reduce((acc, note) => {
+            acc[note.cateId] = (acc[note.cateId] || 0) + note.amount;
+            return acc;
+        }, {});
+        return {
+            filterBy,
+            total,
+            categorizedTotals,
+            incomeNotes,
+        };
     }
 };
 exports.IncomenoteService = IncomenoteService;
 exports.IncomenoteService = IncomenoteService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(incomenote_schema_1.IncomeNote.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _b : Object, typeof (_c = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _c : Object])
 ], IncomenoteService);
 
 
@@ -6719,15 +6709,15 @@ let IncomenoteController = class IncomenoteController {
     async staticticsIncomeNoteOptionDayController(request, query) {
         const { startDate, endDate } = query;
         const userId = this.getUserIdFromToken(request);
-        return this.incomenoteService.staticticsIncomeNoteOptionDayService(userId, startDate, endDate);
+        return this.incomenoteService.statisticsIncomeNoteOptionDayService(userId, startDate, endDate);
     }
     async staticticsIncomeNoteOptionMonthController(request, month, year) {
         const userId = this.getUserIdFromToken(request);
-        return this.incomenoteService.staticticsIncomeNoteOptionMonthService(userId, month, year);
+        return this.incomenoteService.statisticsIncomeNoteOptionMonthService(userId, month, year);
     }
     async staticticsIncomeNoteOptionYearController(request, year) {
         const userId = this.getUserIdFromToken(request);
-        return this.incomenoteService.staticticsIncomeNoteOptionYearService(userId, year);
+        return this.incomenoteService.statisticsIncomeNoteOptionYearService(userId, year);
     }
     async statisticSpendingController(req, dto) {
         const userId = this.getUserIdFromToken(req);
@@ -7214,7 +7204,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtService = void 0;
 const common_1 = __webpack_require__(6);
@@ -7223,11 +7213,19 @@ const mongoose_1 = __webpack_require__(12);
 const mongoose_2 = __webpack_require__(7);
 const encryption_service_1 = __webpack_require__(26);
 const users_service_1 = __webpack_require__(11);
+const redis_service_1 = __webpack_require__(24);
 let DebtService = class DebtService {
-    constructor(debtModel, encryptionService, usersService) {
+    constructor(debtModel, encryptionService, usersService, redisService) {
         this.debtModel = debtModel;
         this.encryptionService = encryptionService;
         this.usersService = usersService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createDebtService(debtor, creditor, userId, amount, status, type, dueDate, description) {
         if (dueDate && dueDate < new Date()) {
@@ -7243,6 +7241,8 @@ let DebtService = class DebtService {
             type,
             dueDate,
         });
+        await this.deleteCache(`debts:${userId}:${type}`);
+        await this.deleteCache(`debts:${userId}:due`);
         return newDebt.save();
     }
     async updateDebtService(debtId, userId, debtor, creditor, amount, type, dueDate, description) {
@@ -7271,6 +7271,8 @@ let DebtService = class DebtService {
         if (description) {
             debt.description = description;
         }
+        await this.deleteCache(`debts:${userId}:${debt.type}`);
+        await this.deleteCache(`debts:${userId}:due`);
         return debt.save();
     }
     async deleteDebtService(debtId, userId) {
@@ -7278,6 +7280,8 @@ let DebtService = class DebtService {
         if (!debt) {
             throw new common_1.BadRequestException('Debt not found');
         }
+        await this.deleteCache(`debts:${userId}:${debt.type}`);
+        await this.deleteCache(`debts:${userId}:due`);
         return { message: 'Debt deleted successfully' };
     }
     async decryptDebtData(debt, userId) {
@@ -7293,17 +7297,31 @@ let DebtService = class DebtService {
         return debt;
     }
     async getDebtByTypeService(userId, type) {
+        const cachedDebts = await this.redisService.getJSON(`debts:${userId}:${type}`, '$');
+        if (cachedDebts) {
+            console.log('Debts fetched from cache successfully.');
+            return JSON.parse(cachedDebts);
+        }
+        console.log('Debts fetched from database.');
         const debts = await this.debtModel.find({ userId, type });
         const findUser = await this.usersService.findUserByIdService(userId);
         const decryptedDebts = await Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt)));
+        await this.setCache(`debts:${userId}:${type}`, decryptedDebts);
         return decryptedDebts;
     }
     async getDebtWhenDueService(userId) {
+        const cachedDebts = await this.redisService.getJSON(`debts:${userId}:due`, '$');
+        if (cachedDebts) {
+            console.log('Debts fetched from cache successfully.');
+            return JSON.parse(cachedDebts);
+        }
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const debts = await this.debtModel.find({ userId, dueDate: { $lt: tomorrow } });
         const findUser = await this.usersService.findUserByIdService(userId);
-        return Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : Promise.resolve(debt))));
+        const decryptedDebts = await Promise.all(debts.map((debt) => (debt.isEncrypted ? this.decryptDebtData(debt, findUser._id) : debt)));
+        await this.setCache(`debts:${userId}:due`, decryptedDebts);
+        return decryptedDebts;
     }
     async changeEncryptionState(debtId, userId, encrypt) {
         const debt = await this.debtModel.findById(debtId);
@@ -7325,7 +7343,10 @@ let DebtService = class DebtService {
                 ? this.encryptionService.encryptData(debt.description, decryptedKey)
                 : this.encryptionService.decryptData(debt.description, decryptedKey)
             : undefined;
-        return debt.save();
+        await debt.save();
+        await this.deleteCache(`debts:${userId}:${debt.type}`);
+        await this.deleteCache(`debts:${userId}:due`);
+        return debt;
     }
     async enableEncryptionService(debtId, userId) {
         return this.changeEncryptionState(debtId, userId, true);
@@ -7338,7 +7359,7 @@ exports.DebtService = DebtService;
 exports.DebtService = DebtService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_2.InjectModel)(debt_schema_1.Debt.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_1.Model !== "undefined" && mongoose_1.Model) === "function" ? _a : Object, typeof (_b = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_1.Model !== "undefined" && mongoose_1.Model) === "function" ? _a : Object, typeof (_b = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], DebtService);
 
 
@@ -10116,7 +10137,7 @@ let ReportService = class ReportService {
             path: 'postId',
             populate: {
                 path: 'userId',
-                select: 'firstname lastname avatar'
+                select: 'firstname lastname avatar isBlock',
             }
         });
     }
@@ -11860,7 +11881,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("bd05d65a6115a7475544")
+/******/ 		__webpack_require__.h = () => ("5cd7a9db2c01c81a0d19")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
