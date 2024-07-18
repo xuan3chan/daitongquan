@@ -10,12 +10,14 @@ import { AbilityFactory } from 'src/abilities/abilities.factory';
 import { AdminModule } from 'src/admin/admin.module';
 import { FavoritePostSchema } from './schema/favoritePost.schema';
 import { CommentSchema } from 'src/comment/schema/comment.schema';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     CloudinaryModule,
     UsersModule,
     AdminModule,
+    RedisCacheModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
       { name: 'FavoritePost', schema: FavoritePostSchema },

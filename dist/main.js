@@ -3128,7 +3128,12 @@ let MemberGuard = class MemberGuard extends auth_gaurd_1.AuthGuard {
             }
         }
         catch (error) {
-            throw new common_1.UnauthorizedException('Token not found or invalid');
+            if (error.name === 'TokenExpiredError' || error.message.includes('expired')) {
+                throw new common_1.UnauthorizedException('Token expired');
+            }
+            else {
+                throw new common_1.UnauthorizedException('Token not found or invalid');
+            }
         }
         const request = context.switchToHttp().getRequest();
         if (request.user && request.user.role === 'member' && request.user.isBlock === false) {
@@ -4865,6 +4870,7 @@ const config_1 = __webpack_require__(8);
 const role_schema_1 = __webpack_require__(42);
 const abilities_factory_1 = __webpack_require__(37);
 const admin_module_1 = __webpack_require__(70);
+const redis_module_1 = __webpack_require__(69);
 let RoleModule = class RoleModule {
 };
 exports.RoleModule = RoleModule;
@@ -4872,6 +4878,7 @@ exports.RoleModule = RoleModule = __decorate([
     (0, common_1.Module)({
         imports: [
             (0, common_1.forwardRef)(() => admin_module_1.AdminModule),
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([{ name: role_schema_1.Role.name, schema: role_schema_1.RoleSchema }]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
@@ -4903,7 +4910,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RoleService = void 0;
 const common_1 = __webpack_require__(6);
@@ -4911,44 +4918,61 @@ const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const role_schema_1 = __webpack_require__(42);
 const admin_service_1 = __webpack_require__(40);
+const redis_service_1 = __webpack_require__(24);
 let RoleService = class RoleService {
-    constructor(roleModel, adminService) {
+    constructor(roleModel, adminService, redisService) {
         this.roleModel = roleModel;
         this.adminService = adminService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createRoleService(name, permissionID) {
-        const role = await this.roleModel
-            .findOne({
-            name,
-        })
-            .exec();
+        const role = await this.roleModel.findOne({ name }).exec();
         if (role) {
             throw new common_1.BadRequestException('Role already exists');
         }
-        const newRole = new this.roleModel({
-            name,
-            permissionID,
-        });
-        return newRole.save();
+        const newRole = new this.roleModel({ name, permissionID });
+        await newRole.save();
+        await this.deleteCache('roles:all');
+        await this.deleteCache(`roles:ids:*`);
+        return newRole;
     }
     async updateRoleService(id, name, permissionID) {
+        const role = await this.roleModel.findById(id).exec();
+        if (!role) {
+            throw new common_1.BadRequestException('Role not exists');
+        }
         const roleDuplicate = await this.roleModel.findOne({ name }).exec();
         if (roleDuplicate && roleDuplicate._id.toString() !== id) {
             throw new common_1.BadRequestException('Role already exists');
         }
-        const role = await this.roleModel
-            .findByIdAndUpdate(id, { $set: { name, permissionID } }, { new: true, runValidators: true })
-            .exec();
-        if (!role) {
-            throw new common_1.BadRequestException('Role not exists');
-        }
+        role.name = name;
+        role.permissionID = permissionID;
+        await role.save();
+        await this.deleteCache('roles:all');
+        await this.deleteCache(`roles:ids:*`);
         return role;
     }
     async findRoleService(ids) {
-        return this.roleModel.find({ _id: { $in: ids } }).exec();
+        const roles = await this.roleModel.find({ _id: { $in: ids } }).exec();
+        return roles;
     }
     async viewlistRoleService() {
-        return this.roleModel.find().exec();
+        const cacheKey = 'roles:all';
+        const cachedRoles = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedRoles) {
+            console.log('cachedRoles');
+            return JSON.parse(cachedRoles);
+        }
+        console.log('non cache');
+        const roles = await this.roleModel.find().exec();
+        await this.setCache(cacheKey, roles);
+        return roles;
     }
     async deleteRoleService(id) {
         try {
@@ -4961,6 +4985,8 @@ let RoleService = class RoleService {
                 throw new common_1.BadRequestException('Role not exists');
             }
             await this.roleModel.findByIdAndDelete(id).exec();
+            await this.deleteCache('roles:all');
+            await this.deleteCache(`roles:ids:*`);
             return { message: 'Role deleted successfully' };
         }
         catch (error) {
@@ -4972,7 +4998,7 @@ exports.RoleService = RoleService;
 exports.RoleService = RoleService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(role_schema_1.Role.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof admin_service_1.AdminService !== "undefined" && admin_service_1.AdminService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof admin_service_1.AdminService !== "undefined" && admin_service_1.AdminService) === "function" ? _b : Object, typeof (_c = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _c : Object])
 ], RoleService);
 
 
@@ -8544,6 +8570,7 @@ const rank_schema_1 = __webpack_require__(29);
 const cloudinary_module_1 = __webpack_require__(53);
 const abilities_factory_1 = __webpack_require__(37);
 const admin_module_1 = __webpack_require__(70);
+const redis_module_1 = __webpack_require__(69);
 let RankModule = class RankModule {
 };
 exports.RankModule = RankModule;
@@ -8551,6 +8578,7 @@ exports.RankModule = RankModule = __decorate([
     (0, common_1.Module)({
         imports: [
             cloudinary_module_1.CloudinaryModule,
+            redis_module_1.RedisCacheModule,
             (0, common_1.forwardRef)(() => admin_module_1.AdminModule),
             mongoose_1.MongooseModule.forFeature([{ name: rank_schema_1.Rank.name, schema: rank_schema_1.RankSchema }]),
             config_1.ConfigModule.forRoot({
@@ -8583,7 +8611,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankService = void 0;
 const common_1 = __webpack_require__(6);
@@ -8591,10 +8619,18 @@ const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const rank_schema_1 = __webpack_require__(29);
 const cloudinary_service_1 = __webpack_require__(14);
+const redis_service_1 = __webpack_require__(24);
 let RankService = class RankService {
-    constructor(RankModel, cloudinaryService) {
+    constructor(RankModel, cloudinaryService, redisService) {
         this.RankModel = RankModel;
         this.cloudinaryService = cloudinaryService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createRankService(rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
         const existedRank = await this.RankModel.findOne({ rankName });
@@ -8609,7 +8645,9 @@ let RankService = class RankService {
             score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
             rankIcon,
         });
-        return rank.save();
+        const savedRank = await rank.save();
+        await this.deleteCache('ranks:all');
+        return savedRank;
     }
     async updateRankService(rankId, rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
         const existedRank = await this.RankModel.findOne({ _id: rankId });
@@ -8622,7 +8660,10 @@ let RankService = class RankService {
             existedRank.rankIcon = await this.uploadRankIcon(existedRank.rankName, file);
         }
         existedRank.rankScoreGoal = this.calculateRankScoreGoal(existedRank.score.attendanceScore, existedRank.score.numberOfComment, existedRank.score.numberOfBlog, existedRank.score.numberOfLike);
-        return existedRank.save();
+        const updatedRank = await existedRank.save();
+        await this.deleteCache('ranks:all');
+        await this.deleteCache(`ranks:detail:${rankId}`);
+        return updatedRank;
     }
     async deleteRankService(rankId) {
         const existedRank = await this.RankModel.findOne({ _id: rankId });
@@ -8631,13 +8672,31 @@ let RankService = class RankService {
         }
         await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
         await existedRank.deleteOne();
+        await this.deleteCache('ranks:all');
+        await this.deleteCache(`ranks:detail:${rankId}`);
         return { message: 'Delete rank successfully' };
     }
     async getRankService() {
-        return this.RankModel.find();
+        const cacheKey = 'ranks:all';
+        const cachedRanks = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedRanks) {
+            console.log('cache');
+            return JSON.parse(cachedRanks);
+        }
+        console.log('non cache');
+        const ranks = await this.RankModel.find();
+        await this.setCache(cacheKey, ranks);
+        return ranks;
     }
     async getRankDetailService(rankId) {
-        return this.RankModel.findOne({ _id: rankId });
+        const cacheKey = `ranks:detail:${rankId}`;
+        const cachedRank = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedRank) {
+            return JSON.parse(cachedRank);
+        }
+        const rank = await this.RankModel.findOne({ _id: rankId });
+        await this.setCache(cacheKey, rank);
+        return rank;
     }
     calculateRankScoreGoal(attendanceScore, numberOfComment, numberOfBlog, numberOfLike) {
         return attendanceScore + numberOfComment + numberOfBlog + numberOfLike;
@@ -8663,7 +8722,7 @@ exports.RankService = RankService;
 exports.RankService = RankService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(rank_schema_1.Rank.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object, typeof (_c = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _c : Object])
 ], RankService);
 
 
@@ -8838,6 +8897,7 @@ const abilities_factory_1 = __webpack_require__(37);
 const admin_module_1 = __webpack_require__(70);
 const favoritePost_schema_1 = __webpack_require__(128);
 const comment_schema_1 = __webpack_require__(129);
+const redis_module_1 = __webpack_require__(69);
 let PostModule = class PostModule {
 };
 exports.PostModule = PostModule;
@@ -8847,6 +8907,7 @@ exports.PostModule = PostModule = __decorate([
             cloudinary_module_1.CloudinaryModule,
             users_module_1.UsersModule,
             admin_module_1.AdminModule,
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([
                 { name: post_schema_1.Post.name, schema: post_schema_1.PostSchema },
                 { name: 'FavoritePost', schema: favoritePost_schema_1.FavoritePostSchema },
@@ -8882,7 +8943,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostService = void 0;
 const common_1 = __webpack_require__(6);
@@ -8891,13 +8952,28 @@ const mongoose_2 = __webpack_require__(12);
 const post_schema_1 = __webpack_require__(125);
 const cloudinary_service_1 = __webpack_require__(14);
 const users_service_1 = __webpack_require__(11);
+const redis_service_1 = __webpack_require__(24);
 let PostService = class PostService {
-    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService) {
+    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService, redisService) {
         this.postModel = postModel;
         this.favoritePostModel = favoritePostModel;
         this.commentModel = commentModel;
         this.cloudinaryService = cloudinaryService;
         this.usersService = usersService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        if (Array.isArray(key)) {
+            for (const k of key) {
+                await this.redisService.delJSON(k, '$');
+            }
+        }
+        else {
+            await this.redisService.delJSON(key, '$');
+        }
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createPostService(userId, content, file) {
         const post = new this.postModel({
@@ -8909,7 +8985,10 @@ let PostService = class PostService {
             post.postImage = uploadResult.url;
         }
         await this.usersService.updateScoreRankService(userId, true);
-        return await post.save();
+        const savedPost = await post.save();
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
+        return savedPost;
     }
     async updatePostService(userId, postId, isShow, content, file) {
         const post = await this.postModel.findOne({ _id: postId, userId });
@@ -8927,7 +9006,11 @@ let PostService = class PostService {
         if (isShow) {
             post.isShow = isShow;
         }
-        return await post.save();
+        const updatedPost = await post.save();
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
+        await this.deleteCache(`posts:detail:${postId}`);
+        return updatedPost;
     }
     async deletePostService(userId, postId) {
         const post = await this.postModel.findOne({ _id: postId, userId });
@@ -8935,35 +9018,48 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         }
         await this.cloudinaryService.deleteMediaService(post.postImage);
-        return await this.postModel.findByIdAndDelete(postId);
+        const deletedPost = await this.postModel.findByIdAndDelete(postId);
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
+        await this.deleteCache(`posts:detail:${postId}`);
+        return deletedPost;
     }
     async viewDetailPostService(postId) {
-        return await this.postModel.findById(postId)
+        const cacheKey = `posts:detail:${postId}`;
+        const cachedPost = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPost) {
+            return JSON.parse(cachedPost);
+        }
+        const post = await this.postModel.findById(postId)
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate('userId', 'firstname lastname avatar rankID');
+        await this.setCache(cacheKey, post);
+        return post;
     }
     async deleteManyPostService(userId, postIds) {
         const posts = await this.postModel.find({ _id: { $in: postIds }, userId });
         if (!posts.length) {
             throw new common_1.BadRequestException('Posts not found');
         }
-        posts.forEach(async (post) => {
+        for (const post of posts) {
             await this.cloudinaryService.deleteMediaService(post.postImage);
-        });
+        }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
+        await this.deleteCache(`posts:detail:${postIds}`);
         return posts;
     }
     async updateStatusService(userId, postId, status) {
-        const checkExist = await this.postModel.findOne({ _id: postId });
-        if (!checkExist) {
-            throw new common_1.BadRequestException('Post not found');
-        }
         const post = await this.postModel.findOne({ _id: postId, userId });
         if (!post) {
             throw new common_1.BadRequestException('Post not found');
         }
         post.status = status;
-        return await post.save();
+        const updatedPost = await post.save();
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
+        return updatedPost;
     }
     async updateApproveService(postId, isApproved) {
         const post = await this.postModel.findOne({ _id: postId });
@@ -8972,30 +9068,60 @@ let PostService = class PostService {
         }
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
-        return await post.save();
+        const updatedPost = await post.save();
+        await this.deleteCache('posts:all');
+        return updatedPost;
     }
     async viewAllPostService() {
-        return await this.postModel
+        const cacheKey = 'posts:all';
+        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPosts) {
+            return JSON.parse(cachedPosts);
+        }
+        const posts = await this.postModel
             .find({ status: 'active', isShow: true })
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate('userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
+        await this.setCache(cacheKey, posts);
+        return posts;
     }
     async viewListPostService() {
-        return await this.postModel.find()
+        const cacheKey = 'posts:list';
+        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPosts) {
+            return JSON.parse(cachedPosts);
+        }
+        const posts = await this.postModel.find()
             .populate('userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
+        await this.setCache(cacheKey, posts);
+        return posts;
     }
     async viewMyPostService(userId) {
-        return await this.postModel.find({ userId })
+        const cacheKey = `posts:user:${userId}`;
+        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPosts) {
+            return JSON.parse(cachedPosts);
+        }
+        const posts = await this.postModel.find({ userId })
             .populate('userId', 'firstname lastname avatar rankID')
             .populate('userReaction.userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
+        await this.setCache(cacheKey, posts);
+        return posts;
     }
     async searchPostService(searchKey) {
-        return await this.postModel
+        const cacheKey = `posts:search:${searchKey}`;
+        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPosts) {
+            return JSON.parse(cachedPosts);
+        }
+        const posts = await this.postModel
             .find({ $text: { $search: searchKey } })
             .sort({ createdAt: -1 });
+        await this.setCache(cacheKey, posts);
+        return posts;
     }
     async addReactionPostService(userId, postId, reaction) {
         const post = await this.postModel.findOne({
@@ -9008,6 +9134,9 @@ let PostService = class PostService {
                     'userReaction.$.reaction': reaction,
                 },
             });
+            await this.deleteCache(`posts:detail:${postId}`);
+            await this.deleteCache(`posts:user:${userId}`);
+            await this.deleteCache('posts:all');
             return { message: 'Reaction updated successfully' };
         }
         const newPost = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': { $ne: userId } }, {
@@ -9025,6 +9154,9 @@ let PostService = class PostService {
             const plusForUser = newPost.userId.toString();
             await this.usersService.updateScoreRankService(plusForUser, true, false, false);
         }
+        await this.deleteCache(`posts:detail:${postId}`);
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
         return { message: 'Reaction added successfully' };
     }
     async removeReactionPostService(userId, postId) {
@@ -9039,6 +9171,9 @@ let PostService = class PostService {
         if (!post) {
             throw new common_1.BadRequestException('You have not reacted to this post');
         }
+        await this.deleteCache(`posts:detail:${postId}`);
+        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache('posts:all');
         return post;
     }
     async addFavoritePostService(userId, postId) {
@@ -9048,6 +9183,8 @@ let PostService = class PostService {
                 postId,
             });
             await favoritePost.save();
+            await this.deleteCache(`posts:favorites:${userId}`);
+            await this.deleteCache(`posts:detail:${postId}`);
             return { message: 'Favorite post added successfully' };
         }
         catch (error) {
@@ -9058,7 +9195,9 @@ let PostService = class PostService {
     async removeFavoritePostService(userId, postId) {
         try {
             await this.favoritePostModel.findOneAndDelete({ userId, postId });
-            return { message: 'Favorite post remove successfully' };
+            await this.deleteCache(`posts:favorites:${userId}`);
+            await this.deleteCache(`posts:detail:${postId}`);
+            return { message: 'Favorite post removed successfully' };
         }
         catch (error) {
             console.error(error);
@@ -9066,14 +9205,22 @@ let PostService = class PostService {
         }
     }
     async viewMyFavoritePostService(userId) {
+        const cacheKey = `posts:favorites:${userId}`;
+        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedPosts) {
+            return JSON.parse(cachedPosts);
+        }
         try {
             const favoritePosts = await this.favoritePostModel.find({ userId });
             const postIds = favoritePosts.map((post) => post.postId);
-            return await this.postModel.find({ _id: { $in: postIds } }).populate('userId', 'firstname lastname avatar rankID');
+            const posts = await this.postModel.find({ _id: { $in: postIds } })
+                .populate('userId', 'firstname lastname avatar rankID');
+            await this.setCache(cacheKey, posts);
+            return posts;
         }
         catch (error) {
             console.error(error);
-            throw new common_1.BadRequestException('Error while viewing favorite post');
+            throw new common_1.BadRequestException('Error while viewing favorite posts');
         }
     }
 };
@@ -9083,7 +9230,7 @@ exports.PostService = PostService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(post_schema_1.Post.name)),
     __param(1, (0, mongoose_1.InjectModel)('FavoritePost')),
     __param(2, (0, mongoose_1.InjectModel)('Comment')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _f : Object])
 ], PostService);
 
 
@@ -10067,6 +10214,7 @@ const abilities_factory_1 = __webpack_require__(37);
 const admin_module_1 = __webpack_require__(70);
 const user_schema_1 = __webpack_require__(13);
 const post_schema_1 = __webpack_require__(125);
+const redis_module_1 = __webpack_require__(69);
 let ReportModule = class ReportModule {
 };
 exports.ReportModule = ReportModule;
@@ -10074,6 +10222,7 @@ exports.ReportModule = ReportModule = __decorate([
     (0, common_1.Module)({
         imports: [
             admin_module_1.AdminModule,
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([{ name: 'Report', schema: report_schema_1.ReportSchema },
                 { name: 'User', schema: user_schema_1.UserSchema },
                 { name: 'Post', schema: post_schema_1.PostSchema },
@@ -10107,18 +10256,26 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const report_schema_1 = __webpack_require__(136);
+const redis_service_1 = __webpack_require__(24);
 let ReportService = class ReportService {
-    constructor(reportModel, userModel, postModel) {
+    constructor(reportModel, userModel, postModel, redisService) {
         this.reportModel = reportModel;
         this.userModel = userModel;
         this.postModel = postModel;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createReportService(userId, postId, reportType, reportContent) {
         const report = new this.reportModel({
@@ -10128,24 +10285,34 @@ let ReportService = class ReportService {
             reportContent,
         });
         await report.save();
+        await this.deleteCache('reports:all');
         return { message: 'Report created successfully.' };
     }
     async getReportsService() {
-        return await this.reportModel.find()
+        const cacheKey = 'reports:all';
+        const cachedReports = await this.redisService.getJSON(cacheKey, '$');
+        if (cachedReports) {
+            return JSON.parse(cachedReports);
+        }
+        const reports = await this.reportModel
+            .find()
             .populate('userId', 'firstname lastname avatar')
             .populate({
             path: 'postId',
             populate: {
                 path: 'userId',
                 select: 'firstname lastname avatar isBlock',
-            }
+            },
         });
+        await this.setCache(cacheKey, reports);
+        return reports;
     }
     async deleteReportService(reportId) {
         const report = await this.reportModel.findByIdAndDelete(reportId);
         if (!report) {
             throw new Error('Report not found');
         }
+        await this.deleteCache('reports:all');
         return { message: 'Report deleted successfully.' };
     }
     async blockUserByReportService(reportId) {
@@ -10154,10 +10321,10 @@ let ReportService = class ReportService {
             throw new common_1.BadRequestException('Report not found');
         }
         const userId = report.postId.userId;
-        console.log(userId);
         await this.userModel.findByIdAndUpdate(userId, { isBlock: true });
         report.status = 'Processed';
         await report.save();
+        await this.deleteCache('reports:all');
         return { message: 'User blocked successfully.' };
     }
     async blockPostByReportService(reportId) {
@@ -10165,9 +10332,12 @@ let ReportService = class ReportService {
         if (!report) {
             throw new common_1.BadRequestException('Report not found');
         }
-        await this.postModel.findByIdAndUpdate(report.postId, { status: 'blocked' });
+        await this.postModel.findByIdAndUpdate(report.postId, {
+            status: 'blocked',
+        });
         report.status = 'Processed';
         await report.save();
+        await this.deleteCache('reports:all');
         return { message: 'Post blocked successfully.' };
     }
     async rejectReportService(reportId) {
@@ -10175,8 +10345,9 @@ let ReportService = class ReportService {
         if (!report) {
             throw new common_1.BadRequestException('Report not found');
         }
-        report.status = 'Rejected';
+        report.status = 'rejected';
         await report.save();
+        await this.deleteCache('reports:all');
         return { message: 'Report rejected successfully.' };
     }
 };
@@ -10186,7 +10357,7 @@ exports.ReportService = ReportService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(report_schema_1.Report.name)),
     __param(1, (0, mongoose_1.InjectModel)('User')),
     __param(2, (0, mongoose_1.InjectModel)('Post')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], ReportService);
 
 
@@ -11311,7 +11482,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageService = void 0;
 const common_1 = __webpack_require__(6);
@@ -11320,11 +11491,19 @@ const mongoose_2 = __webpack_require__(12);
 const message_schema_1 = __webpack_require__(149);
 const cloudinary_service_1 = __webpack_require__(14);
 const encryption_service_1 = __webpack_require__(26);
+const redis_service_1 = __webpack_require__(24);
 let MessageService = class MessageService {
-    constructor(messageModel, cloudinaryService, encryptionService) {
+    constructor(messageModel, cloudinaryService, encryptionService, redisService) {
         this.messageModel = messageModel;
         this.cloudinaryService = cloudinaryService;
         this.encryptionService = encryptionService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async saveMessage(senderId, receiverId, content, file) {
         try {
@@ -11343,7 +11522,10 @@ let MessageService = class MessageService {
             if (image)
                 messageData.image = image;
             const message = new this.messageModel(messageData);
-            return message.save();
+            const savedMessage = await message.save();
+            await this.deleteCache(`messages:${senderId}`);
+            await this.deleteCache(`messages:${receiverId}`);
+            return savedMessage;
         }
         catch (error) {
             console.error("Error saving message:", error);
@@ -11352,14 +11534,22 @@ let MessageService = class MessageService {
     }
     async getMessagesForUser(userId) {
         try {
+            const cacheKey = `messages:${userId}`;
+            const cachedMessages = await this.redisService.getJSON(cacheKey, '$');
+            if (cachedMessages) {
+                console.log('Messages fetched from cache successfully.');
+                return JSON.parse(cachedMessages);
+            }
             const messages = await this.messageModel.find({ $or: [{ senderId: userId }, { receiverId: userId }] });
-            return messages.map(message => {
+            const decryptedMessages = messages.map(message => {
                 if (message.content)
                     message.content = this.encryptionService.rsaDecrypt(message.content);
                 if (message.image)
                     message.image = this.encryptionService.rsaDecrypt(message.image);
                 return message;
             });
+            await this.setCache(cacheKey, decryptedMessages);
+            return decryptedMessages;
         }
         catch (error) {
             console.error("Error getting messages:", error);
@@ -11371,6 +11561,8 @@ let MessageService = class MessageService {
             const message = await this.messageModel.findOneAndDelete({ _id: messageId, $or: [{ senderId: userId }, { receiverId: userId }] });
             if (message.image)
                 await this.cloudinaryService.deleteMediaService(message.image);
+            await this.deleteCache(`messages:${message.senderId}`);
+            await this.deleteCache(`messages:${message.receiverId}`);
             return message;
         }
         catch (error) {
@@ -11383,7 +11575,7 @@ exports.MessageService = MessageService;
 exports.MessageService = MessageService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(message_schema_1.Message.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object, typeof (_c = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _b : Object, typeof (_c = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], MessageService);
 
 
@@ -11720,6 +11912,7 @@ const mongoose_1 = __webpack_require__(7);
 const message_schema_1 = __webpack_require__(149);
 const cloudinary_module_1 = __webpack_require__(53);
 const encryption_module_1 = __webpack_require__(82);
+const redis_module_1 = __webpack_require__(69);
 let MessageModule = class MessageModule {
 };
 exports.MessageModule = MessageModule;
@@ -11728,6 +11921,7 @@ exports.MessageModule = MessageModule = __decorate([
         imports: [
             encryption_module_1.EncryptionModule,
             cloudinary_module_1.CloudinaryModule,
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([{ name: message_schema_1.Message.name, schema: message_schema_1.MessageSchema }]),
         ],
         controllers: [message_controller_1.MessageController],
@@ -11881,7 +12075,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("5cd7a9db2c01c81a0d19")
+/******/ 		__webpack_require__.h = () => ("2b14bd5a41d6bf2c7087")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

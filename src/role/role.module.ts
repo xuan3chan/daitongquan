@@ -6,9 +6,11 @@ import { ConfigModule } from '@nestjs/config';
 import { Role, RoleSchema } from './schema/role.schema';
 import { AbilityFactory } from '../abilities/abilities.factory';
 import { AdminModule } from 'src/admin/admin.module';
+import { RedisCacheModule } from 'src/redis/redis.module';
 @Module({
   imports: [
     forwardRef(() => AdminModule),
+    RedisCacheModule,
     MongooseModule.forFeature([{ name: Role.name, schema: RoleSchema }]),
     ConfigModule.forRoot({
       isGlobal: true,

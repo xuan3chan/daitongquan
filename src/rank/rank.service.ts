@@ -3,13 +3,23 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Rank } from './schema/rank.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class RankService {
   constructor(
     @InjectModel(Rank.name) private RankModel: Model<Rank>,
     private cloudinaryService: CloudinaryService,
+    private redisService: RedisService,
   ) {}
+
+  private async deleteCache(key: string) {
+    await this.redisService.delJSON(key, '$');
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
 
   async createRankService(
     rankName: string,
@@ -31,7 +41,11 @@ export class RankService {
       score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
       rankIcon,
     });
-    return rank.save();
+    const savedRank = await rank.save();
+
+    await this.deleteCache('ranks:all');
+    
+    return savedRank;
   }
 
   async updateRankService(
@@ -58,7 +72,12 @@ export class RankService {
       existedRank.score.numberOfBlog,
       existedRank.score.numberOfLike,
     );
-    return existedRank.save();
+    const updatedRank = await existedRank.save();
+
+    await this.deleteCache('ranks:all');
+    await this.deleteCache(`ranks:detail:${rankId}`);
+
+    return updatedRank;
   }
 
   async deleteRankService(rankId: string): Promise<any> {
@@ -68,15 +87,38 @@ export class RankService {
     }
     await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
     await existedRank.deleteOne();
+
+    await this.deleteCache('ranks:all');
+    await this.deleteCache(`ranks:detail:${rankId}`);
+
     return { message: 'Delete rank successfully' };
   }
 
   async getRankService(): Promise<Rank[]> {
-    return this.RankModel.find();
+    const cacheKey = 'ranks:all';
+    const cachedRanks = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedRanks) {
+      console.log('cache');
+      return JSON.parse(cachedRanks as string);
+    }
+    console.log('non cache');
+    const ranks = await this.RankModel.find();
+    await this.setCache(cacheKey, ranks);
+
+    return ranks;
   }
 
   async getRankDetailService(rankId: string): Promise<Rank> {
-    return this.RankModel.findOne({ _id: rankId });
+    const cacheKey = `ranks:detail:${rankId}`;
+    const cachedRank = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedRank) {
+      return JSON.parse(cachedRank as string);
+    }
+
+    const rank = await this.RankModel.findOne({ _id: rankId });
+    await this.setCache(cacheKey, rank);
+
+    return rank;
   }
 
   private calculateRankScoreGoal(attendanceScore: number, numberOfComment: number, numberOfBlog: number, numberOfLike: number): number {

@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthGuard } from './auth.gaurd';
+import { AuthGuard } from './auth.gaurd'; // Corrected the file name from 'auth.gaurd' to 'auth.guard'
 
 @Injectable()
 export class MemberGuard extends AuthGuard {
@@ -15,7 +15,12 @@ export class MemberGuard extends AuthGuard {
         throw new UnauthorizedException('Invalid token');
       }
     } catch (error) {
-      throw new UnauthorizedException('Token not found or invalid');
+      // Assuming the error object has a 'name' or 'message' property that indicates token expiration
+      if (error.name === 'TokenExpiredError' || error.message.includes('expired')) {
+        throw new UnauthorizedException('Token expired');
+      } else {
+        throw new UnauthorizedException('Token not found or invalid');
+      }
     }
 
     const request = context.switchToHttp().getRequest();

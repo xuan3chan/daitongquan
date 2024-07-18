@@ -7,10 +7,12 @@ import { Rank, RankSchema } from './schema/rank.schema';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { AbilityFactory } from 'src/abilities/abilities.factory';
 import { AdminModule } from 'src/admin/admin.module';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     CloudinaryModule,
+    RedisCacheModule,
     forwardRef(() => AdminModule),
     MongooseModule.forFeature([{ name: Rank.name, schema: RankSchema }]),
     ConfigModule.forRoot({

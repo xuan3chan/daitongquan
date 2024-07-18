@@ -5,6 +5,7 @@ import { Post } from './schema/post.schema';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UsersService } from 'src/users/users.service';
 import { FavoritePost } from './schema/favoritePost.schema';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class PostService {
@@ -14,7 +15,23 @@ export class PostService {
     @InjectModel('Comment') private commentModel: Model<Comment>,
     private cloudinaryService: CloudinaryService,
     private usersService: UsersService,
+    private redisService: RedisService,
   ) {}
+
+  private async deleteCache(key: string | string[]) {
+    // string or string[] is accepted
+    if (Array.isArray(key)) {
+      for (const k of key) {
+        await this.redisService.delJSON(k, '$');
+      }
+    } else {
+      await this.redisService.delJSON(key, '$');
+    }
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
 
   async createPostService(
     userId: string,
@@ -26,11 +43,16 @@ export class PostService {
       content,
     });
     if (file) {
-      const { uploadResult } = await this.cloudinaryService.uploadImageService(content,file);
+      const { uploadResult } = await this.cloudinaryService.uploadImageService(content, file);
       post.postImage = uploadResult.url;
     }
     await this.usersService.updateScoreRankService(userId, true);
-    return await post.save();
+    const savedPost = await post.save();
+
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+    
+    return savedPost;
   }
 
   async updatePostService(
@@ -40,7 +62,6 @@ export class PostService {
     content?: string,
     file?: Express.Multer.File,
   ): Promise<Post> {
-    // find post by postId and userId
     const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new Error('Post not found');
@@ -50,13 +71,20 @@ export class PostService {
     }
     if (file) {
       await this.cloudinaryService.deleteMediaService(post.postImage);
-      const {uploadResult} = await this.cloudinaryService.uploadImageService(post.content,file);
+      const { uploadResult } = await this.cloudinaryService.uploadImageService(post.content, file);
       post.postImage = uploadResult.url;
     }
     if (isShow) {
       post.isShow = isShow;
     }
-    return await post.save();
+    const updatedPost = await post.save();
+
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:detail:${postId}`);
+
+
+    return updatedPost;
   }
 
   async deletePostService(userId: string, postId: string): Promise<Post> {
@@ -65,83 +93,137 @@ export class PostService {
       throw new BadRequestException('Post not found');
     }
     await this.cloudinaryService.deleteMediaService(post.postImage);
-    return await this.postModel.findByIdAndDelete(postId);
+    const deletedPost = await this.postModel.findByIdAndDelete(postId);
+
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:detail:${postId}`);
+
+
+    return deletedPost;
   }
 
   async viewDetailPostService(postId: string): Promise<Post> {
-    return await this.postModel.findById(postId)
-    .populate('userReaction.userId', 'firstname lastname avatar')
-    .populate('userId', 'firstname lastname avatar rankID');
+    const cacheKey = `posts:detail:${postId}`;
+    const cachedPost = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPost) {
+      return JSON.parse(cachedPost as string);
+    }
+
+    const post = await this.postModel.findById(postId)
+      .populate('userReaction.userId', 'firstname lastname avatar')
+      .populate('userId', 'firstname lastname avatar rankID');
+
+    await this.setCache(cacheKey, post);
+    return post;
   }
 
-  async deleteManyPostService(
-    userId: string,
-    postIds: string[],
-  ): Promise<Post[]> {
+  async deleteManyPostService(userId: string, postIds: string[]): Promise<Post[]> {
     const posts = await this.postModel.find({ _id: { $in: postIds }, userId });
     if (!posts.length) {
       throw new BadRequestException('Posts not found');
     }
-    posts.forEach(async (post) => {
+    for (const post of posts) {
       await this.cloudinaryService.deleteMediaService(post.postImage);
-    });
+    }
     await this.postModel.deleteMany({ _id: { $in: postIds } });
+
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:detail:${postIds}`);
+
+
     return posts;
   }
-  async updateStatusService(
-    userId: string,
-    postId: string,
-    status: string,
-  ): Promise<Post> {
-    const checkExist = await this.postModel.findOne({ _id: postId });
-    if (!checkExist) {
-      throw new BadRequestException('Post not found');
-    }
 
+  async updateStatusService(userId: string, postId: string, status: string): Promise<Post> {
     const post = await this.postModel.findOne({ _id: postId, userId });
     if (!post) {
       throw new BadRequestException('Post not found');
     }
     post.status = status;
-    return await post.save();
+    const updatedPost = await post.save();
+
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+
+    return updatedPost;
   }
-  async updateApproveService(
-    postId: string,
-    isApproved: boolean,
-  ): Promise<Post> {
+
+  async updateApproveService(postId: string, isApproved: boolean): Promise<Post> {
     const post = await this.postModel.findOne({ _id: postId });
     if (!post) {
       throw new BadRequestException('Post not found');
     }
     post.isApproved = isApproved;
     post.status = isApproved ? 'active' : 'inactive';
-    return await post.save();
+    const updatedPost = await post.save();
+
+    await this.deleteCache('posts:all');
+
+    return updatedPost;
   }
 
- async viewAllPostService(): Promise<Post[]> {
-    return await this.postModel
+  async viewAllPostService(): Promise<Post[]> {
+    const cacheKey = 'posts:all';
+    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPosts) {
+      return JSON.parse(cachedPosts as string);
+    }
+    const posts = await this.postModel
       .find({ status: 'active', isShow: true })
       .populate('userReaction.userId', 'firstname lastname avatar')
       .populate('userId', 'firstname lastname avatar rankID')
       .sort({ createdAt: -1 });
-}
+
+    await this.setCache(cacheKey, posts);
+    return posts;
+  }
+
   async viewListPostService(): Promise<Post[]> {
-    return await this.postModel.find()
-    .populate('userId', 'firstname lastname avatar rankID')
-    .sort({ createdAt: -1 });
+    const cacheKey = 'posts:list';
+    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPosts) {
+      return JSON.parse(cachedPosts as string);
+    }
+
+    const posts = await this.postModel.find()
+      .populate('userId', 'firstname lastname avatar rankID')
+      .sort({ createdAt: -1 });
+
+    await this.setCache(cacheKey, posts);
+    return posts;
   }
 
   async viewMyPostService(userId: string): Promise<Post[]> {
-    return await this.postModel.find({ userId })
-    .populate('userId', 'firstname lastname avatar rankID')
-    .populate('userReaction.userId', 'firstname lastname avatar rankID')
-    .sort({ createdAt: -1 });
+    const cacheKey = `posts:user:${userId}`;
+    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPosts) {
+      return JSON.parse(cachedPosts as string);
+    }
+
+    const posts = await this.postModel.find({ userId })
+      .populate('userId', 'firstname lastname avatar rankID')
+      .populate('userReaction.userId', 'firstname lastname avatar rankID')
+      .sort({ createdAt: -1 });
+
+    await this.setCache(cacheKey, posts);
+    return posts;
   }
 
   async searchPostService(searchKey: string): Promise<Post[]> {
-    return await this.postModel
+    const cacheKey = `posts:search:${searchKey}`;
+    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPosts) {
+      return JSON.parse(cachedPosts as string);
+    }
+
+    const posts = await this.postModel
       .find({ $text: { $search: searchKey } })
       .sort({ createdAt: -1 });
+
+    await this.setCache(cacheKey, posts);
+    return posts;
   }
 
   async addReactionPostService(
@@ -162,6 +244,10 @@ export class PostService {
           },
         },
       );
+      await this.deleteCache(`posts:detail:${postId}`);
+      await this.deleteCache(`posts:user:${userId}`);
+      await this.deleteCache('posts:all');
+
       return { message: 'Reaction updated successfully' };
     }
     const newPost = await this.postModel.findOneAndUpdate(
@@ -183,6 +269,11 @@ export class PostService {
       const plusForUser = newPost.userId.toString();
       await this.usersService.updateScoreRankService(plusForUser, true, false, false);
     }
+
+    await this.deleteCache(`posts:detail:${postId}`);
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+
     return { message: 'Reaction added successfully' };
   }
 
@@ -205,6 +296,11 @@ export class PostService {
     if (!post) {
       throw new BadRequestException('You have not reacted to this post');
     }
+
+    await this.deleteCache(`posts:detail:${postId}`);
+    await this.deleteCache(`posts:user:${userId}`);
+    await this.deleteCache('posts:all');
+
     return post;
   }
 
@@ -218,6 +314,10 @@ export class PostService {
         postId,
       });
       await favoritePost.save();
+
+      await this.deleteCache(`posts:favorites:${userId}`);
+      await this.deleteCache(`posts:detail:${postId}`);
+
       return { message: 'Favorite post added successfully' };
     } catch (error) {
       console.error(error);
@@ -231,7 +331,11 @@ export class PostService {
   ): Promise<{ message: string }> {
     try {
       await this.favoritePostModel.findOneAndDelete({ userId, postId });
-      return { message: 'Favorite post remove successfully' };
+
+      await this.deleteCache(`posts:favorites:${userId}`);
+      await this.deleteCache(`posts:detail:${postId}`);
+
+      return { message: 'Favorite post removed successfully' };
     } catch (error) {
       console.error(error);
       throw new BadRequestException('Error while removing favorite post');
@@ -239,14 +343,23 @@ export class PostService {
   }
 
   async viewMyFavoritePostService(userId: string): Promise<Post[]> {
+    const cacheKey = `posts:favorites:${userId}`;
+    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
+    if (cachedPosts) {
+      return JSON.parse(cachedPosts as string);
+    }
+
     try {
       const favoritePosts = await this.favoritePostModel.find({ userId });
       const postIds = favoritePosts.map((post) => post.postId);
-      return await this.postModel.find({ _id: { $in: postIds } }).populate('userId', 'firstname lastname avatar rankID')
-      ;
+      const posts = await this.postModel.find({ _id: { $in: postIds } })
+        .populate('userId', 'firstname lastname avatar rankID');
+
+      await this.setCache(cacheKey, posts);
+      return posts;
     } catch (error) {
       console.error(error);
-      throw new BadRequestException('Error while viewing favorite post');
+      throw new BadRequestException('Error while viewing favorite posts');
     }
   }
 }

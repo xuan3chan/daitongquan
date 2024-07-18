@@ -8,10 +8,12 @@ import { AbilityFactory } from 'src/abilities/abilities.factory';
 import { AdminModule } from 'src/admin/admin.module';
 import { UserSchema } from 'src/users/schema/user.schema';
 import { PostSchema } from 'src/post/schema/post.schema';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     AdminModule,
+    RedisCacheModule,
     MongooseModule.forFeature([{ name: 'Report', schema: ReportSchema },
       { name: 'User', schema: UserSchema },
       { name: 'Post', schema: PostSchema },
