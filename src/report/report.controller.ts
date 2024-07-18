@@ -73,4 +73,14 @@ export class ReportController {
   ): Promise<{ message: string }> {
     return await this.reportService.blockPostByReportService(reportId);
   }
+
+  @Patch('reject/:reportId')
+  @UseGuards(PermissionGuard)
+  @Subject('report')
+  @Action('read')
+  async rejectReportController(
+    @Param('reportId') reportId: string,
+  ): Promise<{ message: string }> {
+    return await this.reportService.rejectReportService(reportId);
+  }
 }

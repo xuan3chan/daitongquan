@@ -28,9 +28,18 @@ export class ReportService {
         return {message: 'Report created successfully.'};
     }
 
-    async getReportsService(): Promise<Report[]>{
-        //populate userId(firstName,lastname,avarta) and postId
-        return await this.reportModel.find().populate('userId', 'firstname lastname avatar').populate('postId');}
+    async getReportsService(): Promise<Report[]> {
+      // Populate userId (firstName, lastname, avatar) and postId, including the userId within postId
+      return await this.reportModel.find()
+        .populate('userId', 'firstname lastname avatar')
+        .populate({
+          path: 'postId',
+          populate: {
+            path: 'userId',
+            select: 'firstname lastname avatar'
+          }
+        });
+    }
     
     async deleteReportService(reportId: string): Promise<{message: string}>{
         const report = await this.reportModel.findByIdAndDelete(reportId);
@@ -71,5 +80,14 @@ export class ReportService {
         report.status = 'Processed';
         await report.save();
         return {message: 'Post blocked successfully.'};
+    }
+    async rejectReportService(reportId: string): Promise<{message: string}>{
+        const report = await this.reportModel.findById(reportId);
+        if(!report){
+            throw new BadRequestException('Report not found');
+        }
+        report.status = 'Rejected';
+        await report.save();
+        return {message: 'Report rejected successfully.'};
     }
 }

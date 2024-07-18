@@ -33,7 +33,7 @@ import { RedisService } from 'src/redis/redis.service';
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
-    private readonly redisService: RedisService// Inject RedisService
+    private readonly redisService: RedisService // Inject RedisService
   ) {}
 
   @Subject('admin')
@@ -52,7 +52,9 @@ export class AdminController {
     );
     
     // Cache the created admin in Redis
-    await this.redisService.set(`admin:${result.id}`, JSON.stringify(result));
+    await this.redisService.setJSON(`admin:${result._id}`,'$', JSON.stringify(result));
+    // Invalidate the 'admin:all' cache
+    await this.redisService.delJSON('admin:all','$');
     
     return result;
   }
@@ -74,7 +76,9 @@ export class AdminController {
     );
 
     // Update the cached admin in Redis
-    await this.redisService.set(`admin:${updateAdminDto.id}`, JSON.stringify(result));
+    await this.redisService.setJSON(`admin:${updateAdminDto.id}`,'$', JSON.stringify(result));
+    // Invalidate the 'admin:all' cache
+    await this.redisService.delJSON('admin:all','$');
     
     return result;
   }
@@ -89,7 +93,9 @@ export class AdminController {
     const result = await this.adminService.deleteAdminService(deleteAdminDto.id);
 
     // Remove the admin from the Redis cache
-    await this.redisService.delJSON(`admin:${deleteAdminDto.id}`);
+    await this.redisService.delJSON(`admin:${deleteAdminDto.id}`,'$');
+    // Invalidate the 'admin:all' cache
+    await this.redisService.delJSON('admin:all','$');
     
     return result;
   }
@@ -103,15 +109,13 @@ export class AdminController {
   @Get()
   async listAdminController() {
     // Check if admins are cached in Redis
-    const cachedAdmins = await this.redisService.get('admin:all');
+    const cachedAdmins = await this.redisService.getJSON('admin:all','$');
     if (cachedAdmins) {
-      return JSON.parse(cachedAdmins);
+      return cachedAdmins;
     }
-
     const result = await this.adminService.listAdminService();
-
     // Cache the list of admins in Redis
-    await this.redisService.set('admin:all', JSON.stringify(result));
+    await this.redisService.setJSON('admin:all','$', JSON.stringify(result));
     
     return result;
   }
@@ -136,6 +140,8 @@ export class AdminController {
       admin.isBlock = blockAdminDto.isBlock;
       await this.redisService.set(`admin:${blockAdminDto.id}`, JSON.stringify(admin));
     }
+    // Invalidate the 'admin:all' cache
+    await this.redisService.delJSON('admin:all','$');
     
     return result;
   }

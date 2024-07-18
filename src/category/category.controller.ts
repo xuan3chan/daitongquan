@@ -85,14 +85,9 @@ export class CategoryController {
   @UseGuards(MemberGuard)
   async viewCateController(@Req() request: Request): Promise<any> {
     const userId = this.getUserIdFromToken(request);
-    const cacheKey = `category-${userId}`;
     try {
-      const cachedData = await this.redisService.get(cacheKey);
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-      const data = await this.categoryService.viewSpendingCateService(userId);
-      await this.redisService.set(cacheKey, JSON.stringify(data));
+ 
+      const data = await this.categoryService.viewCateService(userId);
       return data;
     } catch (error) {
       throw new InternalServerErrorException('Error retrieving data');
@@ -111,7 +106,7 @@ export class CategoryController {
       if (cachedData) {
         return JSON.parse(cachedData);
       }
-      const data = await this.categoryService.getCateByTypeIcomeService(userId);
+      const data = await this.categoryService.getCateByTypeIncomeService(userId);
       await this.redisService.set(cacheKey, JSON.stringify(data));
       return data;
     } catch (error) {

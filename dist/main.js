@@ -252,7 +252,7 @@ const admin_module_1 = __webpack_require__(70);
 const cloudinary_module_1 = __webpack_require__(53);
 const category_module_1 = __webpack_require__(54);
 const spendinglimit_module_1 = __webpack_require__(58);
-const spendingnote_module_1 = __webpack_require__(63);
+const spendingnote_module_1 = __webpack_require__(62);
 const incomenote_module_1 = __webpack_require__(98);
 const encryption_module_1 = __webpack_require__(82);
 const debt_module_1 = __webpack_require__(107);
@@ -266,7 +266,7 @@ const statistics_module_1 = __webpack_require__(139);
 const event_gateway_1 = __webpack_require__(143);
 const story_module_1 = __webpack_require__(151);
 const message_module_1 = __webpack_require__(155);
-const redis_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -1184,7 +1184,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CategoryService = void 0;
 const common_1 = __webpack_require__(6);
@@ -1192,15 +1192,25 @@ const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const category_schema_1 = __webpack_require__(19);
 const spendinglimit_service_1 = __webpack_require__(20);
-const spendingnote_service_1 = __webpack_require__(24);
+const spendingnote_service_1 = __webpack_require__(22);
+const redis_service_1 = __webpack_require__(24);
 let CategoryService = class CategoryService {
-    constructor(CategoryModel, spendingLimitService, spendingNoteService) {
+    constructor(CategoryModel, spendingLimitService, spendingNoteService, redisService) {
         this.CategoryModel = CategoryModel;
         this.spendingLimitService = spendingLimitService;
         this.spendingNoteService = spendingNoteService;
+        this.redisService = redisService;
+    }
+    async deleteCache(userId, key) {
+        await this.redisService.delJSON(`categories:${userId}:${key}`, '$');
+    }
+    async setCache(userId, key, data) {
+        await this.redisService.setJSON(`categories:${userId}:${key}`, '$', JSON.stringify(data));
     }
     async deleteOfUser(userId) {
-        return this.CategoryModel.deleteMany({ userId }).exec();
+        const result = await this.CategoryModel.deleteMany({ userId }).exec();
+        await this.deleteCache(userId, 'all');
+        return result;
     }
     async createCateService(userId, name, type, icon, color, status, description) {
         const newCate = new this.CategoryModel({
@@ -1212,16 +1222,24 @@ let CategoryService = class CategoryService {
             status,
             description: description || '',
         });
-        return newCate.save();
+        const result = await newCate.save();
+        await this.deleteCache(userId, 'all');
+        await this.deleteCache(result.userId, 'income');
+        await this.deleteCache(result.userId, 'spend');
+        return result;
     }
     async updateCateService(userId, cateId, name, description, icon, color, status) {
-        return this.CategoryModel.findOneAndUpdate({ userId, _id: cateId }, { name, description, icon, color, status }, { new: true });
+        const result = await this.CategoryModel.findOneAndUpdate({ userId, _id: cateId }, { name, description, icon, color, status }, { new: true });
+        if (result) {
+            await this.deleteCache(userId, cateId);
+            await this.deleteCache(userId, 'all');
+            await this.deleteCache(result.userId, 'income');
+            await this.deleteCache(result.userId, 'spend');
+        }
+        return result;
     }
     async deleteCateService(userId, cateId) {
-        const cate = await this.CategoryModel.findOne({
-            userId,
-            _id: cateId,
-        });
+        const cate = await this.CategoryModel.findOne({ userId, _id: cateId });
         const checkExistSpendingNote = await this.spendingNoteService.findSpendingNoteByCateIdService(cateId);
         if (checkExistSpendingNote.length > 0) {
             throw new common_1.NotFoundException('Category has spending note');
@@ -1230,16 +1248,32 @@ let CategoryService = class CategoryService {
             throw new common_1.NotFoundException('Category not found');
         }
         await this.CategoryModel.deleteOne({ userId, _id: cateId });
+        await this.deleteCache(userId, cateId);
+        await this.deleteCache(userId, 'all');
+        await this.deleteCache(userId, 'income');
+        await this.deleteCache(userId, 'spend');
         return { message: 'Delete category successfully' };
     }
-    async viewSpendingCateService(userId) {
-        return this.CategoryModel.find({ userId });
+    async viewCateService(userId) {
+        const cachedCategories = await this.redisService.getJSON(`categories:${userId}:all`, '$');
+        if (cachedCategories) {
+            console.log('Have cached categories');
+            return cachedCategories;
+        }
+        console.log('Not cached categories');
+        const result = await this.CategoryModel.find({ userId }).exec();
+        await this.setCache(userId, 'all', result);
+        return result;
     }
     async updateSpendingLimitIdService(cateId, spendingLimitId) {
         const updatedCate = await this.CategoryModel.findOneAndUpdate({ _id: cateId }, { spendingLimitId }, { new: true });
         if (!updatedCate) {
             throw new common_1.NotFoundException(`SpendingCate with ID ${cateId} not found`);
         }
+        await this.deleteCache(updatedCate.userId, cateId);
+        await this.deleteCache(updatedCate.userId, 'all');
+        await this.deleteCache(updatedCate.userId, 'income');
+        await this.deleteCache(updatedCate.userId, 'spend');
         return updatedCate;
     }
     async deleteSpendingLimitIdService(spendingLimitId) {
@@ -1247,27 +1281,43 @@ let CategoryService = class CategoryService {
         if (result.modifiedCount === 0) {
             throw new common_1.NotFoundException(`No SpendingCate with spendingLimitId ${spendingLimitId} found`);
         }
+        await this.deleteCache('all', 'all');
         return result;
     }
-    async findOneCateService(userId, CateId) {
-        return this.CategoryModel.findOne({ userId, _id: CateId });
+    async findOneCateService(userId, cateId) {
+        const cachedCate = await this.redisService.getJSON(`categories:${userId}:${cateId}`, '$');
+        if (cachedCate) {
+            return cachedCate;
+        }
+        const result = await this.CategoryModel.findOne({ userId, _id: cateId });
+        if (result) {
+            await this.setCache(userId, cateId, result);
+        }
+        return result;
     }
-    async getCateByTypeIcomeService(userId) {
-        return this.CategoryModel.find({
-            userId,
-            type: 'income',
-        });
+    async getCateByTypeIncomeService(userId) {
+        const cachedCates = await this.redisService.getJSON('categories:${userId}:income', '$');
+        if (cachedCates) {
+            console.log('Have cached categories');
+            return cachedCates;
+        }
+        console.log('Not cached categories');
+        const result = await this.CategoryModel.find({ userId, type: 'income' }).exec();
+        await this.setCache(userId, 'income', result);
+        return result;
     }
     async getCateByTypeSpendingService(userId) {
-        const categories = await this.CategoryModel.find({
-            userId,
-            type: 'spend',
-        });
+        const cachedCates = await this.redisService.getJSON(`categories:${userId}:spend`, '$');
+        if (cachedCates) {
+            return cachedCates;
+        }
+        const categories = await this.CategoryModel.find({ userId, type: 'spend' }).exec();
         const categoriesWithBudget = await Promise.all(categories.map(async (category) => {
             const spendingLimit = await this.spendingLimitService.findSpendingLimitByIdService(category.spendingLimitId);
             const budget = spendingLimit ? spendingLimit.budget : 0;
             return { ...category.toObject(), budget };
         }));
+        await this.setCache(userId, 'spend', categoriesWithBudget);
         return categoriesWithBudget;
     }
 };
@@ -1277,7 +1327,7 @@ exports.CategoryService = CategoryService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(category_schema_1.Category.name)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => spendinglimit_service_1.SpendingLimitService))),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => spendingnote_service_1.SpendingNoteService))),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof spendinglimit_service_1.SpendingLimitService !== "undefined" && spendinglimit_service_1.SpendingLimitService) === "function" ? _b : Object, typeof (_c = typeof spendingnote_service_1.SpendingNoteService !== "undefined" && spendingnote_service_1.SpendingNoteService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof spendinglimit_service_1.SpendingLimitService !== "undefined" && spendinglimit_service_1.SpendingLimitService) === "function" ? _b : Object, typeof (_c = typeof spendingnote_service_1.SpendingNoteService !== "undefined" && spendingnote_service_1.SpendingNoteService) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], CategoryService);
 
 
@@ -1452,180 +1502,6 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a, _b;
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RedisService = void 0;
-const common_1 = __webpack_require__(6);
-const redis_1 = __webpack_require__(23);
-let RedisService = class RedisService {
-    constructor(config, logger) {
-        this.config = config;
-        this.logger = logger;
-        this.client = this.initializeClient();
-        this.client.on('error', (err) => {
-            this.logger.error('Redis Client Error', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        });
-    }
-    initializeClient() {
-        return (0, redis_1.createClient)({
-            ...this.config,
-            socket: {
-                reconnectStrategy: (retries) => Math.min(retries * 50, 500),
-                connectTimeout: 5000,
-                keepAlive: 5000,
-            },
-        });
-    }
-    async isConnected() {
-        try {
-            const ping = await this.client.ping();
-            if (ping !== 'PONG') {
-                throw new common_1.InternalServerErrorException('Redis connection error');
-            }
-        }
-        catch (err) {
-            this.logger.error('Redis ping error: ', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        }
-    }
-    async connect() {
-        try {
-            await this.client.connect();
-            this.logger.log('Redis connected...');
-            return this.client;
-        }
-        catch (err) {
-            this.logger.error('Redis connection error: ', err);
-            throw new common_1.InternalServerErrorException('Redis connection error');
-        }
-    }
-    async set(key, value, ttl) {
-        try {
-            if (ttl) {
-                await this.client.set(key, value, { PX: ttl });
-            }
-            else {
-                await this.client.set(key, value, { PX: 60 });
-            }
-        }
-        catch (err) {
-            this.logger.error(`Error setting key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting key ${key}`);
-        }
-    }
-    async get(key) {
-        try {
-            return await this.client.get(key);
-        }
-        catch (err) {
-            this.logger.error(`Error getting key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting key ${key}`);
-        }
-    }
-    async hSet(key, value) {
-        try {
-            return await this.client.hSet(key, value);
-        }
-        catch (err) {
-            this.logger.error(`Error setting hash key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting hash key ${key}`);
-        }
-    }
-    async hGetAll(key) {
-        try {
-            return await this.client.hGetAll(key);
-        }
-        catch (err) {
-            this.logger.error(`Error getting all hash values for key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting all hash values for key ${key}`);
-        }
-    }
-    async getJSON(key, path) {
-        try {
-            const result = await this.client.json.get(key, { path });
-            return result ? JSON.parse(JSON.stringify(result))[0] : null;
-        }
-        catch (err) {
-            this.logger.error(`Error getting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error getting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async setJSON(key, path = '$', value) {
-        try {
-            return await this.client.json.set(key, path, value);
-        }
-        catch (err) {
-            this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async delJSON(key, path) {
-        try {
-            return await this.client.json.DEL(key, path);
-        }
-        catch (err) {
-            this.logger.error(`Error deleting JSON for key ${key} and path ${path}: `, err);
-            throw new common_1.InternalServerErrorException(`Error deleting JSON for key ${key} and path ${path}`);
-        }
-    }
-    async exists(keys) {
-        try {
-            return await this.client.exists(keys);
-        }
-        catch (err) {
-            this.logger.error(`Error checking existence of key(s) ${keys}: `, err);
-            throw new common_1.InternalServerErrorException(`Error checking existence of key(s) ${keys}`);
-        }
-    }
-    async setTTL(key, ttl) {
-        try {
-            await this.client.pExpire(key, ttl);
-        }
-        catch (err) {
-            this.logger.error(`Error setting TTL for key ${key}: `, err);
-            throw new common_1.InternalServerErrorException(`Error setting TTL for key ${key}`);
-        }
-    }
-    async flushAll() {
-        try {
-            await this.client.flushAll();
-        }
-        catch (err) {
-            this.logger.error('Error flushing all keys: ', err);
-            throw new common_1.InternalServerErrorException('Error flushing all keys');
-        }
-    }
-};
-exports.RedisService = RedisService;
-exports.RedisService = RedisService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof redis_1.RedisClientOptions !== "undefined" && redis_1.RedisClientOptions) === "function" ? _a : Object, typeof (_b = typeof common_1.Logger !== "undefined" && common_1.Logger) === "function" ? _b : Object])
-], RedisService);
-
-
-/***/ }),
-/* 23 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("redis");
-
-/***/ }),
-/* 24 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
@@ -1635,7 +1511,7 @@ exports.SpendingNoteService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const spendingnote_schema_1 = __webpack_require__(25);
+const spendingnote_schema_1 = __webpack_require__(23);
 const category_service_1 = __webpack_require__(18);
 const remove_accents_1 = __webpack_require__(17);
 const spendinglimit_service_1 = __webpack_require__(20);
@@ -2021,7 +1897,7 @@ exports.SpendingNoteService = SpendingNoteService = __decorate([
 
 
 /***/ }),
-/* 25 */
+/* 23 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -2077,6 +1953,182 @@ exports.SpendingNote = SpendingNote = __decorate([
 ], SpendingNote);
 exports.SpendingNoteSchema = mongoose_1.SchemaFactory.createForClass(SpendingNote);
 
+
+/***/ }),
+/* 24 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a, _b;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RedisService = void 0;
+const common_1 = __webpack_require__(6);
+const redis_1 = __webpack_require__(25);
+let RedisService = class RedisService {
+    constructor(config, logger) {
+        this.config = config;
+        this.logger = logger;
+        this.client = this.initializeClient();
+        this.client.on('error', (err) => {
+            this.logger.error('Redis Client Error', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        });
+    }
+    initializeClient() {
+        return (0, redis_1.createClient)({
+            ...this.config,
+            socket: {
+                reconnectStrategy: (retries) => Math.min(retries * 50, 500),
+                connectTimeout: 5000,
+                keepAlive: 5000,
+            },
+        });
+    }
+    async isConnected() {
+        try {
+            const ping = await this.client.ping();
+            if (ping !== 'PONG') {
+                throw new common_1.InternalServerErrorException('Redis connection error');
+            }
+        }
+        catch (err) {
+            this.logger.error('Redis ping error: ', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        }
+    }
+    async connect() {
+        try {
+            await this.client.connect();
+            this.logger.log('Redis connected...');
+            return this.client;
+        }
+        catch (err) {
+            this.logger.error('Redis connection error: ', err);
+            throw new common_1.InternalServerErrorException('Redis connection error');
+        }
+    }
+    async set(key, value, ttl) {
+        try {
+            if (ttl) {
+                await this.client.set(key, value, { PX: ttl });
+            }
+            else {
+                await this.client.set(key, value, { PX: 3600 });
+            }
+        }
+        catch (err) {
+            this.logger.error(`Error setting key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting key ${key}`);
+        }
+    }
+    async get(key) {
+        try {
+            return await this.client.get(key);
+        }
+        catch (err) {
+            this.logger.error(`Error getting key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting key ${key}`);
+        }
+    }
+    async hSet(key, value) {
+        try {
+            return await this.client.hSet(key, value);
+        }
+        catch (err) {
+            this.logger.error(`Error setting hash key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting hash key ${key}`);
+        }
+    }
+    async hGetAll(key) {
+        try {
+            return await this.client.hGetAll(key);
+        }
+        catch (err) {
+            this.logger.error(`Error getting all hash values for key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting all hash values for key ${key}`);
+        }
+    }
+    async getJSON(key, path) {
+        try {
+            const result = await this.client.json.get(key, { path });
+            return result ? JSON.parse(JSON.stringify(result))[0] : null;
+        }
+        catch (err) {
+            this.logger.error(`Error getting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error getting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async setJSON(key, path = '$', value) {
+        try {
+            await this.client.json.set(key, path, value);
+            await this.client.expire(key, 3600);
+            return 'OK';
+        }
+        catch (err) {
+            this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async delJSON(key, path) {
+        try {
+            return await this.client.json.DEL(key, path);
+        }
+        catch (err) {
+            this.logger.error(`Error deleting JSON for key ${key} and path ${path}: `, err);
+            throw new common_1.InternalServerErrorException(`Error deleting JSON for key ${key} and path ${path}`);
+        }
+    }
+    async exists(keys) {
+        try {
+            return await this.client.exists(keys);
+        }
+        catch (err) {
+            this.logger.error(`Error checking existence of key(s) ${keys}: `, err);
+            throw new common_1.InternalServerErrorException(`Error checking existence of key(s) ${keys}`);
+        }
+    }
+    async setTTL(key, ttl) {
+        try {
+            await this.client.pExpire(key, ttl);
+        }
+        catch (err) {
+            this.logger.error(`Error setting TTL for key ${key}: `, err);
+            throw new common_1.InternalServerErrorException(`Error setting TTL for key ${key}`);
+        }
+    }
+    async flushAll() {
+        try {
+            await this.client.flushAll();
+        }
+        catch (err) {
+            this.logger.error('Error flushing all keys: ', err);
+            throw new common_1.InternalServerErrorException('Error flushing all keys');
+        }
+    }
+};
+exports.RedisService = RedisService;
+exports.RedisService = RedisService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof redis_1.RedisClientOptions !== "undefined" && redis_1.RedisClientOptions) === "function" ? _a : Object, typeof (_b = typeof common_1.Logger !== "undefined" && common_1.Logger) === "function" ? _b : Object])
+], RedisService);
+
+
+/***/ }),
+/* 25 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("redis");
 
 /***/ }),
 /* 26 */
@@ -3146,8 +3198,8 @@ const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const category_schema_1 = __webpack_require__(19);
 const spendinglimit_module_1 = __webpack_require__(58);
-const spendingnote_module_1 = __webpack_require__(63);
-const redis_module_1 = __webpack_require__(62);
+const spendingnote_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let CategoryModule = class CategoryModule {
 };
 exports.CategoryModule = CategoryModule;
@@ -3198,7 +3250,7 @@ const jwt = __webpack_require__(34);
 const swagger_1 = __webpack_require__(33);
 const member_gaurd_1 = __webpack_require__(52);
 const UpdateCate_dto_1 = __webpack_require__(57);
-const redis_service_1 = __webpack_require__(22);
+const redis_service_1 = __webpack_require__(24);
 let CategoryController = class CategoryController {
     constructor(categoryService, redisService) {
         this.categoryService = categoryService;
@@ -3223,14 +3275,8 @@ let CategoryController = class CategoryController {
     }
     async viewCateController(request) {
         const userId = this.getUserIdFromToken(request);
-        const cacheKey = `category-${userId}`;
         try {
-            const cachedData = await this.redisService.get(cacheKey);
-            if (cachedData) {
-                return JSON.parse(cachedData);
-            }
-            const data = await this.categoryService.viewSpendingCateService(userId);
-            await this.redisService.set(cacheKey, JSON.stringify(data));
+            const data = await this.categoryService.viewCateService(userId);
             return data;
         }
         catch (error) {
@@ -3245,7 +3291,7 @@ let CategoryController = class CategoryController {
             if (cachedData) {
                 return JSON.parse(cachedData);
             }
-            const data = await this.categoryService.getCateByTypeIcomeService(userId);
+            const data = await this.categoryService.getCateByTypeIncomeService(userId);
             await this.redisService.set(cacheKey, JSON.stringify(data));
             return data;
         }
@@ -3720,61 +3766,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RedisCacheModule = void 0;
-const common_1 = __webpack_require__(6);
-const config_1 = __webpack_require__(8);
-const redis_service_1 = __webpack_require__(22);
-let RedisCacheModule = class RedisCacheModule {
-};
-exports.RedisCacheModule = RedisCacheModule;
-exports.RedisCacheModule = RedisCacheModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            config_1.ConfigModule.forRoot({
-                envFilePath: '.env',
-                isGlobal: true,
-            }),
-        ],
-        providers: [
-            {
-                provide: redis_service_1.RedisService,
-                useFactory: async (config) => {
-                    const logger = new common_1.Logger('REDIS');
-                    const cacheService = new redis_service_1.RedisService({
-                        url: `redis://${config.get('REDIS_HOST')}:${+config.get('REDIS_PORT')}`,
-                        password: config.get('REDIS_PASSWORD'),
-                    }, logger);
-                    await cacheService.connect();
-                    return cacheService;
-                },
-                inject: [config_1.ConfigService],
-            },
-        ],
-        exports: [redis_service_1.RedisService],
-    })
-], RedisCacheModule);
-
-
-/***/ }),
-/* 63 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingNoteModule = void 0;
 const common_1 = __webpack_require__(6);
-const spendingnote_service_1 = __webpack_require__(24);
-const spendingnote_controller_1 = __webpack_require__(64);
+const spendingnote_service_1 = __webpack_require__(22);
+const spendingnote_controller_1 = __webpack_require__(63);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const spendingnote_schema_1 = __webpack_require__(25);
+const spendingnote_schema_1 = __webpack_require__(23);
 const category_module_1 = __webpack_require__(54);
 const spendinglimit_module_1 = __webpack_require__(58);
 let SpendingNoteModule = class SpendingNoteModule {
@@ -3799,7 +3797,7 @@ exports.SpendingNoteModule = SpendingNoteModule = __decorate([
 
 
 /***/ }),
-/* 64 */
+/* 63 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -3820,16 +3818,16 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingnoteController = void 0;
 const common_1 = __webpack_require__(6);
-const spendingnote_service_1 = __webpack_require__(24);
+const spendingnote_service_1 = __webpack_require__(22);
 const swagger_1 = __webpack_require__(33);
-const CreateSpendingNote_dto_1 = __webpack_require__(65);
+const CreateSpendingNote_dto_1 = __webpack_require__(64);
 const jwt = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(52);
-const updateSpendingNote_dto_1 = __webpack_require__(66);
-const DeleteSpendingNote_dto_1 = __webpack_require__(67);
-const FilterSpendingNote_dto_1 = __webpack_require__(68);
+const updateSpendingNote_dto_1 = __webpack_require__(65);
+const DeleteSpendingNote_dto_1 = __webpack_require__(66);
+const FilterSpendingNote_dto_1 = __webpack_require__(67);
 const express_1 = __webpack_require__(45);
-const StatictisSpendingNote_dto_1 = __webpack_require__(69);
+const StatictisSpendingNote_dto_1 = __webpack_require__(68);
 let SpendingnoteController = class SpendingnoteController {
     constructor(spendingnoteService) {
         this.spendingnoteService = spendingnoteService;
@@ -4096,7 +4094,7 @@ exports.SpendingnoteController = SpendingnoteController = __decorate([
 
 
 /***/ }),
-/* 65 */
+/* 64 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4176,7 +4174,7 @@ __decorate([
 
 
 /***/ }),
-/* 66 */
+/* 65 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4264,7 +4262,7 @@ __decorate([
 
 
 /***/ }),
-/* 67 */
+/* 66 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4298,7 +4296,7 @@ __decorate([
 
 
 /***/ }),
-/* 68 */
+/* 67 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4344,7 +4342,7 @@ __decorate([
 
 
 /***/ }),
-/* 69 */
+/* 68 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -4397,6 +4395,54 @@ __decorate([
 
 
 /***/ }),
+/* 69 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RedisCacheModule = void 0;
+const common_1 = __webpack_require__(6);
+const config_1 = __webpack_require__(8);
+const redis_service_1 = __webpack_require__(24);
+let RedisCacheModule = class RedisCacheModule {
+};
+exports.RedisCacheModule = RedisCacheModule;
+exports.RedisCacheModule = RedisCacheModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot({
+                envFilePath: '.env',
+                isGlobal: true,
+            }),
+        ],
+        providers: [
+            {
+                provide: redis_service_1.RedisService,
+                useFactory: async (config) => {
+                    const logger = new common_1.Logger('REDIS');
+                    const cacheService = new redis_service_1.RedisService({
+                        url: `redis://${config.get('REDIS_HOST')}:${+config.get('REDIS_PORT')}`,
+                        password: config.get('REDIS_PASSWORD'),
+                    }, logger);
+                    await cacheService.connect();
+                    return cacheService;
+                },
+                inject: [config_1.ConfigService],
+            },
+        ],
+        exports: [redis_service_1.RedisService],
+    })
+], RedisCacheModule);
+
+
+/***/ }),
 /* 70 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -4419,7 +4465,7 @@ const config_1 = __webpack_require__(8);
 const role_module_1 = __webpack_require__(76);
 const role_schema_1 = __webpack_require__(42);
 const abilities_factory_1 = __webpack_require__(37);
-const redis_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -4471,7 +4517,7 @@ const blockAdmin_dto_1 = __webpack_require__(75);
 const swagger_1 = __webpack_require__(33);
 const permission_gaurd_1 = __webpack_require__(36);
 const casl_decorator_1 = __webpack_require__(44);
-const redis_service_1 = __webpack_require__(22);
+const redis_service_1 = __webpack_require__(24);
 let AdminController = class AdminController {
     constructor(adminService, redisService) {
         this.adminService = adminService;
@@ -4479,26 +4525,29 @@ let AdminController = class AdminController {
     }
     async createAdminController(createAdminDto) {
         const result = await this.adminService.createAdminService(createAdminDto.fullname, createAdminDto.email, createAdminDto.password, createAdminDto.roleId);
-        await this.redisService.set(`admin:${result.id}`, JSON.stringify(result));
+        await this.redisService.setJSON(`admin:${result._id}`, '$', JSON.stringify(result));
+        await this.redisService.delJSON('admin:all', '$');
         return result;
     }
     async updateAdmincontroller(updateAdminDto) {
         const result = await this.adminService.updateAdminService(updateAdminDto.id, updateAdminDto.fullname, updateAdminDto.email, updateAdminDto.password, updateAdminDto.roleId);
-        await this.redisService.set(`admin:${updateAdminDto.id}`, JSON.stringify(result));
+        await this.redisService.setJSON(`admin:${updateAdminDto.id}`, '$', JSON.stringify(result));
+        await this.redisService.delJSON('admin:all', '$');
         return result;
     }
     async deleteAdminController(deleteAdminDto) {
         const result = await this.adminService.deleteAdminService(deleteAdminDto.id);
-        await this.redisService.delJSON(`admin:${deleteAdminDto.id}`);
+        await this.redisService.delJSON(`admin:${deleteAdminDto.id}`, '$');
+        await this.redisService.delJSON('admin:all', '$');
         return result;
     }
     async listAdminController() {
-        const cachedAdmins = await this.redisService.get('admin:all');
+        const cachedAdmins = await this.redisService.getJSON('admin:all', '$');
         if (cachedAdmins) {
-            return JSON.parse(cachedAdmins);
+            return cachedAdmins;
         }
         const result = await this.adminService.listAdminService();
-        await this.redisService.set('admin:all', JSON.stringify(result));
+        await this.redisService.setJSON('admin:all', '$', JSON.stringify(result));
         return result;
     }
     async blockAdminController(blockAdminDto) {
@@ -4509,6 +4558,7 @@ let AdminController = class AdminController {
             admin.isBlock = blockAdminDto.isBlock;
             await this.redisService.set(`admin:${blockAdminDto.id}`, JSON.stringify(admin));
         }
+        await this.redisService.delJSON('admin:all', '$');
         return result;
     }
 };
@@ -7124,7 +7174,7 @@ const config_1 = __webpack_require__(8);
 const debt_schema_1 = __webpack_require__(109);
 const encryption_module_1 = __webpack_require__(82);
 const users_module_1 = __webpack_require__(9);
-const redis_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let DebtModule = class DebtModule {
 };
 exports.DebtModule = DebtModule;
@@ -7386,7 +7436,7 @@ const member_gaurd_1 = __webpack_require__(52);
 const debt_service_1 = __webpack_require__(108);
 const CreateDebt_dto_1 = __webpack_require__(111);
 const UpdateDebt_dto_1 = __webpack_require__(112);
-const redis_service_1 = __webpack_require__(22);
+const redis_service_1 = __webpack_require__(24);
 let DebtController = class DebtController {
     constructor(debtService, redisService) {
         this.debtService = debtService;
@@ -9569,7 +9619,7 @@ const comment_schema_1 = __webpack_require__(129);
 const post_module_1 = __webpack_require__(123);
 const users_module_1 = __webpack_require__(9);
 const post_schema_1 = __webpack_require__(125);
-const redis_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let CommentModule = class CommentModule {
 };
 exports.CommentModule = CommentModule;
@@ -9611,7 +9661,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentService = void 0;
 const common_1 = __webpack_require__(6);
@@ -9620,13 +9670,20 @@ const mongoose_2 = __webpack_require__(12);
 const comment_schema_1 = __webpack_require__(129);
 const users_service_1 = __webpack_require__(11);
 const post_service_1 = __webpack_require__(124);
-const mongoose_3 = __webpack_require__(12);
+const redis_service_1 = __webpack_require__(24);
 let CommentService = class CommentService {
-    constructor(commentModel, postModel, usersService, postService) {
+    constructor(commentModel, postModel, usersService, postService, redisService) {
         this.commentModel = commentModel;
         this.postModel = postModel;
         this.usersService = usersService;
         this.postService = postService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createCommentService(userId, postId, content) {
         const comment = new this.commentModel({
@@ -9639,15 +9696,17 @@ let CommentService = class CommentService {
             $inc: { commentCount: 1 },
         });
         await comment.save();
+        await this.deleteCache(`comments:${postId}`);
         return { message: 'Comment created successfully.' };
     }
     async updateCommentService(userId, commentId, content) {
         const comment = await this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
+        if (comment) {
+            await this.deleteCache(`comments:${comment.postId}`);
+        }
         return {
             comment,
-            message: comment
-                ? 'Comment updated successfully.'
-                : 'No comment found to update.',
+            message: comment ? 'Comment updated successfully.' : 'No comment found to update.',
         };
     }
     async deleteCommentService(userId, commentId) {
@@ -9655,18 +9714,26 @@ let CommentService = class CommentService {
             _id: commentId,
             userId,
         });
-        const sizeReplyComment = result.repliesComment.length;
-        const postId = result.postId;
-        await this.postModel.findByIdAndUpdate(postId, {
-            $inc: { commentCount: -(sizeReplyComment + 1) },
-        });
+        if (result) {
+            const sizeReplyComment = result.repliesComment.length;
+            const postId = result.postId;
+            await this.postModel.findByIdAndUpdate(postId, {
+                $inc: { commentCount: -(sizeReplyComment + 1) },
+            });
+            await this.deleteCache(`comments:${postId}`);
+        }
         return {
-            message: result
-                ? 'Comment deleted successfully.'
-                : 'No comment found to delete.',
+            message: result ? 'Comment deleted successfully.' : 'No comment found to delete.',
         };
     }
     async getCommentService(postId) {
+        const cachedComments = await this.redisService.getJSON(`comments:${postId}`, '$');
+        if (cachedComments) {
+            console.log('Comments fetched from cache successfully.');
+            const comments = JSON.parse(cachedComments);
+            return { comments, message: 'Comments fetched from cache successfully.' };
+        }
+        console.log('non cache');
         let comments = await this.commentModel
             .find({ postId })
             .populate('userId', 'firstname lastname avatar rankId')
@@ -9676,6 +9743,7 @@ let CommentService = class CommentService {
             comment.repliesComment.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             return comment;
         });
+        await this.setCache(`comments:${postId}`, comments);
         return { comments, message: 'Comments fetched successfully.' };
     }
     async CreateReplyCommentService(userId, commentId, content) {
@@ -9684,7 +9752,7 @@ let CommentService = class CommentService {
             throw new common_1.BadRequestException('Comment not found');
         }
         comment.repliesComment.push({
-            _id: new mongoose_3.Types.ObjectId().toString(),
+            _id: new mongoose_2.Types.ObjectId().toString(),
             userId: userId,
             content: content,
             createdAt: new Date(),
@@ -9695,6 +9763,8 @@ let CommentService = class CommentService {
             $inc: { commentCount: 1 },
         });
         await comment.save();
+        await this.deleteCache(`comments:${postId}`);
+        await this.setCache(`comment:${commentId}`, comment);
         return { comment, message: 'Reply comment created successfully.' };
     }
     async updateReplyCommentService(userId, commentId, replyCommentId, content) {
@@ -9711,6 +9781,8 @@ let CommentService = class CommentService {
         }
         comment.repliesComment[replyCommentIndex].content = content;
         await comment.save();
+        await this.deleteCache(`comments:${comment.postId}`);
+        await this.setCache(`comment:${commentId}`, comment);
         return { message: 'Reply comment updated successfully.' };
     }
     async deleteReplyCommentService(userId, commentId, replyCommentId) {
@@ -9731,6 +9803,8 @@ let CommentService = class CommentService {
             $inc: { commentCount: -1 },
         });
         await comment.save();
+        await this.deleteCache(`comments:${postId}`);
+        await this.setCache(`comment:${commentId}`, comment);
         return { message: 'Reply comment deleted successfully.' };
     }
 };
@@ -9739,7 +9813,7 @@ exports.CommentService = CommentService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(comment_schema_1.Comment.name)),
     __param(1, (0, mongoose_1.InjectModel)('Post')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _d : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _d : Object, typeof (_e = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _e : Object])
 ], CommentService);
 
 
@@ -9761,7 +9835,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentController = void 0;
 const common_1 = __webpack_require__(6);
@@ -9770,11 +9844,9 @@ const swagger_1 = __webpack_require__(33);
 const comment_dto_1 = __webpack_require__(133);
 const jwt = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(52);
-const redis_service_1 = __webpack_require__(22);
 let CommentController = class CommentController {
-    constructor(commentService, redisService) {
+    constructor(commentService) {
         this.commentService = commentService;
-        this.redisService = redisService;
     }
     getUserIdFromToken(request) {
         const token = request.headers.authorization.split(' ')[1];
@@ -9794,12 +9866,7 @@ let CommentController = class CommentController {
         return this.commentService.deleteCommentService(userId, commentId);
     }
     async getCommentController(postId) {
-        const cachedComments = await this.redisService.get(`comments:${postId}`);
-        if (cachedComments) {
-            return JSON.parse(cachedComments);
-        }
         const comments = await this.commentService.getCommentService(postId);
-        await this.redisService.set(`comments:${postId}`, JSON.stringify(comments), 3600);
         return comments;
     }
     async replyCommentController(request, commentId, dto) {
@@ -9822,7 +9889,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_c = typeof Request !== "undefined" && Request) === "function" ? _c : Object, typeof (_d = typeof comment_dto_1.CreateCommentDto !== "undefined" && comment_dto_1.CreateCommentDto) === "function" ? _d : Object]),
+    __metadata("design:paramtypes", [typeof (_b = typeof Request !== "undefined" && Request) === "function" ? _b : Object, typeof (_c = typeof comment_dto_1.CreateCommentDto !== "undefined" && comment_dto_1.CreateCommentDto) === "function" ? _c : Object]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "createCommentController", null);
 __decorate([
@@ -9834,7 +9901,7 @@ __decorate([
     __param(1, (0, common_1.Param)('commentId')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_e = typeof Request !== "undefined" && Request) === "function" ? _e : Object, String, typeof (_f = typeof comment_dto_1.UpdateCommentDto !== "undefined" && comment_dto_1.UpdateCommentDto) === "function" ? _f : Object]),
+    __metadata("design:paramtypes", [typeof (_d = typeof Request !== "undefined" && Request) === "function" ? _d : Object, String, typeof (_e = typeof comment_dto_1.UpdateCommentDto !== "undefined" && comment_dto_1.UpdateCommentDto) === "function" ? _e : Object]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "updateCommentController", null);
 __decorate([
@@ -9845,7 +9912,7 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('commentId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_g = typeof Request !== "undefined" && Request) === "function" ? _g : Object, String]),
+    __metadata("design:paramtypes", [typeof (_f = typeof Request !== "undefined" && Request) === "function" ? _f : Object, String]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "deleteCommentController", null);
 __decorate([
@@ -9866,7 +9933,7 @@ __decorate([
     __param(1, (0, common_1.Param)('commentId')),
     __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_h = typeof Request !== "undefined" && Request) === "function" ? _h : Object, String, typeof (_j = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _j : Object]),
+    __metadata("design:paramtypes", [typeof (_g = typeof Request !== "undefined" && Request) === "function" ? _g : Object, String, typeof (_h = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _h : Object]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "replyCommentController", null);
 __decorate([
@@ -9879,7 +9946,7 @@ __decorate([
     __param(2, (0, common_1.Param)('replyId')),
     __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_k = typeof Request !== "undefined" && Request) === "function" ? _k : Object, String, String, typeof (_l = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _l : Object]),
+    __metadata("design:paramtypes", [typeof (_j = typeof Request !== "undefined" && Request) === "function" ? _j : Object, String, String, typeof (_k = typeof comment_dto_1.ReplyCommentDto !== "undefined" && comment_dto_1.ReplyCommentDto) === "function" ? _k : Object]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "updateReplyCommentController", null);
 __decorate([
@@ -9889,14 +9956,14 @@ __decorate([
     __param(1, (0, common_1.Param)('commentId')),
     __param(2, (0, common_1.Param)('replyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [typeof (_m = typeof Request !== "undefined" && Request) === "function" ? _m : Object, String, String]),
+    __metadata("design:paramtypes", [typeof (_l = typeof Request !== "undefined" && Request) === "function" ? _l : Object, String, String]),
     __metadata("design:returntype", Promise)
 ], CommentController.prototype, "deleteReplyCommentController", null);
 exports.CommentController = CommentController = __decorate([
     (0, swagger_1.ApiTags)('comment'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)('comment'),
-    __metadata("design:paramtypes", [typeof (_a = typeof comment_service_1.CommentService !== "undefined" && comment_service_1.CommentService) === "function" ? _a : Object, typeof (_b = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof comment_service_1.CommentService !== "undefined" && comment_service_1.CommentService) === "function" ? _a : Object])
 ], CommentController);
 
 
@@ -10043,7 +10110,15 @@ let ReportService = class ReportService {
         return { message: 'Report created successfully.' };
     }
     async getReportsService() {
-        return await this.reportModel.find().populate('userId', 'firstname lastname avatar').populate('postId');
+        return await this.reportModel.find()
+            .populate('userId', 'firstname lastname avatar')
+            .populate({
+            path: 'postId',
+            populate: {
+                path: 'userId',
+                select: 'firstname lastname avatar'
+            }
+        });
     }
     async deleteReportService(reportId) {
         const report = await this.reportModel.findByIdAndDelete(reportId);
@@ -10073,6 +10148,15 @@ let ReportService = class ReportService {
         report.status = 'Processed';
         await report.save();
         return { message: 'Post blocked successfully.' };
+    }
+    async rejectReportService(reportId) {
+        const report = await this.reportModel.findById(reportId);
+        if (!report) {
+            throw new common_1.BadRequestException('Report not found');
+        }
+        report.status = 'Rejected';
+        await report.save();
+        return { message: 'Report rejected successfully.' };
     }
 };
 exports.ReportService = ReportService;
@@ -10152,7 +10236,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportController = void 0;
 const common_1 = __webpack_require__(6);
@@ -10188,6 +10272,9 @@ let ReportController = class ReportController {
     }
     async blockPostByReportController(reportId) {
         return await this.reportService.blockPostByReportService(reportId);
+    }
+    async rejectReportController(reportId) {
+        return await this.reportService.rejectReportService(reportId);
     }
 };
 exports.ReportController = ReportController;
@@ -10240,6 +10327,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], ReportController.prototype, "blockPostByReportController", null);
+__decorate([
+    (0, common_1.Patch)('reject/:reportId'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('report'),
+    (0, casl_decorator_1.Action)('read'),
+    __param(0, (0, common_1.Param)('reportId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+], ReportController.prototype, "rejectReportController", null);
 exports.ReportController = ReportController = __decorate([
     (0, swagger_1.ApiTags)('report'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -10314,7 +10411,7 @@ const rank_schema_1 = __webpack_require__(29);
 const admin_module_1 = __webpack_require__(70);
 const abilities_factory_1 = __webpack_require__(37);
 const post_schema_1 = __webpack_require__(125);
-const redis_module_1 = __webpack_require__(62);
+const redis_module_1 = __webpack_require__(69);
 let StatisticsModule = class StatisticsModule {
 };
 exports.StatisticsModule = StatisticsModule;
@@ -10586,7 +10683,7 @@ const swagger_1 = __webpack_require__(33);
 const permission_gaurd_1 = __webpack_require__(36);
 const casl_decorator_1 = __webpack_require__(44);
 const querydate_dto_1 = __webpack_require__(142);
-const redis_service_1 = __webpack_require__(22);
+const redis_service_1 = __webpack_require__(24);
 let StatisticsController = StatisticsController_1 = class StatisticsController {
     constructor(statisticsService, redisService) {
         this.statisticsService = statisticsService;
@@ -11763,7 +11860,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("54569d3b0fc1d08ae60d")
+/******/ 		__webpack_require__.h = () => ("bd05d65a6115a7475544")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

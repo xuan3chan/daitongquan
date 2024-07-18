@@ -69,7 +69,7 @@ export class RedisService
       if (ttl) {
         await this.client.set(key, value, { PX: ttl });
       } else {
-        await this.client.set(key, value, { PX: 60 });
+        await this.client.set(key, value, { PX: 3600 });
       }
     } catch (err) {
       this.logger.error(`Error setting key ${key}: `, err);
@@ -121,7 +121,9 @@ export class RedisService
 
   async setJSON<TValue extends RedisJSON>(key: string, path = '$', value: TValue): Promise<'OK'> {
     try {
-      return await this.client.json.set(key, path, value);
+       await this.client.json.set(key, path, value);
+       await this.client.expire(key, 3600);
+      return 'OK';
     } catch (err) {
       this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
       throw new InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);

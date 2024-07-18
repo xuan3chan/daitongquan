@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Comment } from './schema/comment.schema';
 import { UsersService } from 'src/users/users.service';
 import { PostService } from 'src/post/post.service';
-import { Types } from 'mongoose';
+import { RedisService } from 'src/redis/redis.service'; // Import RedisService
 
 @Injectable()
 export class CommentService {
@@ -13,7 +13,16 @@ export class CommentService {
     @InjectModel('Post') private postModel: Model<Comment>,
     private usersService: UsersService,
     private postService: PostService,
+    private readonly redisService: RedisService, // Inject RedisService
   ) {}
+
+  private async deleteCache(key: string) {
+    await this.redisService.delJSON(key, '$');
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
 
   async createCommentService(
     userId: string,
@@ -26,11 +35,13 @@ export class CommentService {
       content,
     });
     await this.usersService.updateScoreRankService(userId, false, true);
-    //count comment
     await this.postModel.findByIdAndUpdate(postId, {
       $inc: { commentCount: 1 },
     });
     await comment.save();
+
+    await this.deleteCache(`comments:${postId}`);
+
     return { message: 'Comment created successfully.' };
   }
 
@@ -39,18 +50,19 @@ export class CommentService {
     commentId: string,
     content: string,
   ): Promise<{ comment: Comment | null; message: string }> {
- 
-   
     const comment = await this.commentModel.findOneAndUpdate(
       { _id: commentId, userId },
       { content },
       { new: true },
     );
+
+    if (comment) {
+      await this.deleteCache(`comments:${comment.postId}`);
+    }
+
     return {
       comment,
-      message: comment
-        ? 'Comment updated successfully.'
-        : 'No comment found to update.',
+      message: comment ? 'Comment updated successfully.' : 'No comment found to update.',
     };
   }
 
@@ -62,28 +74,37 @@ export class CommentService {
       _id: commentId,
       userId,
     });
-    const sizeReplyComment = result.repliesComment.length;
-    const postId = result.postId;
-    await this.postModel.findByIdAndUpdate(postId, {
-      $inc: { commentCount: -(sizeReplyComment+1) },
-    });
+
+    if (result) {
+      const sizeReplyComment = result.repliesComment.length;
+      const postId = result.postId;
+      await this.postModel.findByIdAndUpdate(postId, {
+        $inc: { commentCount: -(sizeReplyComment + 1) },
+      });
+
+      await this.deleteCache(`comments:${postId}`);
+    }
 
     return {
-      message: result
-        ? 'Comment deleted successfully.'
-        : 'No comment found to delete.',
+      message: result ? 'Comment deleted successfully.' : 'No comment found to delete.',
     };
   }
 
-  async getCommentService(
-    postId: string,
-  ): Promise<{ comments: Comment[]; message: string }> {
+  async getCommentService(postId: string): Promise<any> {
+    const cachedComments = await this.redisService.getJSON(`comments:${postId}`, '$');
+    if (cachedComments) {
+      console.log('Comments fetched from cache successfully.');
+      // Parse the cached comments before returning
+      const comments = JSON.parse(cachedComments as string);
+      return { comments, message: 'Comments fetched from cache successfully.' };
+    }
+    console.log('non cache');
     let comments = await this.commentModel
       .find({ postId })
       .populate('userId', 'firstname lastname avatar rankId')
       .populate('repliesComment.userId', 'firstname lastname avatar rankId')
       .sort({ createdAt: -1 });
-
+  
     // Sort the repliesComment array in descending order based on the createdAt field for each comment
     comments = comments.map((comment) => {
       comment.repliesComment.sort(
@@ -91,38 +112,42 @@ export class CommentService {
       );
       return comment;
     });
-
+  
+    await this.setCache(`comments:${postId}`, comments);
+  
     return { comments, message: 'Comments fetched successfully.' };
   }
+  
 
+  async CreateReplyCommentService(
+    userId: string,
+    commentId: string,
+    content: string,
+  ): Promise<{ comment: Comment; message: string }> {
+    const comment = await this.commentModel.findById(commentId);
+    if (!comment) {
+      throw new BadRequestException('Comment not found');
+    }
 
-async CreateReplyCommentService(
-  userId: string,
-  commentId: string,
-  content: string,
-): Promise<{ comment: Comment; message: string }> {
-  const comment = await this.commentModel.findById(commentId);
-  if (!comment) {
-    throw new BadRequestException('Comment not found');
+    comment.repliesComment.push({
+      _id: new Types.ObjectId().toString(), // Ensure _id is generated correctly
+      userId: userId,
+      content: content,
+      createdAt: new Date(),
+    });
+
+    await this.usersService.updateScoreRankService(userId, false, true);
+    const postId = comment.postId;
+    await this.postModel.findByIdAndUpdate(postId, {
+      $inc: { commentCount: 1 },
+    });
+    await comment.save();
+
+    await this.deleteCache(`comments:${postId}`);
+    await this.setCache(`comment:${commentId}`, comment);
+
+    return { comment, message: 'Reply comment created successfully.' };
   }
-
-  // Directly push the new reply comment into the repliesComment array
-  comment.repliesComment.push({
-    _id: new Types.ObjectId().toString(), // Ensure _id is generated correctly
-    userId: userId,
-    content: content,
-    createdAt: new Date(),
-  });
-
-  await this.usersService.updateScoreRankService(userId, false, true);
-  const postId = comment.postId;
-  await this.postModel.findByIdAndUpdate(postId, {
-    $inc: { commentCount: 1 },
-  });
-  await comment.save();
-
-  return { comment, message: 'Reply comment created successfully.' };
-}
 
   async updateReplyCommentService(
     userId: string,
@@ -130,15 +155,11 @@ async CreateReplyCommentService(
     replyCommentId: string,
     content: string,
   ): Promise<{ message: string }> {
-    // Validate IDs
-
-    // Find the main comment by its ID
     const comment = await this.commentModel.findById(commentId);
     if (!comment) {
       throw new BadRequestException('Comment not found');
     }
 
-    // Find the reply comment within the main comment's repliesComment array
     const replyCommentIndex = comment.repliesComment.findIndex(
       (reply) => reply._id.toString() === replyCommentId,
     );
@@ -146,36 +167,29 @@ async CreateReplyCommentService(
       throw new BadRequestException('Reply comment not found');
     }
 
-    // Verify that the userId matches the owner of the reply comment
-    if (
-      comment.repliesComment[replyCommentIndex].userId.toString() !== userId
-    ) {
-      throw new BadRequestException(
-        'You are not the owner of this reply comment',
-      );
+    if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
+      throw new BadRequestException('You are not the owner of this reply comment');
     }
 
-    // Update the content of the reply comment
     comment.repliesComment[replyCommentIndex].content = content;
-
-    // Save the changes
     await comment.save();
+
+    await this.deleteCache(`comments:${comment.postId}`);
+    await this.setCache(`comment:${commentId}`, comment);
 
     return { message: 'Reply comment updated successfully.' };
   }
+
   async deleteReplyCommentService(
     userId: string,
     commentId: string,
     replyCommentId: string,
   ): Promise<{ message: string }> {
-    
-    // Find the main comment by its ID
     const comment = await this.commentModel.findById(commentId);
     if (!comment) {
       throw new BadRequestException('Comment not found');
     }
 
-    // Find the reply comment within the main comment's repliesComment array
     const replyCommentIndex = comment.repliesComment.findIndex(
       (reply) => reply._id.toString() === replyCommentId,
     );
@@ -183,24 +197,21 @@ async CreateReplyCommentService(
       throw new BadRequestException('Reply comment not found');
     }
 
-    // Verify that the userId matches the owner of the reply comment
-    if (
-      comment.repliesComment[replyCommentIndex].userId.toString() !== userId
-    ) {
-      throw new BadRequestException(
-        'You are not the owner of this reply comment',
-      );
+    if (comment.repliesComment[replyCommentIndex].userId.toString() !== userId) {
+      throw new BadRequestException('You are not the owner of this reply comment');
     }
 
-    // Remove the reply comment from the repliesComment array
     comment.repliesComment.splice(replyCommentIndex, 1);
     const postId = comment.postId;
     await this.postModel.findByIdAndUpdate(postId, {
       $inc: { commentCount: -1 },
     });
-    // Save the changes
     await comment.save();
+
+    await this.deleteCache(`comments:${postId}`);
+    await this.setCache(`comment:${commentId}`, comment);
 
     return { message: 'Reply comment deleted successfully.' };
   }
+  
 }
