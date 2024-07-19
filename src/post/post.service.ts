@@ -51,6 +51,7 @@ export class PostService {
 
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:list`);
     
     return savedPost;
   }
@@ -82,25 +83,27 @@ export class PostService {
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postId}`);
-
-
+    await this.deleteCache(`posts:list`);
     return updatedPost;
   }
 
   async deletePostService(userId: string, postId: string): Promise<Post> {
-    const post = await this.postModel.findOne({ _id: postId, userId });
+    const post = await this.postModel.findOneAndDelete({ _id: postId, userId });
     if (!post) {
       throw new BadRequestException('Post not found');
     }
+    if (post.postImage){
     await this.cloudinaryService.deleteMediaService(post.postImage);
-    const deletedPost = await this.postModel.findByIdAndDelete(postId);
+    }
 
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postId}`);
+    await this.deleteCache(`posts:list`);
 
 
-    return deletedPost;
+
+    return post;
   }
 
   async viewDetailPostService(postId: string): Promise<Post> {
@@ -131,8 +134,7 @@ export class PostService {
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postIds}`);
-
-
+    await this.deleteCache(`posts:list`);
     return posts;
   }
 
@@ -146,6 +148,8 @@ export class PostService {
 
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:list`);
+    await this.deleteCache(`posts:detail:${postId}`);
 
     return updatedPost;
   }
@@ -160,6 +164,10 @@ export class PostService {
     const updatedPost = await post.save();
 
     await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:list`);
+    await this.deleteCache(`posts:detail:${postId}`);
+    await this.deleteCache(`posts:user:${post.userId}`);
+
 
     return updatedPost;
   }
@@ -247,6 +255,7 @@ export class PostService {
       await this.deleteCache(`posts:detail:${postId}`);
       await this.deleteCache(`posts:user:${userId}`);
       await this.deleteCache('posts:all');
+      await this.deleteCache(`posts:list`);
 
       return { message: 'Reaction updated successfully' };
     }
@@ -273,6 +282,8 @@ export class PostService {
     await this.deleteCache(`posts:detail:${postId}`);
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:list`);
+
 
     return { message: 'Reaction added successfully' };
   }
@@ -300,6 +311,8 @@ export class PostService {
     await this.deleteCache(`posts:detail:${postId}`);
     await this.deleteCache(`posts:user:${userId}`);
     await this.deleteCache('posts:all');
+    await this.deleteCache(`posts:list`);
+
 
     return post;
   }
@@ -317,6 +330,7 @@ export class PostService {
 
       await this.deleteCache(`posts:favorites:${userId}`);
       await this.deleteCache(`posts:detail:${postId}`);
+      await this.deleteCache(`posts:list`);
 
       return { message: 'Favorite post added successfully' };
     } catch (error) {
@@ -334,6 +348,7 @@ export class PostService {
 
       await this.deleteCache(`posts:favorites:${userId}`);
       await this.deleteCache(`posts:detail:${postId}`);
+      
 
       return { message: 'Favorite post removed successfully' };
     } catch (error) {
