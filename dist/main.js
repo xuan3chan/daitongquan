@@ -9297,38 +9297,28 @@ let PostService = class PostService {
         return posts;
     }
     async addReactionPostService(userId, postId, reaction) {
-        const post = await this.postModel.findOne({
+        const postExists = await this.postModel.findOne({
             _id: postId,
             'userReaction.userId': userId,
-        });
-        if (post) {
-            await this.postModel.updateOne({ _id: postId, 'userReaction.userId': userId }, {
-                $set: {
-                    'userReaction.$.reaction': reaction,
-                },
-            });
-            await this.deleteCache(`posts:detail:${postId}`);
-            await this.deleteCache(`posts:user:${userId}`);
-            return { message: 'Reaction updated successfully' };
+        }).lean();
+        let message = '';
+        if (postExists) {
+            await this.postModel.updateOne({ _id: postId, 'userReaction.userId': userId }, { $set: { 'userReaction.$.reaction': reaction } });
+            message = 'Reaction updated successfully';
         }
-        const newPost = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': { $ne: userId } }, {
-            $push: {
-                userReaction: { userId, reaction },
-            },
-            $inc: {
-                reactionCount: 1,
-            },
-        }, { new: true });
-        if (!newPost) {
-            throw new common_1.BadRequestException('You have already reacted to this post');
-        }
-        if (reaction === 'like') {
-            const plusForUser = newPost.userId.toString();
-            await this.usersService.updateScoreRankService(plusForUser, true, false, false);
+        else {
+            const updatedPost = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': { $ne: userId } }, { $push: { userReaction: { userId, reaction } }, $inc: { reactionCount: 1 } }, { new: true });
+            if (!updatedPost) {
+                throw new common_1.BadRequestException('Post not found or you have already reacted to this post');
+            }
+            if (reaction === 'like') {
+                await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
+            }
+            message = 'Reaction added successfully';
         }
         await this.deleteCache(`posts:detail:${postId}`);
         await this.deleteCache(`posts:user:${userId}`);
-        return { message: 'Reaction added successfully' };
+        return { message };
     }
     async removeReactionPostService(userId, postId) {
         const post = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': userId }, {
@@ -12254,7 +12244,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("b8f51dcb9a67bd854148")
+/******/ 		__webpack_require__.h = () => ("58f82a8c0cc91e4b520f")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
