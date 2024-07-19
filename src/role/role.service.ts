@@ -65,29 +65,27 @@ export class RoleService {
   }
 
   async findRoleService(ids: string[]): Promise<Role[]> {
-    const rolesFromCache = await Promise.all(ids.map(id => this.getCache(`role:${id}`)));
-    const roles = [];
-    const missingIds = [];
+    const cacheKeys = ids.map((id) => `role:${id}`);
+    const cachedRoles = await Promise.all(cacheKeys.map((key) => this.getCache(key)));
   
-    // Phân loại roles từ cache và xác định các ID còn thiếu
-    rolesFromCache.forEach((role, index) => {
-      if (role) {
-        roles.push(role);
-      } else {
-        missingIds.push(ids[index]);
-      }
-    });
-    // Nếu có các ID không tìm thấy trong cache, truy vấn cơ sở dữ liệu
-    if (missingIds.length > 0) {
-      const missingRoles = await this.roleModel.find({ '_id': { $in: missingIds } }).exec();
-      // Cập nhật cache cho các roles vừa tìm thấy và thêm vào danh sách roles
-      for (const role of missingRoles) {
-        await this.setCache(`role:${role._id}`, role);
-        roles.push(role);
-      }
+    // Identify missed cache entries
+    const missedCacheIndices = cachedRoles.map((role, index) => role ? null : index).filter((index) => index !== null);
+    const missedCacheIds = missedCacheIndices.map((index) => ids[index]);
+  
+    if (missedCacheIds.length === 0) {
+      // All roles found in cache, parse and return them
+      return cachedRoles.map((role) => JSON.parse(role));
+    } else {
+      // Fetch missed roles from the database
+      const rolesFromDb = await this.roleModel.find({ _id: { $in: missedCacheIds } }).exec();
+  
+      // Set cache for the newly fetched roles
+      await Promise.all(rolesFromDb.map((role) => this.setCache(`role:${role.id}`, JSON.stringify(role))));
+  
+      // Combine cached roles (excluding nulls) and roles from DB for the final result
+      const rolesFromCache = cachedRoles.filter((role) => role !== null).map((role) => JSON.parse(role));
+      return [...rolesFromCache, ...rolesFromDb];
     }
-  
-    return roles;
   }
 
   async viewlistRoleService(): Promise<Role[]> {

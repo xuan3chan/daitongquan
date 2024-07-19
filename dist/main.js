@@ -214,7 +214,7 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api', app, document);
-    await app.listen(process.env.PORT_SERVER, `0.0.0.0`);
+    await app.listen(process.env.PORT_SERVER, "0.0.0.0");
 }
 bootstrap();
 
@@ -5101,25 +5101,19 @@ let RoleService = class RoleService {
         return role;
     }
     async findRoleService(ids) {
-        const rolesFromCache = await Promise.all(ids.map(id => this.getCache(`role:${id}`)));
-        const roles = [];
-        const missingIds = [];
-        rolesFromCache.forEach((role, index) => {
-            if (role) {
-                roles.push(role);
-            }
-            else {
-                missingIds.push(ids[index]);
-            }
-        });
-        if (missingIds.length > 0) {
-            const missingRoles = await this.roleModel.find({ '_id': { $in: missingIds } }).exec();
-            for (const role of missingRoles) {
-                await this.setCache(`role:${role._id}`, role);
-                roles.push(role);
-            }
+        const cacheKeys = ids.map((id) => `role:${id}`);
+        const cachedRoles = await Promise.all(cacheKeys.map((key) => this.getCache(key)));
+        const missedCacheIndices = cachedRoles.map((role, index) => role ? null : index).filter((index) => index !== null);
+        const missedCacheIds = missedCacheIndices.map((index) => ids[index]);
+        if (missedCacheIds.length === 0) {
+            return cachedRoles.map((role) => JSON.parse(role));
         }
-        return roles;
+        else {
+            const rolesFromDb = await this.roleModel.find({ _id: { $in: missedCacheIds } }).exec();
+            await Promise.all(rolesFromDb.map((role) => this.setCache(`role:${role.id}`, JSON.stringify(role))));
+            const rolesFromCache = cachedRoles.filter((role) => role !== null).map((role) => JSON.parse(role));
+            return [...rolesFromCache, ...rolesFromDb];
+        }
     }
     async viewlistRoleService() {
         const cacheKey = 'roles:all';
@@ -12268,7 +12262,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("a0d768407ec17f465bbc")
+/******/ 		__webpack_require__.h = () => ("0016f8de719a02ff0130")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
