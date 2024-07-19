@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Comment } from './schema/comment.schema';
 import { UsersService } from 'src/users/users.service';
-import { PostService } from 'src/post/post.service';
 import { RedisService } from 'src/redis/redis.service'; // Import RedisService
 
 @Injectable()
@@ -12,7 +11,6 @@ export class CommentService {
     @InjectModel(Comment.name) private commentModel: Model<Comment>,
     @InjectModel('Post') private postModel: Model<Comment>,
     private usersService: UsersService,
-    private postService: PostService,
     private readonly redisService: RedisService, // Inject RedisService
   ) {}
 
@@ -40,7 +38,8 @@ export class CommentService {
     });
     await comment.save();
 
-    await this.deleteCache(`comments:${postId}`);
+    await this.setCache(`comments:${postId}`, comment);
+    await this.deleteCache(`comments:get:${postId}`);
 
     return { message: 'Comment created successfully.' };
   }
@@ -58,6 +57,8 @@ export class CommentService {
 
     if (comment) {
       await this.deleteCache(`comments:${comment.postId}`);
+      await this.deleteCache(`comments:get:${comment.postId}`);
+
     }
 
     return {
@@ -83,6 +84,8 @@ export class CommentService {
       });
 
       await this.deleteCache(`comments:${postId}`);
+      await this.deleteCache(`comments:get:${postId}`);
+
     }
 
     return {
@@ -91,14 +94,13 @@ export class CommentService {
   }
 
   async getCommentService(postId: string): Promise<any> {
-    const cachedComments = await this.redisService.getJSON(`comments:${postId}`, '$');
+    const cachedComments = await this.redisService.getJSON(`comments:get:${postId}`, '$');
     if (cachedComments) {
       console.log('Comments fetched from cache successfully.');
       // Parse the cached comments before returning
       const comments = JSON.parse(cachedComments as string);
       return { comments, message: 'Comments fetched from cache successfully.' };
     }
-    console.log('non cache');
     let comments = await this.commentModel
       .find({ postId })
       .populate('userId', 'firstname lastname avatar rankId')
@@ -144,6 +146,8 @@ export class CommentService {
     await comment.save();
 
     await this.deleteCache(`comments:${postId}`);
+    await this.deleteCache(`comments:get:${postId}`);
+
     await this.setCache(`comment:${commentId}`, comment);
 
     return { comment, message: 'Reply comment created successfully.' };
@@ -175,6 +179,8 @@ export class CommentService {
     await comment.save();
 
     await this.deleteCache(`comments:${comment.postId}`);
+    await this.deleteCache(`comments:get:${comment.postId}`);
+
     await this.setCache(`comment:${commentId}`, comment);
 
     return { message: 'Reply comment updated successfully.' };
@@ -210,6 +216,7 @@ export class CommentService {
 
     await this.deleteCache(`comments:${postId}`);
     await this.setCache(`comment:${commentId}`, comment);
+    await this.deleteCache(`comments:get:${comment.postId}`);
 
     return { message: 'Reply comment deleted successfully.' };
   }

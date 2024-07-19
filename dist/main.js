@@ -10030,7 +10030,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentService = void 0;
 const common_1 = __webpack_require__(6);
@@ -10038,14 +10038,12 @@ const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const comment_schema_1 = __webpack_require__(129);
 const users_service_1 = __webpack_require__(11);
-const post_service_1 = __webpack_require__(124);
 const redis_service_1 = __webpack_require__(24);
 let CommentService = class CommentService {
-    constructor(commentModel, postModel, usersService, postService, redisService) {
+    constructor(commentModel, postModel, usersService, redisService) {
         this.commentModel = commentModel;
         this.postModel = postModel;
         this.usersService = usersService;
-        this.postService = postService;
         this.redisService = redisService;
     }
     async deleteCache(key) {
@@ -10065,13 +10063,15 @@ let CommentService = class CommentService {
             $inc: { commentCount: 1 },
         });
         await comment.save();
-        await this.deleteCache(`comments:${postId}`);
+        await this.setCache(`comments:${postId}`, comment);
+        await this.deleteCache(`comments:get:${postId}`);
         return { message: 'Comment created successfully.' };
     }
     async updateCommentService(userId, commentId, content) {
         const comment = await this.commentModel.findOneAndUpdate({ _id: commentId, userId }, { content }, { new: true });
         if (comment) {
             await this.deleteCache(`comments:${comment.postId}`);
+            await this.deleteCache(`comments:get:${comment.postId}`);
         }
         return {
             comment,
@@ -10090,19 +10090,19 @@ let CommentService = class CommentService {
                 $inc: { commentCount: -(sizeReplyComment + 1) },
             });
             await this.deleteCache(`comments:${postId}`);
+            await this.deleteCache(`comments:get:${postId}`);
         }
         return {
             message: result ? 'Comment deleted successfully.' : 'No comment found to delete.',
         };
     }
     async getCommentService(postId) {
-        const cachedComments = await this.redisService.getJSON(`comments:${postId}`, '$');
+        const cachedComments = await this.redisService.getJSON(`comments:get:${postId}`, '$');
         if (cachedComments) {
             console.log('Comments fetched from cache successfully.');
             const comments = JSON.parse(cachedComments);
             return { comments, message: 'Comments fetched from cache successfully.' };
         }
-        console.log('non cache');
         let comments = await this.commentModel
             .find({ postId })
             .populate('userId', 'firstname lastname avatar rankId')
@@ -10133,6 +10133,7 @@ let CommentService = class CommentService {
         });
         await comment.save();
         await this.deleteCache(`comments:${postId}`);
+        await this.deleteCache(`comments:get:${postId}`);
         await this.setCache(`comment:${commentId}`, comment);
         return { comment, message: 'Reply comment created successfully.' };
     }
@@ -10151,6 +10152,7 @@ let CommentService = class CommentService {
         comment.repliesComment[replyCommentIndex].content = content;
         await comment.save();
         await this.deleteCache(`comments:${comment.postId}`);
+        await this.deleteCache(`comments:get:${comment.postId}`);
         await this.setCache(`comment:${commentId}`, comment);
         return { message: 'Reply comment updated successfully.' };
     }
@@ -10174,6 +10176,7 @@ let CommentService = class CommentService {
         await comment.save();
         await this.deleteCache(`comments:${postId}`);
         await this.setCache(`comment:${commentId}`, comment);
+        await this.deleteCache(`comments:get:${comment.postId}`);
         return { message: 'Reply comment deleted successfully.' };
     }
 };
@@ -10182,7 +10185,7 @@ exports.CommentService = CommentService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(comment_schema_1.Comment.name)),
     __param(1, (0, mongoose_1.InjectModel)('Post')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof post_service_1.PostService !== "undefined" && post_service_1.PostService) === "function" ? _d : Object, typeof (_e = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _e : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], CommentService);
 
 
@@ -12276,7 +12279,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("79cd217097cdbff6e62c")
+/******/ 		__webpack_require__.h = () => ("d6541ab40faf531d3599")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
