@@ -9174,8 +9174,6 @@ let PostService = class PostService {
         await this.usersService.updateScoreRankService(userId, true);
         const savedPost = await post.save();
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
-        await this.deleteCache(`posts:list`);
         return savedPost;
     }
     async updatePostService(userId, postId, isShow, content, file) {
@@ -9196,9 +9194,7 @@ let PostService = class PostService {
         }
         const updatedPost = await post.save();
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
         await this.deleteCache(`posts:detail:${postId}`);
-        await this.deleteCache(`posts:list`);
         return updatedPost;
     }
     async deletePostService(userId, postId) {
@@ -9210,9 +9206,7 @@ let PostService = class PostService {
             await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
         await this.deleteCache(`posts:detail:${postId}`);
-        await this.deleteCache(`posts:list`);
         return post;
     }
     async viewDetailPostService(postId) {
@@ -9237,9 +9231,7 @@ let PostService = class PostService {
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
         await this.deleteCache(`posts:detail:${postIds}`);
-        await this.deleteCache(`posts:list`);
         return posts;
     }
     async updateStatusService(userId, postId, status) {
@@ -9250,8 +9242,6 @@ let PostService = class PostService {
         post.status = status;
         const updatedPost = await post.save();
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
-        await this.deleteCache(`posts:list`);
         await this.deleteCache(`posts:detail:${postId}`);
         return updatedPost;
     }
@@ -9263,36 +9253,22 @@ let PostService = class PostService {
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
         const updatedPost = await post.save();
-        await this.deleteCache('posts:all');
-        await this.deleteCache(`posts:list`);
         await this.deleteCache(`posts:detail:${postId}`);
         await this.deleteCache(`posts:user:${post.userId}`);
         return updatedPost;
     }
     async viewAllPostService() {
-        const cacheKey = 'posts:all';
-        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts) {
-            return JSON.parse(cachedPosts);
-        }
         const posts = await this.postModel
             .find({ status: 'active', isShow: true })
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate('userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
-        await this.setCache(cacheKey, posts);
         return posts;
     }
     async viewListPostService() {
-        const cacheKey = 'posts:list';
-        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts) {
-            return JSON.parse(cachedPosts);
-        }
         const posts = await this.postModel.find()
             .populate('userId', 'firstname lastname avatar rankID')
             .sort({ createdAt: -1 });
-        await this.setCache(cacheKey, posts);
         return posts;
     }
     async viewMyPostService(userId) {
@@ -9333,8 +9309,6 @@ let PostService = class PostService {
             });
             await this.deleteCache(`posts:detail:${postId}`);
             await this.deleteCache(`posts:user:${userId}`);
-            await this.deleteCache('posts:all');
-            await this.deleteCache(`posts:list`);
             return { message: 'Reaction updated successfully' };
         }
         const newPost = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': { $ne: userId } }, {
@@ -9354,8 +9328,6 @@ let PostService = class PostService {
         }
         await this.deleteCache(`posts:detail:${postId}`);
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
-        await this.deleteCache(`posts:list`);
         return { message: 'Reaction added successfully' };
     }
     async removeReactionPostService(userId, postId) {
@@ -9372,8 +9344,6 @@ let PostService = class PostService {
         }
         await this.deleteCache(`posts:detail:${postId}`);
         await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache('posts:all');
-        await this.deleteCache(`posts:list`);
         return post;
     }
     async addFavoritePostService(userId, postId) {
@@ -9385,7 +9355,6 @@ let PostService = class PostService {
             await favoritePost.save();
             await this.deleteCache(`posts:favorites:${userId}`);
             await this.deleteCache(`posts:detail:${postId}`);
-            await this.deleteCache(`posts:list`);
             return { message: 'Favorite post added successfully' };
         }
         catch (error) {
@@ -12285,7 +12254,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("62e6726cd6d5ad8b3779")
+/******/ 		__webpack_require__.h = () => ("b8f51dcb9a67bd854148")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

@@ -50,8 +50,7 @@ export class PostService {
     const savedPost = await post.save();
 
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
-    await this.deleteCache(`posts:list`);
+  
     
     return savedPost;
   }
@@ -81,9 +80,7 @@ export class PostService {
     const updatedPost = await post.save();
 
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postId}`);
-    await this.deleteCache(`posts:list`);
     return updatedPost;
   }
 
@@ -97,9 +94,7 @@ export class PostService {
     }
 
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postId}`);
-    await this.deleteCache(`posts:list`);
 
 
 
@@ -132,9 +127,7 @@ export class PostService {
     await this.postModel.deleteMany({ _id: { $in: postIds } });
 
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
     await this.deleteCache(`posts:detail:${postIds}`);
-    await this.deleteCache(`posts:list`);
     return posts;
   }
 
@@ -147,8 +140,7 @@ export class PostService {
     const updatedPost = await post.save();
 
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
-    await this.deleteCache(`posts:list`);
+  
     await this.deleteCache(`posts:detail:${postId}`);
 
     return updatedPost;
@@ -163,8 +155,7 @@ export class PostService {
     post.status = isApproved ? 'active' : 'inactive';
     const updatedPost = await post.save();
 
-    await this.deleteCache('posts:all');
-    await this.deleteCache(`posts:list`);
+  
     await this.deleteCache(`posts:detail:${postId}`);
     await this.deleteCache(`posts:user:${post.userId}`);
 
@@ -173,33 +164,19 @@ export class PostService {
   }
 
   async viewAllPostService(): Promise<Post[]> {
-    const cacheKey = 'posts:all';
-    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-    if (cachedPosts) {
-      return JSON.parse(cachedPosts as string);
-    }
     const posts = await this.postModel
       .find({ status: 'active', isShow: true })
       .populate('userReaction.userId', 'firstname lastname avatar')
       .populate('userId', 'firstname lastname avatar rankID')
       .sort({ createdAt: -1 });
 
-    await this.setCache(cacheKey, posts);
     return posts;
   }
 
   async viewListPostService(): Promise<Post[]> {
-    const cacheKey = 'posts:list';
-    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-    if (cachedPosts) {
-      return JSON.parse(cachedPosts as string);
-    }
-
     const posts = await this.postModel.find()
       .populate('userId', 'firstname lastname avatar rankID')
       .sort({ createdAt: -1 });
-
-    await this.setCache(cacheKey, posts);
     return posts;
   }
 
@@ -254,9 +231,7 @@ export class PostService {
       );
       await this.deleteCache(`posts:detail:${postId}`);
       await this.deleteCache(`posts:user:${userId}`);
-      await this.deleteCache('posts:all');
-      await this.deleteCache(`posts:list`);
-
+    
       return { message: 'Reaction updated successfully' };
     }
     const newPost = await this.postModel.findOneAndUpdate(
@@ -281,8 +256,7 @@ export class PostService {
 
     await this.deleteCache(`posts:detail:${postId}`);
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
-    await this.deleteCache(`posts:list`);
+  
 
 
     return { message: 'Reaction added successfully' };
@@ -310,8 +284,7 @@ export class PostService {
 
     await this.deleteCache(`posts:detail:${postId}`);
     await this.deleteCache(`posts:user:${userId}`);
-    await this.deleteCache('posts:all');
-    await this.deleteCache(`posts:list`);
+  
 
 
     return post;
@@ -330,8 +303,7 @@ export class PostService {
 
       await this.deleteCache(`posts:favorites:${userId}`);
       await this.deleteCache(`posts:detail:${postId}`);
-      await this.deleteCache(`posts:list`);
-
+  
       return { message: 'Favorite post added successfully' };
     } catch (error) {
       console.error(error);
