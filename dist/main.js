@@ -214,7 +214,7 @@ async function bootstrap() {
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api', app, document);
-    await app.listen(process.env.PORT_SERVER, '0.0.0.0');
+    await app.listen(process.env.PORT_SERVER, `0.0.0.0`);
 }
 bootstrap();
 
@@ -12268,7 +12268,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("093c15666dfa606d37f5")
+/******/ 		__webpack_require__.h = () => ("a0d768407ec17f465bbc")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
