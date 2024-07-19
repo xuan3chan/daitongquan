@@ -9150,23 +9150,14 @@ let PostService = class PostService {
         this.redisService = redisService;
     }
     async deleteCache(key) {
-        if (Array.isArray(key)) {
-            for (const k of key) {
-                await this.redisService.delJSON(k, '$');
-            }
-        }
-        else {
-            await this.redisService.delJSON(key, '$');
-        }
+        const keys = Array.isArray(key) ? key : [key];
+        await Promise.all(keys.map(k => this.redisService.delJSON(k, '$')));
     }
     async setCache(key, data) {
         await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
     async createPostService(userId, content, file) {
-        const post = new this.postModel({
-            userId,
-            content,
-        });
+        const post = new this.postModel({ userId, content });
         if (file) {
             const { uploadResult } = await this.cloudinaryService.uploadImageService(content, file);
             post.postImage = uploadResult.url;
@@ -9178,43 +9169,35 @@ let PostService = class PostService {
     }
     async updatePostService(userId, postId, isShow, content, file) {
         const post = await this.postModel.findOne({ _id: postId, userId });
-        if (!post) {
-            throw new Error('Post not found');
-        }
-        if (content) {
+        if (!post)
+            throw new common_1.BadRequestException('Post not found');
+        if (content)
             post.content = content;
-        }
         if (file) {
             await this.cloudinaryService.deleteMediaService(post.postImage);
             const { uploadResult } = await this.cloudinaryService.uploadImageService(post.content, file);
             post.postImage = uploadResult.url;
         }
-        if (isShow) {
+        if (isShow !== undefined)
             post.isShow = isShow;
-        }
         const updatedPost = await post.save();
-        await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache(`posts:detail:${postId}`);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
         return updatedPost;
     }
     async deletePostService(userId, postId) {
         const post = await this.postModel.findOneAndDelete({ _id: postId, userId });
-        if (!post) {
+        if (!post)
             throw new common_1.BadRequestException('Post not found');
-        }
-        if (post.postImage) {
+        if (post.postImage)
             await this.cloudinaryService.deleteMediaService(post.postImage);
-        }
-        await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache(`posts:detail:${postId}`);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
         return post;
     }
     async viewDetailPostService(postId) {
         const cacheKey = `posts:detail:${postId}`;
         const cachedPost = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPost) {
+        if (cachedPost)
             return JSON.parse(cachedPost);
-        }
         const post = await this.postModel.findById(postId)
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate('userId', 'firstname lastname avatar rankID');
@@ -9223,38 +9206,33 @@ let PostService = class PostService {
     }
     async deleteManyPostService(userId, postIds) {
         const posts = await this.postModel.find({ _id: { $in: postIds }, userId });
-        if (!posts.length) {
+        if (!posts.length)
             throw new common_1.BadRequestException('Posts not found');
-        }
         for (const post of posts) {
-            await this.cloudinaryService.deleteMediaService(post.postImage);
+            if (post.postImage)
+                await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
-        await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache(`posts:detail:${postIds}`);
+        await this.deleteCache([`posts:user:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
         return posts;
     }
     async updateStatusService(userId, postId, status) {
         const post = await this.postModel.findOne({ _id: postId, userId });
-        if (!post) {
+        if (!post)
             throw new common_1.BadRequestException('Post not found');
-        }
         post.status = status;
         const updatedPost = await post.save();
-        await this.deleteCache(`posts:user:${userId}`);
-        await this.deleteCache(`posts:detail:${postId}`);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
         return updatedPost;
     }
     async updateApproveService(postId, isApproved) {
         const post = await this.postModel.findOne({ _id: postId });
-        if (!post) {
+        if (!post)
             throw new common_1.BadRequestException('Post not found');
-        }
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
         const updatedPost = await post.save();
-        await this.deleteCache(`posts:detail:${postId}`);
-        await this.deleteCache(`posts:user:${post.userId}`);
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`]);
         return updatedPost;
     }
     async viewAllPostService() {
@@ -9274,9 +9252,8 @@ let PostService = class PostService {
     async viewMyPostService(userId) {
         const cacheKey = `posts:user:${userId}`;
         const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts) {
+        if (cachedPosts)
             return JSON.parse(cachedPosts);
-        }
         const posts = await this.postModel.find({ userId })
             .populate('userId', 'firstname lastname avatar rankID')
             .populate('userReaction.userId', 'firstname lastname avatar rankID')
@@ -9287,9 +9264,8 @@ let PostService = class PostService {
     async searchPostService(searchKey) {
         const cacheKey = `posts:search:${searchKey}`;
         const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts) {
+        if (cachedPosts)
             return JSON.parse(cachedPosts);
-        }
         const posts = await this.postModel
             .find({ $text: { $search: searchKey } })
             .sort({ createdAt: -1 });
@@ -9311,82 +9287,50 @@ let PostService = class PostService {
             updatePostQuery = { _id: postId, 'userReaction.userId': { $ne: userId } };
             updatePostOptions = {
                 $push: { userReaction: { userId, reaction } },
-                $inc: { reactionCount: 1 }
+                $inc: { reactionCount: 1 },
             };
         }
         const updatedPost = await this.postModel.findOneAndUpdate(updatePostQuery, updatePostOptions, { new: true });
-        if (!updatedPost) {
+        if (!updatedPost)
             throw new common_1.BadRequestException('Post not found or you have already reacted to this post');
-        }
         if (!postExists && reaction === 'like') {
             await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
         }
-        const cacheKeys = [`posts:detail:${postId}`, `posts:user:${userId}`];
-        await Promise.all(cacheKeys.map(key => this.deleteCache(key)));
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
         return { message };
     }
     async removeReactionPostService(userId, postId) {
         const post = await this.postModel.findOneAndUpdate({ _id: postId, 'userReaction.userId': userId }, {
-            $pull: {
-                userReaction: { userId },
-            },
-            $inc: {
-                reactionCount: -1,
-            },
+            $pull: { userReaction: { userId } },
+            $inc: { reactionCount: -1 },
         }, { new: true });
-        if (!post) {
+        if (!post)
             throw new common_1.BadRequestException('You have not reacted to this post');
-        }
-        await this.deleteCache(`posts:detail:${postId}`);
-        await this.deleteCache(`posts:user:${userId}`);
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
         return post;
     }
     async addFavoritePostService(userId, postId) {
-        try {
-            const favoritePost = new this.favoritePostModel({
-                userId,
-                postId,
-            });
-            await favoritePost.save();
-            await this.deleteCache(`posts:favorites:${userId}`);
-            await this.deleteCache(`posts:detail:${postId}`);
-            return { message: 'Favorite post added successfully' };
-        }
-        catch (error) {
-            console.error(error);
-            throw new common_1.BadRequestException('Error while adding favorite post');
-        }
+        const favoritePost = new this.favoritePostModel({ userId, postId });
+        await favoritePost.save();
+        await this.deleteCache([`posts:favorites:${userId}`, `posts:detail:${postId}`]);
+        return { message: 'Favorite post added successfully' };
     }
     async removeFavoritePostService(userId, postId) {
-        try {
-            await this.favoritePostModel.findOneAndDelete({ userId, postId });
-            await this.deleteCache(`posts:favorites:${userId}`);
-            await this.deleteCache(`posts:detail:${postId}`);
-            return { message: 'Favorite post removed successfully' };
-        }
-        catch (error) {
-            console.error(error);
-            throw new common_1.BadRequestException('Error while removing favorite post');
-        }
+        await this.favoritePostModel.findOneAndDelete({ userId, postId });
+        await this.deleteCache([`posts:favorites:${userId}`, `posts:detail:${postId}`]);
+        return { message: 'Favorite post removed successfully' };
     }
     async viewMyFavoritePostService(userId) {
         const cacheKey = `posts:favorites:${userId}`;
         const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts) {
+        if (cachedPosts)
             return JSON.parse(cachedPosts);
-        }
-        try {
-            const favoritePosts = await this.favoritePostModel.find({ userId });
-            const postIds = favoritePosts.map((post) => post.postId);
-            const posts = await this.postModel.find({ _id: { $in: postIds } })
-                .populate('userId', 'firstname lastname avatar rankID');
-            await this.setCache(cacheKey, posts);
-            return posts;
-        }
-        catch (error) {
-            console.error(error);
-            throw new common_1.BadRequestException('Error while viewing favorite posts');
-        }
+        const favoritePosts = await this.favoritePostModel.find({ userId });
+        const postIds = favoritePosts.map(post => post.postId);
+        const posts = await this.postModel.find({ _id: { $in: postIds } })
+            .populate('userId', 'firstname lastname avatar rankID');
+        await this.setCache(cacheKey, posts);
+        return posts;
     }
 };
 exports.PostService = PostService;
@@ -12249,7 +12193,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("54dfa84c4698ae3fb4c5")
+/******/ 		__webpack_require__.h = () => ("3b13dde81b367531d827")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
