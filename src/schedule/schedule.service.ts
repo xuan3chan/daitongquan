@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Schedule, ScheduleDocument } from './schema/schedule.schema';
+import { Schedule } from './schema/schedule.schema';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
-import moment from 'moment';
+import { RedisService } from 'src/redis/redis.service'; // Assuming you have a RedisService for caching
+import * as moment from 'moment';
+
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -16,7 +18,24 @@ export class ScheduleService {
     private scheduleModel: Model<Schedule>,
     private readonly encryptionService: EncryptionService,
     private readonly usersService: UsersService,
+    private readonly redisService: RedisService, // Inject RedisService for caching
   ) {}
+
+  private async deleteCache(key: string) {
+    await this.redisService.delJSON(key, '$');
+  }
+
+  private async setCache(key: string, data: any) {
+    await this.redisService.setJSON(key, '$', JSON.stringify(data));
+  }
+
+  private async getCache(key: string): Promise<any> {
+    const cachedData = await this.redisService.getJSON(key, '$');
+    if (cachedData) {
+      return JSON.parse(cachedData as string);
+    }
+    return null;
+  }
 
   async createScheduleService(
     userId: string,
@@ -35,7 +54,7 @@ export class ScheduleService {
         'Start date time must be less than end date time',
       );
     }
-    
+
     const newSchedule = new this.scheduleModel({
       userId,
       title,
@@ -48,9 +67,12 @@ export class ScheduleService {
       calendars,
       url,
     });
-    console.log('newSchedule', newSchedule);
+
     try {
-      return await newSchedule.save();
+      const savedSchedule = await newSchedule.save();
+      await this.deleteCache(`schedules:${userId}`);
+      await this.setCache(`schedule:${savedSchedule._id}`, savedSchedule);
+      return savedSchedule;
     } catch (error) {
       throw new InternalServerErrorException('Error creating schedule');
     }
@@ -85,20 +107,20 @@ export class ScheduleService {
     }
 
     try {
-      return await this.scheduleModel.findOneAndUpdate(
+      const updatedSchedule = await this.scheduleModel.findOneAndUpdate(
         { userId, _id: scheduleId },
-        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url},
+        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url },
         { new: true },
       );
+      await this.deleteCache(`schedules:${userId}`);
+      await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+      return updatedSchedule;
     } catch (error) {
       throw new InternalServerErrorException('Error updating schedule');
     }
   }
 
-  async deleteScheduleService(
-    userId: string,
-    scheduleId: string,
-  ): Promise<any> {
+  async deleteScheduleService(userId: string, scheduleId: string): Promise<any> {
     const schedule = await this.scheduleModel.findOne({
       userId,
       _id: scheduleId,
@@ -110,16 +132,15 @@ export class ScheduleService {
 
     try {
       await this.scheduleModel.deleteOne({ userId, _id: scheduleId }).exec();
+      await this.deleteCache(`schedules:${userId}`);
+      await this.deleteCache(`schedule:${scheduleId}`);
       return { message: 'Delete schedule successfully' };
     } catch (error) {
       throw new InternalServerErrorException('Error deleting schedule');
     }
   }
 
-  async deleteManyScheduleService(
-    userId: string,
-    scheduleIds: string[],
-  ): Promise<any> {
+  async deleteManyScheduleService(userId: string, scheduleIds: string[]): Promise<any> {
     const schedules = await this.scheduleModel.find({
       userId,
       _id: { $in: scheduleIds },
@@ -130,104 +151,112 @@ export class ScheduleService {
     }
 
     try {
-      await this.scheduleModel
-        .deleteMany({ userId, _id: { $in: scheduleIds } })
-        .exec();
+      await this.scheduleModel.deleteMany({ userId, _id: { $in: scheduleIds } }).exec();
+      await this.deleteCache(`schedules:${userId}`);
+      scheduleIds.forEach(async (id) => await this.deleteCache(`schedule:${id}`));
       return { message: 'Delete schedules successfully' };
     } catch (error) {
       throw new InternalServerErrorException('Error deleting schedules');
     }
   }
 
- async viewListScheduleService(userId: string, calendars: string[]): Promise<Schedule[]> {
-  // Ensure the user exists first
-  const findUser = await this.usersService.findUserByIdService(userId);
-  if (!findUser) {
-    throw new BadRequestException('User not found');
-  }
-  // Use $in operator to filter schedules by carlendals
-  const schedules = await this.scheduleModel.find({
-    userId,
-    calendars: { $in: calendars },
-  });
-  if (!schedules.length) {
-    throw new BadRequestException('Schedules not found');
-  }
-
-  // Decrypt data if necessary
-  return schedules.map(schedule => {
-    if (schedule.isEncrypted) {
-      const encryptedKey = findUser.encryptKey;
-      const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
-
-      schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
-      schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-      schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+  async viewListScheduleService(userId: string, calendars: string[]): Promise<Schedule[]> {
+    const cacheKey = `schedules:${userId}`;
+    const cachedSchedules = await this.getCache(cacheKey);
+    if (cachedSchedules) {
+      return cachedSchedules;
     }
-    return schedule;
-  });
-}
 
-async notifyScheduleService(userId: string): Promise<any> {
-  const TIMEZONE_OFFSET_HOURS = 7;
-  const NOTIFICATION_TIME_MINUTES = 15;
+    const findUser = await this.usersService.findUserByIdService(userId);
+    if (!findUser) {
+      throw new BadRequestException('User not found');
+    }
 
-  const nowTime = new Date(
-    new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
-  );
-  const notificationTime = new Date(
-    nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
-  );
-
-  try {
-    const nonLoopedSchedules = await this.scheduleModel.find({
+    const schedules = await this.scheduleModel.find({
       userId,
-      isLoop: false,
-      startDateTime: { $gte: nowTime, $lte: notificationTime },
+      calendars: { $in: calendars },
     });
 
-    const loopedSchedules = await this.scheduleModel.find({
-      userId,
-      isLoop: true,
+    if (!schedules.length) {
+      throw new BadRequestException('Schedules not found');
+    }
+
+    const decryptedSchedules = schedules.map(schedule => {
+      if (schedule.isEncrypted) {
+        const encryptedKey = findUser.encryptKey;
+        const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+
+        schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+        schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+        schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+      }
+      return schedule;
     });
 
-    const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
-      const startDateTime = new Date(schedule.startDateTime);
-      const startHours = startDateTime.getUTCHours();
-      const startMinutes = startDateTime.getUTCMinutes();
-
-      const nowHours = nowTime.getUTCHours();
-      const nowMinutes = nowTime.getUTCMinutes();
-      const notificationHours = notificationTime.getUTCHours();
-      const notificationMinutes = notificationTime.getUTCMinutes();
-
-      const nowTotalMinutes = nowHours * 60 + nowMinutes;
-      const notificationTotalMinutes =
-        notificationHours * 60 + notificationMinutes;
-      const startTotalMinutes = startHours * 60 + startMinutes;
-
-      return (
-        startTotalMinutes >= nowTotalMinutes &&
-        startTotalMinutes <= notificationTotalMinutes
-      );
-    });
-
-    const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-
-    // Format dates using moment
-    const formattedSchedules = schedules.map((schedule) => ({
-      ...schedule.toObject(),
-      startDateTime: moment(schedule.startDateTime).toISOString(),
-      endDateTime: moment(schedule.endDateTime).toISOString(),
-    }));
-
-    return formattedSchedules;
-  } catch (error) {
-    throw new InternalServerErrorException(
-      'Error fetching schedules for notification',
-    );
+    await this.setCache(cacheKey, decryptedSchedules);
+    return decryptedSchedules;
   }
-}
+
+  async notifyScheduleService(userId: string): Promise<any> {
+    const TIMEZONE_OFFSET_HOURS = 7;
+    const NOTIFICATION_TIME_MINUTES = 15;
+  
+    const nowTime = new Date(
+      new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
+    );
+    const notificationTime = new Date(
+      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
+    );
+  
+    try {
+      const nonLoopedSchedules = await this.scheduleModel.find({
+        userId,
+        isLoop: false,
+        startDateTime: { $gte: nowTime, $lte: notificationTime },
+      });
+  
+      const loopedSchedules = await this.scheduleModel.find({
+        userId,
+        isLoop: true,
+      });
+  
+      const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
+        const startDateTime = new Date(schedule.startDateTime);
+        const startHours = startDateTime.getUTCHours();
+        const startMinutes = startDateTime.getUTCMinutes();
+  
+        const nowHours = nowTime.getUTCHours();
+        const nowMinutes = nowTime.getUTCMinutes();
+        const notificationHours = notificationTime.getUTCHours();
+        const notificationMinutes = notificationTime.getUTCMinutes();
+  
+        const nowTotalMinutes = nowHours * 60 + nowMinutes;
+        const notificationTotalMinutes =
+          notificationHours * 60 + notificationMinutes;
+        const startTotalMinutes = startHours * 60 + startMinutes;
+  
+        return (
+          startTotalMinutes >= nowTotalMinutes &&
+          startTotalMinutes <= notificationTotalMinutes
+        );
+      });
+  
+      const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
+  
+      // Format dates using moment
+      const formattedSchedules = schedules.map((schedule) => ({
+        ...schedule.toObject(),
+        startDateTime: moment(schedule.startDateTime).toISOString(),
+        endDateTime: moment(schedule.endDateTime).toISOString(),
+      }));
+      return formattedSchedules;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        console.error(error),
+        'Error fetching schedules for notification',
+      );
+    }
+  }
 
   async enableEncryptionService(
     scheduleId: string,
@@ -267,7 +296,9 @@ async notifyScheduleService(userId: string): Promise<any> {
         : undefined;
       schedule.isEncrypted = true;
 
-      return await schedule.save();
+      const updatedSchedule = await schedule.save();
+      await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+      return updatedSchedule;
     } catch (error) {
       throw new InternalServerErrorException('Error enabling encryption');
     }
@@ -311,7 +342,9 @@ async notifyScheduleService(userId: string): Promise<any> {
         : undefined;
       schedule.isEncrypted = false;
 
-      return await schedule.save();
+      const updatedSchedule = await schedule.save();
+      await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+      return updatedSchedule;
     } catch (error) {
       throw new InternalServerErrorException('Error disabling encryption');
     }

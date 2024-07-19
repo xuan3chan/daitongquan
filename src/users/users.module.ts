@@ -10,11 +10,13 @@ import { CategoryModule } from 'src/category/category.module';
 import { AdminModule } from 'src/admin/admin.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { Rank, RankSchema } from 'src/rank/schema/rank.schema';
+import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
     forwardRef(() => EncryptionModule),
     AdminModule,
+    RedisCacheModule,
     CategoryModule,
     CloudinaryModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema },{ name: Rank.name, schema: RankSchema }]),

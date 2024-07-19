@@ -358,6 +358,7 @@ const category_module_1 = __webpack_require__(54);
 const admin_module_1 = __webpack_require__(70);
 const encryption_module_1 = __webpack_require__(82);
 const rank_schema_1 = __webpack_require__(29);
+const redis_module_1 = __webpack_require__(69);
 let UsersModule = class UsersModule {
 };
 exports.UsersModule = UsersModule;
@@ -366,6 +367,7 @@ exports.UsersModule = UsersModule = __decorate([
         imports: [
             (0, common_1.forwardRef)(() => encryption_module_1.EncryptionModule),
             admin_module_1.AdminModule,
+            redis_module_1.RedisCacheModule,
             category_module_1.CategoryModule,
             cloudinary_module_1.CloudinaryModule,
             mongoose_1.MongooseModule.forFeature([{ name: user_schema_1.User.name, schema: user_schema_1.UserSchema }, { name: rank_schema_1.Rank.name, schema: rank_schema_1.RankSchema }]),
@@ -612,7 +614,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.UsersService = void 0;
 const common_1 = __webpack_require__(6);
@@ -624,41 +626,81 @@ const remove_accents_1 = __webpack_require__(17);
 const category_service_1 = __webpack_require__(18);
 const encryption_service_1 = __webpack_require__(26);
 const rank_schema_1 = __webpack_require__(29);
+const redis_service_1 = __webpack_require__(24);
 let UsersService = class UsersService {
-    constructor(cloudinaryService, userModel, rankModel, categoryService, encryptionService) {
+    constructor(cloudinaryService, userModel, rankModel, categoryService, encryptionService, redisService) {
         this.cloudinaryService = cloudinaryService;
         this.userModel = userModel;
         this.rankModel = rankModel;
         this.categoryService = categoryService;
         this.encryptionService = encryptionService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
+    }
+    async getCache(key) {
+        const cachedData = await this.redisService.getJSON(key, '$');
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
     }
     async findOneEmailOrUsernameService(account) {
-        return this.userModel
-            .findOne({
+        const cacheKey = `user:${account}`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
+        const user = await this.userModel.findOne({
             $or: [{ email: account }, { username: account }],
-        })
-            .exec();
+        }).exec();
+        if (user) {
+            await this.setCache(cacheKey, user);
+        }
+        return user;
     }
     async findOneUsernameService(username) {
-        return this.userModel
-            .findOne({
-            username,
-        })
-            .exec();
+        return this.findOneEmailOrUsernameService(username);
     }
     async findOneUserForMessageService(userId) {
-        return this.userModel
-            .findOne({ _id: userId })
+        const cacheKey = `user:${userId}:message`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
+        const user = await this.userModel.findOne({ _id: userId })
             .select('firstname avatar lastname')
             .exec();
+        if (user) {
+            await this.setCache(cacheKey, user);
+        }
+        return user;
     }
     async findOneReTokenService(refreshToken) {
-        return this.userModel.findOne({ refreshToken }).exec();
+        const cacheKey = `user:reToken:${refreshToken}`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
+        const user = await this.userModel.findOne({ refreshToken }).exec();
+        if (user) {
+            await this.setCache(cacheKey, user);
+        }
+        return user;
     }
     async findOneCodeService(Code) {
+        const cacheKey = `user:authCode:${Code}`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
         const user = await this.userModel.findOne({ 'authCode.code': Code }).exec();
-        if (!user) {
-            return null;
+        if (user) {
+            await this.setCache(cacheKey, user);
         }
         return user;
     }
@@ -673,18 +715,32 @@ let UsersService = class UsersService {
         user.encryptKey = newEncryptKey;
         user.password = newPassword;
         user.authCode = null;
-        return user.save();
+        await user.save();
+        await this.deleteCache(`user:${user.email}`);
+        await this.deleteCache(`user:username:${user.username}`);
+        return user;
     }
     async listUserService() {
-        return this.userModel
+        const cacheKey = `users:list`;
+        const cachedUsers = await this.getCache(cacheKey);
+        if (cachedUsers) {
+            return cachedUsers;
+        }
+        const users = await this.userModel
             .find()
             .select('firstname avatar lastname email dateOfBirth address gender phone nickname description hyperlink createdAt status isBlock')
             .exec();
+        if (users) {
+            await this.setCache(cacheKey, users);
+        }
+        return users;
     }
     async updateRefreshTokenService(account, refreshToken) {
-        return this.userModel
-            .findOneAndUpdate({ $or: [{ email: account }, { username: account }] }, { refreshToken })
-            .exec();
+        const user = await this.userModel.findOneAndUpdate({ $or: [{ email: account }, { username: account }] }, { refreshToken }, { new: true }).exec();
+        if (user) {
+            await this.deleteCache(`user:${account}`);
+        }
+        return user;
     }
     async updateCodeService(email, authCode, expiredCode) {
         const user = await this.userModel.findOne({ email }).exec();
@@ -695,9 +751,11 @@ let UsersService = class UsersService {
             code: authCode,
             expiredAt: expiredCode,
         };
-        return user.save();
+        await user.save();
+        await this.deleteCache(`user:authCode:${authCode}`);
+        return user;
     }
-    async createUserService(email, password, username, firstname, lastname, refeshToken) {
+    async createUserService(email, password, username, firstname, lastname, refreshToken) {
         const userExist = await this.userModel
             .findOne({
             $or: [{ email: email }, { username: username }],
@@ -714,19 +772,31 @@ let UsersService = class UsersService {
             firstname,
             lastname,
             encryptKey: createEncryptKey,
-            refreshToken: refeshToken,
+            refreshToken,
         });
-        return newUser.save();
+        const savedUser = await newUser.save();
+        await this.deleteCache(`user:${email}`);
+        await this.deleteCache(`user:username:${username}`);
+        return savedUser;
     }
     async viewProfileService(_id) {
-        return this.userModel
+        const cacheKey = `user:${_id}:profile`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
+        const user = await this.userModel
             .findOne({ _id })
             .select('email role _id avatar firstname lastname address dateOfBirth description gender hyperlink nickname phone createdAt rankID rankScore')
             .populate('rankID', '-score -rankScoreGoal')
             .exec();
+        if (user) {
+            await this.setCache(cacheKey, user);
+        }
+        return user;
     }
     async updateUserProfileService(_id, firstname, lastname, email, dateOfBirth, address, gender, phone, nickname, description, hyperlink) {
-        return this.userModel
+        const updatedUser = await this.userModel
             .findOneAndUpdate({ _id }, {
             firstname,
             lastname,
@@ -740,6 +810,12 @@ let UsersService = class UsersService {
             hyperlink,
         }, { new: true })
             .exec();
+        if (updatedUser) {
+            await this.deleteCache(`user:${_id}:profile`);
+            await this.deleteCache(`user:${updatedUser.email}`);
+            await this.deleteCache(`user:username:${updatedUser.username}`);
+        }
+        return updatedUser;
     }
     async updateAvatarService(_id, avatar) {
         const user = await this.userModel.findOne({ _id }).exec();
@@ -747,13 +823,22 @@ let UsersService = class UsersService {
         if (!deleteAvatar) {
             return null;
         }
-        return this.userModel
+        const updatedUser = await this.userModel
             .findOneAndUpdate({ _id }, { avatar }, { new: true })
             .exec();
+        if (updatedUser) {
+            await this.deleteCache(`user:${_id}:profile`);
+        }
+        return updatedUser;
     }
     async searchUserService(searchKey) {
         try {
-            const users = await this.userModel.find({}, { password: 0 });
+            const cacheKey = `users:search:${searchKey}`;
+            const cachedUsers = await this.getCache(cacheKey);
+            if (cachedUsers) {
+                return { message: `Found ${cachedUsers.length} user(s)`, user: cachedUsers };
+            }
+            const users = await this.userModel.find({}, { password: 0 }).exec();
             const preprocessString = (str) => str
                 ? (0, remove_accents_1.remove)(str)
                     .replace(/[^a-zA-Z0-9\s]/gi, '')
@@ -770,11 +855,11 @@ let UsersService = class UsersService {
                     regex.test(preprocessedFullname) ||
                     regex.test(preprocessedEmail));
             });
-            let userMatch = matchedUsers.length;
-            if (userMatch === 0) {
-                return { message: 'No user found', user: [] };
+            if (matchedUsers.length > 0) {
+                await this.setCache(cacheKey, matchedUsers);
+                return { message: `Found ${matchedUsers.length} user(s)`, user: matchedUsers };
             }
-            return { message: `Found ${userMatch} user(s)`, user: matchedUsers };
+            return { message: 'No user found', user: [] };
         }
         catch (error) {
             if (error instanceof common_1.NotFoundException) {
@@ -784,7 +869,11 @@ let UsersService = class UsersService {
         }
     }
     async blockUserService(_id, isBlock) {
-        return this.userModel.findOneAndUpdate({ _id }, { isBlock }).exec();
+        const updatedUser = await this.userModel.findOneAndUpdate({ _id }, { isBlock }, { new: true }).exec();
+        if (updatedUser) {
+            await this.deleteCache(`user:${_id}:profile`);
+        }
+        return updatedUser;
     }
     async deleteUserService(_id) {
         const user = await this.userModel.findById(_id).exec();
@@ -792,10 +881,24 @@ let UsersService = class UsersService {
             throw new common_1.NotFoundException('User not found');
         }
         await this.categoryService.deleteOfUser(_id);
-        return this.userModel.findOneAndDelete({ _id }).exec();
+        const deletedUser = await this.userModel.findOneAndDelete({ _id }).exec();
+        if (deletedUser) {
+            await this.deleteCache(`user:${_id}:profile`);
+            await this.deleteCache(`user:${deletedUser.email}`);
+            await this.deleteCache(`user:username:${deletedUser.username}`);
+        }
+        return deletedUser;
     }
     async findUserByIdService(userId) {
+        const cacheKey = `user:${userId}`;
+        const cachedUser = await this.getCache(cacheKey);
+        if (cachedUser) {
+            return cachedUser;
+        }
         const user = await this.userModel.findOne({ _id: userId }).exec();
+        if (user) {
+            await this.setCache(cacheKey, user);
+        }
         return user;
     }
     async updateScoreRankService(userId, blogScore, commentScore, likeScore) {
@@ -824,7 +927,9 @@ let UsersService = class UsersService {
             user.rankScore.numberOfLike += 1;
         }
         await this.checkRankService(userId);
-        return user.save();
+        await user.save();
+        await this.deleteCache(`user:${userId}`);
+        return user;
     }
     async attendanceService(userId) {
         const user = await this.userModel.findOne({ _id: userId }).exec();
@@ -850,6 +955,7 @@ let UsersService = class UsersService {
         user.rankScore.attendance.attendanceScore += 1;
         user.rankScore.attendance.dateAttendance = new Date();
         await user.save();
+        await this.deleteCache(`user:${userId}`);
         return { message: 'Attendance marked successfully' };
     }
     async checkRankService(userId) {
@@ -886,6 +992,7 @@ let UsersService = class UsersService {
         if (highestRank) {
             user.rankID = highestRank._id;
             await user.save();
+            await this.deleteCache(`user:${userId}`);
         }
         return true;
     }
@@ -896,7 +1003,7 @@ exports.UsersService = UsersService = __decorate([
     __param(1, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
     __param(2, (0, mongoose_1.InjectModel)(rank_schema_1.Rank.name)),
     __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => encryption_service_1.EncryptionService))),
-    __metadata("design:paramtypes", [typeof (_a = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _d : Object, typeof (_e = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _e : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _d : Object, typeof (_e = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _e : Object, typeof (_f = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _f : Object])
 ], UsersService);
 
 
@@ -1410,7 +1517,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b;
+var _a, _b, _c;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SpendingLimitService = void 0;
 const common_1 = __webpack_require__(6);
@@ -1418,31 +1525,53 @@ const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
 const spendinglimit_schema_1 = __webpack_require__(21);
 const category_service_1 = __webpack_require__(18);
+const redis_service_1 = __webpack_require__(24);
 let SpendingLimitService = class SpendingLimitService {
-    constructor(spendingLimitModel, categoryService) {
+    constructor(spendingLimitModel, categoryService, redisService) {
         this.spendingLimitModel = spendingLimitModel;
         this.categoryService = categoryService;
+        this.redisService = redisService;
+    }
+    async getCache(key) {
+        return await this.redisService.getJSON(key, '$');
+    }
+    async setCache(key, value) {
+        await this.redisService.setJSON(key, '$', value);
+    }
+    async delCache(key) {
+        await this.redisService.delJSON(key, '$');
     }
     async createSpendingLimitService(spendingCateId, budget) {
         if (budget > 100000000000) {
             throw new Error('Budget is too large');
         }
-        const newSpendingLimit = new this.spendingLimitModel({
-            budget
-        });
+        const newSpendingLimit = new this.spendingLimitModel({ budget });
         await this.categoryService.updateSpendingLimitIdService(spendingCateId, newSpendingLimit._id);
+        await this.delCache(`spendinglimit:${newSpendingLimit._id}`);
         return newSpendingLimit.save();
     }
     async updateSpendingLimitService(spendingLimitId, budget) {
-        return this.spendingLimitModel.findOneAndUpdate({ _id: spendingLimitId }, { budget }, { new: true });
+        const updatedSpendingLimit = await this.spendingLimitModel.findOneAndUpdate({ _id: spendingLimitId }, { budget }, { new: true });
+        await this.setCache(`spendinglimit:${spendingLimitId}`, updatedSpendingLimit);
+        return updatedSpendingLimit;
     }
     async deleteSpendingLimitService(spendingLimitId) {
         await this.categoryService.deleteSpendingLimitIdService(spendingLimitId);
         await this.spendingLimitModel.deleteOne({ _id: spendingLimitId });
+        await this.delCache(`spendinglimit:${spendingLimitId}`);
         return { message: 'Delete spending limit successfully' };
     }
     async findSpendingLimitByIdService(spendingLimitId) {
-        return this.spendingLimitModel.findById(spendingLimitId);
+        const cacheKey = `spendinglimit:${spendingLimitId}`;
+        const cachedSpendingLimit = await this.getCache(cacheKey);
+        if (cachedSpendingLimit) {
+            return cachedSpendingLimit;
+        }
+        const spendingLimit = await this.spendingLimitModel.findById(spendingLimitId);
+        if (spendingLimit) {
+            await this.setCache(cacheKey, spendingLimit);
+        }
+        return spendingLimit;
     }
 };
 exports.SpendingLimitService = SpendingLimitService;
@@ -1450,7 +1579,7 @@ exports.SpendingLimitService = SpendingLimitService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(spendinglimit_schema_1.SpendingLimit.name)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => category_service_1.CategoryService))),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _b : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof category_service_1.CategoryService !== "undefined" && category_service_1.CategoryService) === "function" ? _b : Object, typeof (_c = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _c : Object])
 ], SpendingLimitService);
 
 
@@ -3571,12 +3700,14 @@ const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const spendinglimit_schema_1 = __webpack_require__(21);
 const category_module_1 = __webpack_require__(54);
+const redis_module_1 = __webpack_require__(69);
 let SpendingLimitModule = class SpendingLimitModule {
 };
 exports.SpendingLimitModule = SpendingLimitModule;
 exports.SpendingLimitModule = SpendingLimitModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            redis_module_1.RedisCacheModule,
             mongoose_1.MongooseModule.forFeature([{ name: spendinglimit_schema_1.SpendingLimit.name, schema: spendinglimit_schema_1.SpendingLimitSchema }]),
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
@@ -4931,6 +5062,13 @@ let RoleService = class RoleService {
     async setCache(key, data) {
         await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
+    async getCache(key) {
+        const cachedData = await this.redisService.getJSON(key, '$');
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
     async createRoleService(name, permissionID) {
         const role = await this.roleModel.findOne({ name }).exec();
         if (role) {
@@ -4939,39 +5077,59 @@ let RoleService = class RoleService {
         const newRole = new this.roleModel({ name, permissionID });
         await newRole.save();
         await this.deleteCache('roles:all');
-        await this.deleteCache(`roles:ids:*`);
+        await this.setCache(`role:${newRole.id}`, newRole);
         return newRole;
     }
-    async updateRoleService(id, name, permissionID) {
+    async updateRoleService(id, name, permissionIDs) {
         const role = await this.roleModel.findById(id).exec();
         if (!role) {
-            throw new common_1.BadRequestException('Role not exists');
+            throw new common_1.BadRequestException('Role does not exist.');
         }
-        const roleDuplicate = await this.roleModel.findOne({ name }).exec();
-        if (roleDuplicate && roleDuplicate._id.toString() !== id) {
-            throw new common_1.BadRequestException('Role already exists');
+        if (name) {
+            const roleDuplicate = await this.roleModel.findOne({ name }).exec();
+            if (roleDuplicate && roleDuplicate._id.toString() !== id) {
+                throw new common_1.BadRequestException('Role name already exists.');
+            }
+            role.name = name;
         }
-        role.name = name;
-        role.permissionID = permissionID;
+        if (permissionIDs) {
+            role.permissionID = permissionIDs;
+        }
         await role.save();
+        await this.setCache(`role:${id}`, role);
         await this.deleteCache('roles:all');
-        await this.deleteCache(`roles:ids:*`);
         return role;
     }
     async findRoleService(ids) {
-        const roles = await this.roleModel.find({ _id: { $in: ids } }).exec();
+        const rolesFromCache = await Promise.all(ids.map(id => this.getCache(`role:${id}`)));
+        const roles = [];
+        const missingIds = [];
+        rolesFromCache.forEach((role, index) => {
+            if (role) {
+                roles.push(role);
+            }
+            else {
+                missingIds.push(ids[index]);
+            }
+        });
+        if (missingIds.length > 0) {
+            const missingRoles = await this.roleModel.find({ '_id': { $in: missingIds } }).exec();
+            for (const role of missingRoles) {
+                await this.setCache(`role:${role._id}`, role);
+                roles.push(role);
+            }
+        }
         return roles;
     }
     async viewlistRoleService() {
         const cacheKey = 'roles:all';
-        const cachedRoles = await this.redisService.getJSON(cacheKey, '$');
+        let cachedRoles = await this.getCache(cacheKey);
         if (cachedRoles) {
-            console.log('cachedRoles');
-            return JSON.parse(cachedRoles);
+            cachedRoles = JSON.parse(cachedRoles);
+            return cachedRoles;
         }
-        console.log('non cache');
-        const roles = await this.roleModel.find().exec();
-        await this.setCache(cacheKey, roles);
+        const roles = await this.roleModel.find().lean().exec();
+        await this.setCache(cacheKey, JSON.stringify(roles));
         return roles;
     }
     async deleteRoleService(id) {
@@ -4986,11 +5144,11 @@ let RoleService = class RoleService {
             }
             await this.roleModel.findByIdAndDelete(id).exec();
             await this.deleteCache('roles:all');
-            await this.deleteCache(`roles:ids:*`);
+            await this.deleteCache(`role:${id}`);
             return { message: 'Role deleted successfully' };
         }
         catch (error) {
-            throw error;
+            throw new common_1.InternalServerErrorException('Error deleting role');
         }
     }
 };
@@ -7826,6 +7984,7 @@ const config_1 = __webpack_require__(8);
 const schedule_schema_1 = __webpack_require__(115);
 const users_module_1 = __webpack_require__(9);
 const encryption_module_1 = __webpack_require__(82);
+const redis_module_1 = __webpack_require__(69);
 let ScheduleModule = class ScheduleModule {
 };
 exports.ScheduleModule = ScheduleModule;
@@ -7833,6 +7992,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
     (0, common_1.Module)({
         imports: [
             users_module_1.UsersModule,
+            redis_module_1.RedisCacheModule,
             encryption_module_1.EncryptionModule,
             mongoose_1.MongooseModule.forFeature([{ name: schedule_schema_1.Schedule.name, schema: schedule_schema_1.ScheduleSchema }]),
             config_1.ConfigModule.forRoot({
@@ -7865,7 +8025,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleService = void 0;
 const common_1 = __webpack_require__(6);
@@ -7874,12 +8034,27 @@ const mongoose_2 = __webpack_require__(12);
 const schedule_schema_1 = __webpack_require__(115);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(26);
-const moment_1 = __webpack_require__(116);
+const redis_service_1 = __webpack_require__(24);
+const moment = __webpack_require__(116);
 let ScheduleService = class ScheduleService {
-    constructor(scheduleModel, encryptionService, usersService) {
+    constructor(scheduleModel, encryptionService, usersService, redisService) {
         this.scheduleModel = scheduleModel;
         this.encryptionService = encryptionService;
         this.usersService = usersService;
+        this.redisService = redisService;
+    }
+    async deleteCache(key) {
+        await this.redisService.delJSON(key, '$');
+    }
+    async setCache(key, data) {
+        await this.redisService.setJSON(key, '$', JSON.stringify(data));
+    }
+    async getCache(key) {
+        const cachedData = await this.redisService.getJSON(key, '$');
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
     }
     async createScheduleService(userId, title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url) {
         if (startDateTime > endDateTime) {
@@ -7897,9 +8072,11 @@ let ScheduleService = class ScheduleService {
             calendars,
             url,
         });
-        console.log('newSchedule', newSchedule);
         try {
-            return await newSchedule.save();
+            const savedSchedule = await newSchedule.save();
+            await this.deleteCache(`schedules:${userId}`);
+            await this.setCache(`schedule:${savedSchedule._id}`, savedSchedule);
+            return savedSchedule;
         }
         catch (error) {
             throw new common_1.InternalServerErrorException('Error creating schedule');
@@ -7917,7 +8094,10 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Start date time must be less than end date time');
         }
         try {
-            return await this.scheduleModel.findOneAndUpdate({ userId, _id: scheduleId }, { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url }, { new: true });
+            const updatedSchedule = await this.scheduleModel.findOneAndUpdate({ userId, _id: scheduleId }, { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url }, { new: true });
+            await this.deleteCache(`schedules:${userId}`);
+            await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+            return updatedSchedule;
         }
         catch (error) {
             throw new common_1.InternalServerErrorException('Error updating schedule');
@@ -7933,6 +8113,8 @@ let ScheduleService = class ScheduleService {
         }
         try {
             await this.scheduleModel.deleteOne({ userId, _id: scheduleId }).exec();
+            await this.deleteCache(`schedules:${userId}`);
+            await this.deleteCache(`schedule:${scheduleId}`);
             return { message: 'Delete schedule successfully' };
         }
         catch (error) {
@@ -7948,9 +8130,9 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Schedules not found');
         }
         try {
-            await this.scheduleModel
-                .deleteMany({ userId, _id: { $in: scheduleIds } })
-                .exec();
+            await this.scheduleModel.deleteMany({ userId, _id: { $in: scheduleIds } }).exec();
+            await this.deleteCache(`schedules:${userId}`);
+            scheduleIds.forEach(async (id) => await this.deleteCache(`schedule:${id}`));
             return { message: 'Delete schedules successfully' };
         }
         catch (error) {
@@ -7958,6 +8140,11 @@ let ScheduleService = class ScheduleService {
         }
     }
     async viewListScheduleService(userId, calendars) {
+        const cacheKey = `schedules:${userId}`;
+        const cachedSchedules = await this.getCache(cacheKey);
+        if (cachedSchedules) {
+            return cachedSchedules;
+        }
         const findUser = await this.usersService.findUserByIdService(userId);
         if (!findUser) {
             throw new common_1.BadRequestException('User not found');
@@ -7969,7 +8156,7 @@ let ScheduleService = class ScheduleService {
         if (!schedules.length) {
             throw new common_1.BadRequestException('Schedules not found');
         }
-        return schedules.map(schedule => {
+        const decryptedSchedules = schedules.map(schedule => {
             if (schedule.isEncrypted) {
                 const encryptedKey = findUser.encryptKey;
                 const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
@@ -7979,6 +8166,8 @@ let ScheduleService = class ScheduleService {
             }
             return schedule;
         });
+        await this.setCache(cacheKey, decryptedSchedules);
+        return decryptedSchedules;
     }
     async notifyScheduleService(userId) {
         const TIMEZONE_OFFSET_HOURS = 7;
@@ -8012,13 +8201,13 @@ let ScheduleService = class ScheduleService {
             const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
             const formattedSchedules = schedules.map((schedule) => ({
                 ...schedule.toObject(),
-                startDateTime: (0, moment_1.default)(schedule.startDateTime).toISOString(),
-                endDateTime: (0, moment_1.default)(schedule.endDateTime).toISOString(),
+                startDateTime: moment(schedule.startDateTime).toISOString(),
+                endDateTime: moment(schedule.endDateTime).toISOString(),
             }));
             return formattedSchedules;
         }
         catch (error) {
-            throw new common_1.InternalServerErrorException('Error fetching schedules for notification');
+            throw new common_1.InternalServerErrorException(console.error(error), 'Error fetching schedules for notification');
         }
     }
     async enableEncryptionService(scheduleId, userId) {
@@ -8042,7 +8231,9 @@ let ScheduleService = class ScheduleService {
                 ? this.encryptionService.encryptData(schedule.note, decryptedKey)
                 : undefined;
             schedule.isEncrypted = true;
-            return await schedule.save();
+            const updatedSchedule = await schedule.save();
+            await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+            return updatedSchedule;
         }
         catch (error) {
             throw new common_1.InternalServerErrorException('Error enabling encryption');
@@ -8069,7 +8260,9 @@ let ScheduleService = class ScheduleService {
                 ? this.encryptionService.decryptData(schedule.note, decryptedKey)
                 : undefined;
             schedule.isEncrypted = false;
-            return await schedule.save();
+            const updatedSchedule = await schedule.save();
+            await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+            return updatedSchedule;
         }
         catch (error) {
             throw new common_1.InternalServerErrorException('Error disabling encryption');
@@ -8080,7 +8273,7 @@ exports.ScheduleService = ScheduleService;
 exports.ScheduleService = ScheduleService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(schedule_schema_1.Schedule.name)),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof encryption_service_1.EncryptionService !== "undefined" && encryption_service_1.EncryptionService) === "function" ? _b : Object, typeof (_c = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _c : Object, typeof (_d = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _d : Object])
 ], ScheduleService);
 
 
@@ -12075,7 +12268,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("2b14bd5a41d6bf2c7087")
+/******/ 		__webpack_require__.h = () => ("093c15666dfa606d37f5")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
