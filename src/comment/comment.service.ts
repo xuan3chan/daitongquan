@@ -40,6 +40,7 @@ export class CommentService {
 
     await this.setCache(`comments:${postId}`, comment);
     await this.deleteCache(`comments:get:${postId}`);
+    await this.deleteCache('posts:all');
 
     return { message: 'Comment created successfully.' };
   }
@@ -58,6 +59,7 @@ export class CommentService {
     if (comment) {
       await this.deleteCache(`comments:${comment.postId}`);
       await this.deleteCache(`comments:get:${comment.postId}`);
+      await this.deleteCache('posts:all');
 
     }
 
@@ -85,6 +87,7 @@ export class CommentService {
 
       await this.deleteCache(`comments:${postId}`);
       await this.deleteCache(`comments:get:${postId}`);
+      await this.deleteCache('posts:all');
 
     }
 
@@ -147,6 +150,7 @@ export class CommentService {
 
     await this.deleteCache(`comments:${postId}`);
     await this.deleteCache(`comments:get:${postId}`);
+    await this.deleteCache('posts:all');
 
     await this.setCache(`comment:${commentId}`, comment);
 
@@ -180,7 +184,7 @@ export class CommentService {
 
     await this.deleteCache(`comments:${comment.postId}`);
     await this.deleteCache(`comments:get:${comment.postId}`);
-
+    await this.deleteCache('posts:all');
     await this.setCache(`comment:${commentId}`, comment);
 
     return { message: 'Reply comment updated successfully.' };
@@ -217,7 +221,7 @@ export class CommentService {
     await this.deleteCache(`comments:${postId}`);
     await this.setCache(`comment:${commentId}`, comment);
     await this.deleteCache(`comments:get:${comment.postId}`);
-
+    await this.deleteCache('posts:all');
     return { message: 'Reply comment deleted successfully.' };
   }
   

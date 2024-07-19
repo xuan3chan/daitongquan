@@ -10065,6 +10065,7 @@ let CommentService = class CommentService {
         await comment.save();
         await this.setCache(`comments:${postId}`, comment);
         await this.deleteCache(`comments:get:${postId}`);
+        await this.deleteCache('posts:all');
         return { message: 'Comment created successfully.' };
     }
     async updateCommentService(userId, commentId, content) {
@@ -10072,6 +10073,7 @@ let CommentService = class CommentService {
         if (comment) {
             await this.deleteCache(`comments:${comment.postId}`);
             await this.deleteCache(`comments:get:${comment.postId}`);
+            await this.deleteCache('posts:all');
         }
         return {
             comment,
@@ -10091,6 +10093,7 @@ let CommentService = class CommentService {
             });
             await this.deleteCache(`comments:${postId}`);
             await this.deleteCache(`comments:get:${postId}`);
+            await this.deleteCache('posts:all');
         }
         return {
             message: result ? 'Comment deleted successfully.' : 'No comment found to delete.',
@@ -10134,6 +10137,7 @@ let CommentService = class CommentService {
         await comment.save();
         await this.deleteCache(`comments:${postId}`);
         await this.deleteCache(`comments:get:${postId}`);
+        await this.deleteCache('posts:all');
         await this.setCache(`comment:${commentId}`, comment);
         return { comment, message: 'Reply comment created successfully.' };
     }
@@ -10153,6 +10157,7 @@ let CommentService = class CommentService {
         await comment.save();
         await this.deleteCache(`comments:${comment.postId}`);
         await this.deleteCache(`comments:get:${comment.postId}`);
+        await this.deleteCache('posts:all');
         await this.setCache(`comment:${commentId}`, comment);
         return { message: 'Reply comment updated successfully.' };
     }
@@ -10177,6 +10182,7 @@ let CommentService = class CommentService {
         await this.deleteCache(`comments:${postId}`);
         await this.setCache(`comment:${commentId}`, comment);
         await this.deleteCache(`comments:get:${comment.postId}`);
+        await this.deleteCache('posts:all');
         return { message: 'Reply comment deleted successfully.' };
     }
 };
@@ -12279,7 +12285,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("d6541ab40faf531d3599")
+/******/ 		__webpack_require__.h = () => ("62e6726cd6d5ad8b3779")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
