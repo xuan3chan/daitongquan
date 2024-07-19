@@ -216,42 +216,45 @@ export class PostService {
     postId: string,
     reaction: string,
   ): Promise<{ message: string }> {
-    // Check if the user has already reacted to the post
-    const postExists = await this.postModel.findOne({
-      _id: postId,
-      'userReaction.userId': userId,
-    }).lean(); // Use lean for performance if you don't need a full Mongoose document
+    const postQuery = { _id: postId, 'userReaction.userId': userId };
+    const postExists = await this.postModel.findOne(postQuery).lean();
   
     let message = '';
+    let updatePostQuery;
+    let updatePostOptions;
     if (postExists) {
       // Update the existing reaction
-      await this.postModel.updateOne(
-        { _id: postId, 'userReaction.userId': userId },
-        { $set: { 'userReaction.$.reaction': reaction } },
-      );
+      updatePostQuery = postQuery;
+      updatePostOptions = { $set: { 'userReaction.$.reaction': reaction } };
       message = 'Reaction updated successfully';
     } else {
       // Add a new reaction
-      const updatedPost = await this.postModel.findOneAndUpdate(
-        { _id: postId, 'userReaction.userId': { $ne: userId } },
-        { $push: { userReaction: { userId, reaction } }, $inc: { reactionCount: 1 } },
-        { new: true },
-      );
-      if (!updatedPost) {
-        throw new BadRequestException('Post not found or you have already reacted to this post');
-      }
-      if (reaction === 'like') {
-        await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
-      }
-      message = 'Reaction added successfully';
+      updatePostQuery = { _id: postId, 'userReaction.userId': { $ne: userId } };
+      updatePostOptions = {
+        $push: { userReaction: { userId, reaction } },
+        $inc: { reactionCount: 1 }
+      };
     }
   
-    // Delete cache outside the conditional blocks to avoid repetition
-    await this.deleteCache(`posts:detail:${postId}`);
-    await this.deleteCache(`posts:user:${userId}`);
+    const updatedPost = await this.postModel.findOneAndUpdate(
+      updatePostQuery,
+      updatePostOptions,
+      { new: true }
+    );
+  
+    if (!updatedPost) {
+      throw new BadRequestException('Post not found or you have already reacted to this post');
+    }
+  
+    if (!postExists && reaction === 'like') {
+      await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
+    }
+    const cacheKeys = [`posts:detail:${postId}`, `posts:user:${userId}`];
+    await Promise.all(cacheKeys.map(key => this.deleteCache(key)));
   
     return { message };
   }
+  
 
   async removeReactionPostService(
     userId: string,
