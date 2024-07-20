@@ -125,7 +125,6 @@ export class PostService {
       .populate('userReaction.userId', 'firstname lastname avatar')
       .populate('userId', 'firstname lastname avatar rankID')
       .sort({ createdAt: -1 });
-
     return posts;
   }
 

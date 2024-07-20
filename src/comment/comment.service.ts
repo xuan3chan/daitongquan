@@ -38,9 +38,10 @@ export class CommentService {
     });
     await comment.save();
 
-    await this.setCache(`comments:${postId}`, comment);
-    await this.deleteCache(`comments:get:${postId}`);
-    await this.deleteCache('posts:all');
+     this.setCache(`comments:${postId}`, comment);
+     this.deleteCache(`comments:get:${postId}`)
+     this.deleteCache(`posts:detail:${postId}`);
+     this.deleteCache(`posts:user:${userId}`);
 
     return { message: 'Comment created successfully.' };
   }
@@ -57,10 +58,10 @@ export class CommentService {
     );
 
     if (comment) {
-      await this.deleteCache(`comments:${comment.postId}`);
-      await this.deleteCache(`comments:get:${comment.postId}`);
-      await this.deleteCache('posts:all');
-
+       this.deleteCache(`comments:${comment.postId}`);
+       this.deleteCache(`comments:get:${comment.postId}`);
+       this.deleteCache(`posts:detail:${comment.postId}`);
+       this.deleteCache(`posts:user:${userId}`);
     }
 
     return {
@@ -85,10 +86,10 @@ export class CommentService {
         $inc: { commentCount: -(sizeReplyComment + 1) },
       });
 
-      await this.deleteCache(`comments:${postId}`);
-      await this.deleteCache(`comments:get:${postId}`);
-      await this.deleteCache('posts:all');
-
+       this.deleteCache(`comments:${postId}`);
+       this.deleteCache(`comments:get:${postId}`);
+       this.deleteCache(`posts:detail:${postId}`);
+       this.deleteCache(`posts:user:${userId}`);
     }
 
     return {
@@ -148,12 +149,11 @@ export class CommentService {
     });
     await comment.save();
 
-    await this.deleteCache(`comments:${postId}`);
-    await this.deleteCache(`comments:get:${postId}`);
-    await this.deleteCache('posts:all');
-
-    await this.setCache(`comment:${commentId}`, comment);
-
+   this.deleteCache(`comments:${postId}`);
+    this.deleteCache(`comments:get:${postId}`)
+    this.setCache(`comment:${commentId}`, comment);
+    this.deleteCache(`posts:detail:${postId}`);
+    this.deleteCache(`posts:user:${userId}`);
     return { comment, message: 'Reply comment created successfully.' };
   }
 
@@ -182,11 +182,11 @@ export class CommentService {
     comment.repliesComment[replyCommentIndex].content = content;
     await comment.save();
 
-    await this.deleteCache(`comments:${comment.postId}`);
-    await this.deleteCache(`comments:get:${comment.postId}`);
-    await this.deleteCache('posts:all');
-    await this.setCache(`comment:${commentId}`, comment);
-
+     this.deleteCache(`comments:${comment.postId}`);
+     this.deleteCache(`comments:get:${comment.postId}`)
+     this.setCache(`comment:${commentId}`, comment);
+     this.deleteCache(`posts:detail:${comment.postId}`);
+     this.deleteCache(`posts:user:${userId}`);
     return { message: 'Reply comment updated successfully.' };
   }
 
@@ -218,10 +218,11 @@ export class CommentService {
     });
     await comment.save();
 
-    await this.deleteCache(`comments:${postId}`);
-    await this.setCache(`comment:${commentId}`, comment);
-    await this.deleteCache(`comments:get:${comment.postId}`);
-    await this.deleteCache('posts:all');
+     this.deleteCache(`comments:${postId}`);
+     this.setCache(`comment:${commentId}`, comment);
+     this.deleteCache(`comments:get:${comment.postId}`)
+     this.deleteCache(`posts:detail:${postId}`);
+     this.deleteCache(`posts:user:${userId}`);
     return { message: 'Reply comment deleted successfully.' };
   }
   
