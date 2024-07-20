@@ -9235,6 +9235,16 @@ let PostService = class PostService {
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
         return updatedPost;
     }
+    async rejectPostService(postId) {
+        const post = await this.postModel.findOne({ _id: postId
+        });
+        if (!post)
+            throw new common_1.BadRequestException('Post not found');
+        post.status = 'rejected';
+        const updatedPost = await post.save();
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
+        return updatedPost;
+    }
     async viewAllPostService() {
         const posts = await this.postModel
             .find({ status: 'active', isShow: true })
@@ -9405,7 +9415,7 @@ __decorate([
     (0, mongoose_1.Prop)({
         type: mongoose_3.default.Schema.Types.String,
         default: 'inactive',
-        enum: ['active', 'inactive', 'blocked'],
+        enum: ['active', 'inactive', 'blocked', 'rejected'],
     }),
     __metadata("design:type", String)
 ], Post.prototype, "status", void 0);
@@ -9528,6 +9538,9 @@ let PostController = class PostController {
     async unFavoritePostController(postId, req) {
         const userId = this.getUserIdFromToken(req);
         return await this.postService.removeFavoritePostService(userId, postId);
+    }
+    async rejectPostController(postId) {
+        return await this.postService.rejectPostService(postId);
     }
 };
 exports.PostController = PostController;
@@ -9714,6 +9727,18 @@ __decorate([
     __metadata("design:paramtypes", [String, typeof (_t = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _t : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "unFavoritePostController", null);
+__decorate([
+    (0, common_1.Patch)('rejection/:postId'),
+    (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
+    (0, casl_decorator_1.Subject)('post'),
+    (0, casl_decorator_1.Action)('reject'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Post rejected' }),
+    (0, swagger_1.ApiOperation)({ summary: 'For Admin' }),
+    __param(0, (0, common_1.Param)('postId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "rejectPostController", null);
 exports.PostController = PostController = __decorate([
     (0, swagger_1.ApiTags)('post'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -9747,6 +9772,7 @@ exports.CreatePostDto = CreatePostDto;
 __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(700),
     __metadata("design:type", String)
 ], CreatePostDto.prototype, "content", void 0);
 class UpdatePostDto {
@@ -12199,7 +12225,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("0ca3e339f959bd26e561")
+/******/ 		__webpack_require__.h = () => ("1d3fdaab3476ab148488")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

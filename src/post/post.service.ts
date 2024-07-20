@@ -119,6 +119,17 @@ export class PostService {
     await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`,`posts:favorites:${post.userId}`]);
     return updatedPost;
   }
+  async rejectPostService(postId: string): Promise<Post> {
+    const post = await this.postModel.findOne({ _id: postId
+    });
+    if (!post) throw new BadRequestException('Post not found');
+
+    post.status = 'rejected';
+    const updatedPost = await post.save();
+
+    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`,`posts:favorites:${post.userId}`]);
+    return updatedPost;
+  }
 
   async viewAllPostService(): Promise<Post[]> {
     const posts = await this.postModel

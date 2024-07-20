@@ -226,6 +226,17 @@ export class PostController {
     return await this.postService.removeFavoritePostService(userId, postId);
   }
 
+  @Patch('rejection/:postId')
+  @UseGuards(PermissionGuard)
+  @Subject('post')
+  @Action('reject')
+  @ApiOkResponse({ description: 'Post rejected' })
+  @ApiOperation({ summary: 'For Admin' })
+  async rejectPostController(@Param('postId') postId: string) {
+    return await this.postService.rejectPostService(postId);
+  }
+
+
 
 
  

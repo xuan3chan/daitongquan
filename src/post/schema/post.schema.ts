@@ -38,7 +38,7 @@ export class Post extends Document {
   @Prop({
     type: mongoose.Schema.Types.String,
     default: 'inactive',
-    enum: ['active', 'inactive', 'blocked'],
+    enum: ['active', 'inactive', 'blocked','rejected'],
   })
   status: string;
 
