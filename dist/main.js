@@ -9181,7 +9181,7 @@ let PostService = class PostService {
         if (isShow !== undefined)
             post.isShow = isShow;
         const updatedPost = await post.save();
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return updatedPost;
     }
     async deletePostService(userId, postId) {
@@ -9190,7 +9190,7 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         if (post.postImage)
             await this.cloudinaryService.deleteMediaService(post.postImage);
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return post;
     }
     async viewDetailPostService(postId) {
@@ -9213,7 +9213,7 @@ let PostService = class PostService {
                 await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
-        await this.deleteCache([`posts:user:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
+        await this.deleteCache([`posts:user:${userId}`, `posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
         return posts;
     }
     async updateStatusService(userId, postId, status) {
@@ -9222,7 +9222,7 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         post.status = status;
         const updatedPost = await post.save();
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return updatedPost;
     }
     async updateApproveService(postId, isApproved) {
@@ -9232,7 +9232,7 @@ let PostService = class PostService {
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
         const updatedPost = await post.save();
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`]);
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
         return updatedPost;
     }
     async viewAllPostService() {
@@ -9262,14 +9262,9 @@ let PostService = class PostService {
         return posts;
     }
     async searchPostService(searchKey) {
-        const cacheKey = `posts:search:${searchKey}`;
-        const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-        if (cachedPosts)
-            return JSON.parse(cachedPosts);
         const posts = await this.postModel
             .find({ $text: { $search: searchKey } })
             .sort({ createdAt: -1 });
-        await this.setCache(cacheKey, posts);
         return posts;
     }
     async addReactionPostService(userId, postId, reaction) {
@@ -9296,7 +9291,7 @@ let PostService = class PostService {
         if (!postExists && reaction === 'like') {
             await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
         }
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return { message };
     }
     async removeReactionPostService(userId, postId) {
@@ -9306,7 +9301,7 @@ let PostService = class PostService {
         }, { new: true });
         if (!post)
             throw new common_1.BadRequestException('You have not reacted to this post');
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
+        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return post;
     }
     async addFavoritePostService(userId, postId) {
@@ -9984,6 +9979,7 @@ let CommentService = class CommentService {
             this.deleteCache(`comments:get:${comment.postId}`);
             this.deleteCache(`posts:detail:${comment.postId}`);
             this.deleteCache(`posts:user:${userId}`);
+            this.deleteCache(`posts:favorites:${userId}`);
         }
         return {
             comment,
@@ -10005,6 +10001,7 @@ let CommentService = class CommentService {
             this.deleteCache(`comments:get:${postId}`);
             this.deleteCache(`posts:detail:${postId}`);
             this.deleteCache(`posts:user:${userId}`);
+            this.deleteCache(`posts:favorites:${userId}`);
         }
         return {
             message: result ? 'Comment deleted successfully.' : 'No comment found to delete.',
@@ -10051,6 +10048,7 @@ let CommentService = class CommentService {
         this.setCache(`comment:${commentId}`, comment);
         this.deleteCache(`posts:detail:${postId}`);
         this.deleteCache(`posts:user:${userId}`);
+        this.deleteCache(`posts:favorites:${userId}`);
         return { comment, message: 'Reply comment created successfully.' };
     }
     async updateReplyCommentService(userId, commentId, replyCommentId, content) {
@@ -10072,6 +10070,7 @@ let CommentService = class CommentService {
         this.setCache(`comment:${commentId}`, comment);
         this.deleteCache(`posts:detail:${comment.postId}`);
         this.deleteCache(`posts:user:${userId}`);
+        this.deleteCache(`posts:favorites:${userId}`);
         return { message: 'Reply comment updated successfully.' };
     }
     async deleteReplyCommentService(userId, commentId, replyCommentId) {
@@ -10097,6 +10096,7 @@ let CommentService = class CommentService {
         this.deleteCache(`comments:get:${comment.postId}`);
         this.deleteCache(`posts:detail:${postId}`);
         this.deleteCache(`posts:user:${userId}`);
+        this.deleteCache(`posts:favorites:${userId}`);
         return { message: 'Reply comment deleted successfully.' };
     }
 };
@@ -12199,7 +12199,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("dcaefaed597a255b3a75")
+/******/ 		__webpack_require__.h = () => ("0ca3e339f959bd26e561")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

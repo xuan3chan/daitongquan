@@ -56,7 +56,7 @@ export class PostService {
 
     const updatedPost = await post.save();
 
-    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`,`posts:favorites:${userId}`]);
     return updatedPost;
   }
 
@@ -66,7 +66,7 @@ export class PostService {
 
     if (post.postImage) await this.cloudinaryService.deleteMediaService(post.postImage);
 
-    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`,`posts:favorites:${userId}`]);
     return post;
   }
 
@@ -92,7 +92,8 @@ export class PostService {
     }
     await this.postModel.deleteMany({ _id: { $in: postIds } });
 
-    await this.deleteCache([`posts:user:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
+    await this.deleteCache([`posts:user:${userId}`,`posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
+
     return posts;
   }
 
@@ -103,7 +104,7 @@ export class PostService {
     post.status = status;
     const updatedPost = await post.save();
 
-    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`]);
+    await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`,`posts:favorites:${userId}`]);
     return updatedPost;
   }
 
@@ -115,7 +116,7 @@ export class PostService {
     post.status = isApproved ? 'active' : 'inactive';
     const updatedPost = await post.save();
 
-    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`]);
+    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`,`posts:favorites:${post.userId}`]);
     return updatedPost;
   }
 
@@ -151,15 +152,11 @@ export class PostService {
   }
 
   async searchPostService(searchKey: string): Promise<Post[]> {
-    const cacheKey = `posts:search:${searchKey}`;
-    const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
-    if (cachedPosts) return JSON.parse(cachedPosts as string);
-
     const posts = await this.postModel
       .find({ $text: { $search: searchKey } })
       .sort({ createdAt: -1 });
 
-    await this.setCache(cacheKey, posts);
+
     return posts;
   }
 
@@ -194,7 +191,7 @@ export class PostService {
       await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
     }
 
-    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
+    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`,`posts:favorites:${userId}`]);
     return { message };
   }
 
@@ -210,7 +207,7 @@ export class PostService {
 
     if (!post) throw new BadRequestException('You have not reacted to this post');
 
-    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`]);
+    await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`,`posts:favorites:${userId}`]);
     return post;
   }
 

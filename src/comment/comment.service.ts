@@ -62,6 +62,8 @@ export class CommentService {
        this.deleteCache(`comments:get:${comment.postId}`);
        this.deleteCache(`posts:detail:${comment.postId}`);
        this.deleteCache(`posts:user:${userId}`);
+       this.deleteCache(`posts:favorites:${userId}`)
+
     }
 
     return {
@@ -90,6 +92,7 @@ export class CommentService {
        this.deleteCache(`comments:get:${postId}`);
        this.deleteCache(`posts:detail:${postId}`);
        this.deleteCache(`posts:user:${userId}`);
+       this.deleteCache(`posts:favorites:${userId}`)
     }
 
     return {
@@ -149,11 +152,13 @@ export class CommentService {
     });
     await comment.save();
 
-   this.deleteCache(`comments:${postId}`);
+    this.deleteCache(`comments:${postId}`);
     this.deleteCache(`comments:get:${postId}`)
     this.setCache(`comment:${commentId}`, comment);
     this.deleteCache(`posts:detail:${postId}`);
     this.deleteCache(`posts:user:${userId}`);
+    this.deleteCache(`posts:favorites:${userId}`)
+
     return { comment, message: 'Reply comment created successfully.' };
   }
 
@@ -187,6 +192,8 @@ export class CommentService {
      this.setCache(`comment:${commentId}`, comment);
      this.deleteCache(`posts:detail:${comment.postId}`);
      this.deleteCache(`posts:user:${userId}`);
+     this.deleteCache(`posts:favorites:${userId}`)
+
     return { message: 'Reply comment updated successfully.' };
   }
 
@@ -223,6 +230,8 @@ export class CommentService {
      this.deleteCache(`comments:get:${comment.postId}`)
      this.deleteCache(`posts:detail:${postId}`);
      this.deleteCache(`posts:user:${userId}`);
+     this.deleteCache(`posts:favorites:${userId}`)
+
     return { message: 'Reply comment deleted successfully.' };
   }
   
