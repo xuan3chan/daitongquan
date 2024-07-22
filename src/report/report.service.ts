@@ -41,7 +41,7 @@ export class ReportService {
     async getReportsService(): Promise<any> {
         const cachedReports = await this.redisService.getJSON('reports:all', '$');
         if (cachedReports) {
-            return cachedReports;
+            return JSON.parse(cachedReports as string);
         }
         // Fetch reports with populated data
         const reports = await this.reportModel

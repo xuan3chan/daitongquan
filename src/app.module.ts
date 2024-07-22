@@ -27,6 +27,7 @@ import { EventGateway } from './event.gateway';
 import { StoryModule } from './story/story.module';
 import { MessageModule } from './message/message.module';
 import { RedisCacheModule } from './redis/redis.module';
+import { SearchModule } from './search/search.module';
 @Module({
   imports: [
     
@@ -57,6 +58,7 @@ import { RedisCacheModule } from './redis/redis.module';
     StoryModule,
     MessageModule,
     RedisCacheModule,
+    SearchModule,
   ],
   controllers: [
     AppController

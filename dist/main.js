@@ -267,6 +267,7 @@ const event_gateway_1 = __webpack_require__(143);
 const story_module_1 = __webpack_require__(151);
 const message_module_1 = __webpack_require__(155);
 const redis_module_1 = __webpack_require__(62);
+const search_module_1 = __webpack_require__(158);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -300,6 +301,7 @@ exports.AppModule = AppModule = __decorate([
             story_module_1.StoryModule,
             message_module_1.MessageModule,
             redis_module_1.RedisCacheModule,
+            search_module_1.SearchModule,
         ],
         controllers: [
             app_controller_1.AppController
@@ -10490,7 +10492,7 @@ let ReportService = class ReportService {
     async getReportsService() {
         const cachedReports = await this.redisService.getJSON('reports:all', '$');
         if (cachedReports) {
-            return cachedReports;
+            return JSON.parse(cachedReports);
         }
         const reports = await this.reportModel
             .find()
@@ -12224,6 +12226,89 @@ exports.MessageController = MessageController = __decorate([
 "use strict";
 module.exports = require("compression");
 
+/***/ }),
+/* 158 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchModule = void 0;
+const common_1 = __webpack_require__(6);
+const search_service_1 = __webpack_require__(159);
+const search_controller_1 = __webpack_require__(160);
+let SearchModule = class SearchModule {
+};
+exports.SearchModule = SearchModule;
+exports.SearchModule = SearchModule = __decorate([
+    (0, common_1.Module)({
+        controllers: [search_controller_1.SearchController],
+        providers: [search_service_1.SearchService],
+    })
+], SearchModule);
+
+
+/***/ }),
+/* 159 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchService = void 0;
+const common_1 = __webpack_require__(6);
+let SearchService = class SearchService {
+};
+exports.SearchService = SearchService;
+exports.SearchService = SearchService = __decorate([
+    (0, common_1.Injectable)()
+], SearchService);
+
+
+/***/ }),
+/* 160 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchController = void 0;
+const common_1 = __webpack_require__(6);
+const search_service_1 = __webpack_require__(159);
+let SearchController = class SearchController {
+    constructor(searchService) {
+        this.searchService = searchService;
+    }
+};
+exports.SearchController = SearchController;
+exports.SearchController = SearchController = __decorate([
+    (0, common_1.Controller)('search'),
+    __metadata("design:paramtypes", [typeof (_a = typeof search_service_1.SearchService !== "undefined" && search_service_1.SearchService) === "function" ? _a : Object])
+], SearchController);
+
+
 /***/ })
 /******/ 	]);
 /************************************************************************/
@@ -12286,7 +12371,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("da07edc63c1e6f8d10d6")
+/******/ 		__webpack_require__.h = () => ("b9e35b8c3658bcd9b9be")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
