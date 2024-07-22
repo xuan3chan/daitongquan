@@ -250,4 +250,17 @@ export class PostService {
     await this.setCache(cacheKey, posts);
     return posts;
   }
+
+  async getPaginatedPostsService(page?: number, limit?: number): Promise<Post[]> {
+    page = page || 1;
+    limit = limit || 10;
+    const posts = await this.postModel
+      .find({ status: 'active', isShow: true })
+      .populate('userId', 'firstname lastname avatar rankID')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    return posts;
+  }
 }

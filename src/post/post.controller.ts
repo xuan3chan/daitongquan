@@ -27,7 +27,7 @@ import { PostService } from './post.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
-import { CreatePostDto, UpdatePostDto, deleteManyPostDto } from './dto/post.dto';
+import { CreatePostDto, PaginationDto, UpdatePostDto, deleteManyPostDto } from './dto/post.dto';
 import { MemberGuard } from 'src/gaurd/member.gaurd';
 import { PermissionGuard } from 'src/gaurd/permission.gaurd';
 import { Action, Subject } from 'src/decorator/casl.decorator';
@@ -163,6 +163,13 @@ export class PostController {
   async getPostsController() {
     return await this.postService.viewAllPostService();
   }
+  @Get('pagination')
+  @ApiOkResponse({ description: 'Posts' })
+  async paginationPostController(
+    @Query() dto:PaginationDto
+  ) {
+    return await this.postService.getPaginatedPostsService(dto.page, dto.limit);
+  }
   @Get('/:postId')
   @ApiOkResponse({ description: 'Post detail' })
   async viewDetailPostController(@Param('postId') postId: string) {
@@ -235,6 +242,8 @@ export class PostController {
   async rejectPostController(@Param('postId') postId: string) {
     return await this.postService.rejectPostService(postId);
   }
+
+  
 
 
 

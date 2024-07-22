@@ -34,13 +34,15 @@ export class ReportService {
             reportContent,
         });
         await report.save();
-
         await this.deleteCache('reports:all');
-
         return { message: 'Report created successfully.' };
     }
 
     async getReportsService(): Promise<any> {
+        const cachedReports = await this.redisService.getJSON('reports:all', '$');
+        if (cachedReports) {
+            return cachedReports;
+        }
         // Fetch reports with populated data
         const reports = await this.reportModel
             .find()
@@ -52,7 +54,7 @@ export class ReportService {
                     select: 'firstname lastname avatar isBlock',
                 },
             });
-    
+
         // Group reports by postId
         const groupedReports = reports.reduce((acc, report) => {
             const postId = report.postId.toString();
@@ -67,14 +69,13 @@ export class ReportService {
             acc[postId].report.push(reportWithoutPostId);
             return acc;
         }, {} as { [key: string]: { post: any; report: any[] } });
-    
+
         // Convert the groupedReports object to an array
         const result = Object.values(groupedReports);
-    
+        await this.setCache('reports:all', result);
+
         return result;
     }
-    
-    
 
     async deleteReportService(reportId: string): Promise<{ message: string }> {
         const report = await this.reportModel.findByIdAndDelete(reportId);

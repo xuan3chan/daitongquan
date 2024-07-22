@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ArrayNotEmpty, IsArray, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
 
 export class CreatePostDto {
   @IsNotEmpty()
@@ -29,4 +30,29 @@ export class deleteManyPostDto {
     @IsMongoId({ each: true })  
     postIds: string[];
 
+}
+export class PaginationDto {
+  @ApiProperty({
+    required: false,
+    type: Number,
+    description: 'Limit of items per page',
+    default: 10,
+  })
+  @IsOptional()
+  @IsPositive()
+  @Type(() => Number)
+  @IsInt()
+  limit?: number;
+
+  @ApiProperty({
+    required: false,
+    type: Number,
+    description: 'Page number',
+    default: 1,
+  })
+  @IsOptional()
+  @IsPositive()
+  @Type(() => Number)
+  @IsInt()
+  page?: number;
 }

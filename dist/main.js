@@ -9334,6 +9334,17 @@ let PostService = class PostService {
         await this.setCache(cacheKey, posts);
         return posts;
     }
+    async getPaginatedPostsService(page, limit) {
+        page = page || 1;
+        limit = limit || 10;
+        const posts = await this.postModel
+            .find({ status: 'active', isShow: true })
+            .populate('userId', 'firstname lastname avatar rankID')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
+        return posts;
+    }
 };
 exports.PostService = PostService;
 exports.PostService = PostService = __decorate([
@@ -9457,7 +9468,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostController = void 0;
 const common_1 = __webpack_require__(6);
@@ -9513,6 +9524,9 @@ let PostController = class PostController {
     }
     async getPostsController() {
         return await this.postService.viewAllPostService();
+    }
+    async paginationPostController(dto) {
+        return await this.postService.getPaginatedPostsService(dto.page, dto.limit);
     }
     async viewDetailPostController(postId) {
         return await this.postService.viewDetailPostService(postId);
@@ -9662,6 +9676,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "getPostsController", null);
 __decorate([
+    (0, common_1.Get)('pagination'),
+    (0, swagger_1.ApiOkResponse)({ description: 'Posts' }),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_q = typeof post_dto_1.PaginationDto !== "undefined" && post_dto_1.PaginationDto) === "function" ? _q : Object]),
+    __metadata("design:returntype", Promise)
+], PostController.prototype, "paginationPostController", null);
+__decorate([
     (0, common_1.Get)('/:postId'),
     (0, swagger_1.ApiOkResponse)({ description: 'Post detail' }),
     __param(0, (0, common_1.Param)('postId')),
@@ -9690,7 +9712,7 @@ __decorate([
     __param(1, (0, common_1.Query)('action')),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, typeof (_q = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _q : Object]),
+    __metadata("design:paramtypes", [String, String, typeof (_r = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _r : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "reactionPostController", null);
 __decorate([
@@ -9701,7 +9723,7 @@ __decorate([
     __param(0, (0, common_1.Param)('postId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_r = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _r : Object]),
+    __metadata("design:paramtypes", [String, typeof (_s = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _s : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "removeReactionPostController", null);
 __decorate([
@@ -9711,7 +9733,7 @@ __decorate([
     __param(0, (0, common_1.Param)('postId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_s = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _s : Object]),
+    __metadata("design:paramtypes", [String, typeof (_t = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _t : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "favoritePostController", null);
 __decorate([
@@ -9721,7 +9743,7 @@ __decorate([
     __param(0, (0, common_1.Param)('postId')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, typeof (_t = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _t : Object]),
+    __metadata("design:paramtypes", [String, typeof (_u = typeof common_1.Request !== "undefined" && common_1.Request) === "function" ? _u : Object]),
     __metadata("design:returntype", Promise)
 ], PostController.prototype, "unFavoritePostController", null);
 __decorate([
@@ -9760,8 +9782,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.deleteManyPostDto = exports.UpdatePostDto = exports.CreatePostDto = void 0;
+exports.PaginationDto = exports.deleteManyPostDto = exports.UpdatePostDto = exports.CreatePostDto = void 0;
 const swagger_1 = __webpack_require__(32);
+const class_transformer_1 = __webpack_require__(49);
 const class_validator_1 = __webpack_require__(47);
 class CreatePostDto {
 }
@@ -9800,6 +9823,35 @@ __decorate([
     (0, class_validator_1.IsMongoId)({ each: true }),
     __metadata("design:type", Array)
 ], deleteManyPostDto.prototype, "postIds", void 0);
+class PaginationDto {
+}
+exports.PaginationDto = PaginationDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        type: Number,
+        description: 'Limit of items per page',
+        default: 10,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsPositive)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], PaginationDto.prototype, "limit", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        type: Number,
+        description: 'Page number',
+        default: 1,
+    }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsPositive)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], PaginationDto.prototype, "page", void 0);
 
 
 /***/ }),
@@ -10436,6 +10488,10 @@ let ReportService = class ReportService {
         return { message: 'Report created successfully.' };
     }
     async getReportsService() {
+        const cachedReports = await this.redisService.getJSON('reports:all', '$');
+        if (cachedReports) {
+            return cachedReports;
+        }
         const reports = await this.reportModel
             .find()
             .populate('userId', 'firstname lastname avatar')
@@ -10459,6 +10515,7 @@ let ReportService = class ReportService {
             return acc;
         }, {});
         const result = Object.values(groupedReports);
+        await this.setCache('reports:all', result);
         return result;
     }
     async deleteReportService(reportId) {
@@ -12229,7 +12286,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("30a2440144ee0064a2bc")
+/******/ 		__webpack_require__.h = () => ("da07edc63c1e6f8d10d6")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
