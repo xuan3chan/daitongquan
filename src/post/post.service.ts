@@ -136,7 +136,7 @@ export class PostService {
       .find({ status: 'active', isShow: true })
       .populate('userReaction.userId', 'firstname lastname avatar')
       .populate('userId', 'firstname lastname avatar rankID')
-      .sort({ createdAt: -1 });
+      .sort({ updateAt: -1 });
     return posts;
   }
 

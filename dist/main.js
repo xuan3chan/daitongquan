@@ -2385,7 +2385,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankSchema = exports.Rank = void 0;
 const mongoose_1 = __webpack_require__(7);
-const class_validator_1 = __webpack_require__(30);
 const mongoose_2 = __webpack_require__(12);
 const mongoose_3 = __webpack_require__(12);
 let Rank = class Rank extends mongoose_2.Document {
@@ -2393,7 +2392,6 @@ let Rank = class Rank extends mongoose_2.Document {
 exports.Rank = Rank;
 __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
-    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], Rank.prototype, "rankName", void 0);
 __decorate([
@@ -2414,7 +2412,6 @@ __decorate([
 ], Rank.prototype, "score", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
-    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], Rank.prototype, "rankIcon", void 0);
 exports.Rank = Rank = __decorate([
@@ -9250,7 +9247,7 @@ let PostService = class PostService {
             .find({ status: 'active', isShow: true })
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate('userId', 'firstname lastname avatar rankID')
-            .sort({ createdAt: -1 });
+            .sort({ updateAt: -1 });
         return posts;
     }
     async viewListPostService() {
@@ -12225,7 +12222,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("1d3fdaab3476ab148488")
+/******/ 		__webpack_require__.h = () => ("82baf26c36d7d7625898")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
