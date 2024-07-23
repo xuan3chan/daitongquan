@@ -236,7 +236,7 @@ export class PostController {
   @Patch('rejection/:postId')
   @UseGuards(PermissionGuard)
   @Subject('post')
-  @Action('reject')
+  @Action('read')
   @ApiOkResponse({ description: 'Post rejected' })
   @ApiOperation({ summary: 'For Admin' })
   async rejectPostController(@Param('postId') postId: string) {
