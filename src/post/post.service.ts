@@ -6,19 +6,18 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UsersService } from 'src/users/users.service';
 import { FavoritePost } from './schema/favoritePost.schema';
 import { RedisService } from 'src/redis/redis.service';
-import { SearchService } from '../search/search.service'; // Import the SearchService
-import { SearchResponse } from '@elastic/elasticsearch/lib/api/types'; // Import the correct type
+import { SearchService } from '../search/search.service';
+import { SearchResponse } from '@elastic/elasticsearch/lib/api/types';
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectModel(Post.name) private postModel: Model<Post>,
     @InjectModel('FavoritePost') private favoritePostModel: Model<FavoritePost>,
-    @InjectModel('Comment') private commentModel: Model<Comment>,
     private cloudinaryService: CloudinaryService,
     private usersService: UsersService,
     private redisService: RedisService,
-    private searchService: SearchService, // Inject the SearchService
+    private searchService: SearchService,
   ) {}
 
   private async deleteCache(key: string | string[]) {
@@ -96,7 +95,7 @@ export class PostService {
           path: 'rankID',
           select: '_id rankName rankIcon '
         }
-      })
+      });
     await this.setCache(cacheKey, post);
     return post;
   }
@@ -111,9 +110,7 @@ export class PostService {
     await this.postModel.deleteMany({ _id: { $in: postIds } });
 
     // Delete the posts from Elasticsearch
-    for (const postId of postIds) {
-      await this.searchService.deletePost(postId);
-    }
+    await Promise.all(postIds.map(postId => this.searchService.deletePost(postId)));
 
     await this.deleteCache([`posts:user:${userId}`, `posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
 
@@ -136,7 +133,7 @@ export class PostService {
 
   async updateApproveService(postId: string, isApproved: boolean): Promise<Post> {
     const post = await this.postModel.findOne({ _id: postId });
-    if (!post || post.status == 'rejected') throw new BadRequestException('Post not found or rejected');
+    if (!post || post.status === 'rejected') throw new BadRequestException('Post not found or rejected');
 
     post.isApproved = isApproved;
     post.status = isApproved ? 'active' : 'inactive';
@@ -174,7 +171,8 @@ export class PostService {
           path: 'rankID',
           select: '_id rankName rankIcon '
         }
-      })      .sort({ createdAt: -1 });
+      })
+      .sort({ createdAt: -1 });
     return posts;
   }
 
@@ -199,21 +197,22 @@ export class PostService {
     if (cachedPosts) return JSON.parse(cachedPosts as string);
 
     const posts = await this.postModel.find({ userId })
-    .populate({
-      path: 'userId',
-      select: 'firstname lastname avatar rankID',
-      populate: {
-        path: 'rankID',
-        select: '_id rankName rankIcon '
-      }
-    }).populate({
-      path: 'userReaction.userId',
-      select: 'firstname lastname avatar rankID',
-      populate: {
-        path: 'rankID',
-        select: '_id rankName rankIcon '
-      }
-    })
+      .populate({
+        path: 'userId',
+        select: 'firstname lastname avatar rankID',
+        populate: {
+          path: 'rankID',
+          select: '_id rankName rankIcon '
+        }
+      })
+      .populate({
+        path: 'userReaction.userId',
+        select: 'firstname lastname avatar rankID',
+        populate: {
+          path: 'rankID',
+          select: '_id rankName rankIcon '
+        }
+      })
       .sort({ createdAt: -1 });
 
     await this.setCache(cacheKey, posts);
@@ -223,17 +222,18 @@ export class PostService {
   async searchPostService(searchKey: string): Promise<Post[]> {
     const response: SearchResponse<any> = await this.searchService.searchPosts(searchKey);
     const postIds = response.hits.hits.map(hit => hit._id);
-  
+
     const posts = await this.postModel.find({ _id: { $in: postIds } })
-    .populate({
-      path: 'userId',
-      select: 'firstname lastname avatar rankID',
-      populate: {
-        path: 'rankID',
-        select: '_id rankName rankIcon'
-      }
-    })      .sort({ createdAt: -1 });
-  
+      .populate({
+        path: 'userId',
+        select: 'firstname lastname avatar rankID',
+        populate: {
+          path: 'rankID',
+          select: '_id rankName rankIcon'
+        }
+      })
+      .sort({ createdAt: -1 });
+
     return posts;
   }
 
@@ -317,14 +317,14 @@ export class PostService {
     const favoritePosts = await this.favoritePostModel.find({ userId });
     const postIds = favoritePosts.map(post => post.postId);
     const posts = await this.postModel.find({ _id: { $in: postIds } })
-    .populate({
-      path: 'userId',
-      select: 'firstname lastname avatar rankID',
-      populate: {
-        path: 'rankID',
-        select: '_id rankName rankIcon'
-      }
-    })
+      .populate({
+        path: 'userId',
+        select: 'firstname lastname avatar rankID',
+        populate: {
+          path: 'rankID',
+          select: '_id rankName rankIcon'
+        }
+      });
     await this.setCache(cacheKey, posts);
     return posts;
   }
@@ -341,7 +341,8 @@ export class PostService {
           path: 'rankID',
           select: '_id rankName rankIcon'
         }
-      })      .sort({ createdAt: -1 })
+      })
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 

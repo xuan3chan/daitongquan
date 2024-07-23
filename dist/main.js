@@ -5712,6 +5712,7 @@ let AuthService = class AuthService {
                     gender: user.gender,
                     nickname: user.nickname,
                     phone: user.phone,
+                    dateAttendance: user.rankScore.attendance.dateAttendance,
                 }
                 : {
                     fullname: admin.fullname,
@@ -9140,7 +9141,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g;
+var _a, _b, _c, _d, _e, _f;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostService = void 0;
 const common_1 = __webpack_require__(6);
@@ -9152,10 +9153,9 @@ const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(22);
 const search_service_1 = __webpack_require__(160);
 let PostService = class PostService {
-    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService, redisService, searchService) {
+    constructor(postModel, favoritePostModel, cloudinaryService, usersService, redisService, searchService) {
         this.postModel = postModel;
         this.favoritePostModel = favoritePostModel;
-        this.commentModel = commentModel;
         this.cloudinaryService = cloudinaryService;
         this.usersService = usersService;
         this.redisService = redisService;
@@ -9235,9 +9235,7 @@ let PostService = class PostService {
                 await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
-        for (const postId of postIds) {
-            await this.searchService.deletePost(postId);
-        }
+        await Promise.all(postIds.map(postId => this.searchService.deletePost(postId)));
         await this.deleteCache([`posts:user:${userId}`, `posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
         return posts;
     }
@@ -9253,7 +9251,7 @@ let PostService = class PostService {
     }
     async updateApproveService(postId, isApproved) {
         const post = await this.postModel.findOne({ _id: postId });
-        if (!post || post.status == 'rejected')
+        if (!post || post.status === 'rejected')
             throw new common_1.BadRequestException('Post not found or rejected');
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
@@ -9283,7 +9281,8 @@ let PostService = class PostService {
                 path: 'rankID',
                 select: '_id rankName rankIcon '
             }
-        }).sort({ createdAt: -1 });
+        })
+            .sort({ createdAt: -1 });
         return posts;
     }
     async viewListPostService() {
@@ -9312,7 +9311,8 @@ let PostService = class PostService {
                 path: 'rankID',
                 select: '_id rankName rankIcon '
             }
-        }).populate({
+        })
+            .populate({
             path: 'userReaction.userId',
             select: 'firstname lastname avatar rankID',
             populate: {
@@ -9335,7 +9335,8 @@ let PostService = class PostService {
                 path: 'rankID',
                 select: '_id rankName rankIcon'
             }
-        }).sort({ createdAt: -1 });
+        })
+            .sort({ createdAt: -1 });
         return posts;
     }
     async addReactionPostService(userId, postId, reaction) {
@@ -9419,7 +9420,8 @@ let PostService = class PostService {
                 path: 'rankID',
                 select: '_id rankName rankIcon'
             }
-        }).sort({ createdAt: -1 })
+        })
+            .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
         return posts;
@@ -9430,8 +9432,7 @@ exports.PostService = PostService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(post_schema_1.Post.name)),
     __param(1, (0, mongoose_1.InjectModel)('FavoritePost')),
-    __param(2, (0, mongoose_1.InjectModel)('Comment')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _f : Object, typeof (_g = typeof search_service_1.SearchService !== "undefined" && search_service_1.SearchService) === "function" ? _g : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _c : Object, typeof (_d = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _d : Object, typeof (_e = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _e : Object, typeof (_f = typeof search_service_1.SearchService !== "undefined" && search_service_1.SearchService) === "function" ? _f : Object])
 ], PostService);
 
 
@@ -12377,52 +12378,94 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var SearchService_1;
 var _a;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SearchService = void 0;
 const common_1 = __webpack_require__(6);
 const elasticsearch_1 = __webpack_require__(158);
-let SearchService = class SearchService {
+let SearchService = SearchService_1 = class SearchService {
     constructor(elasticsearchService) {
         this.elasticsearchService = elasticsearchService;
+        this.logger = new common_1.Logger(SearchService_1.name);
     }
     async indexPost(post) {
-        return this.elasticsearchService.index({
-            index: 'posts',
-            id: post._id,
-            body: post,
-        });
+        try {
+            const { _id, ...body } = post;
+            return await this.elasticsearchService.index({
+                index: 'posts',
+                id: _id.toString(),
+                body,
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to index post: ${post._id}`, error.stack);
+            throw new Error('Failed to index post');
+        }
     }
-    async searchPosts(query) {
-        return this.elasticsearchService.search({
-            index: 'posts',
-            body: {
-                query: {
-                    match: {
-                        content: query,
+    async searchPosts(query, fields = ['content']) {
+        try {
+            return await this.elasticsearchService.search({
+                index: 'posts',
+                body: {
+                    query: {
+                        multi_match: {
+                            query,
+                            fields,
+                        },
                     },
                 },
-            },
-        });
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to search posts with query: ${query}`, error.stack);
+            throw new Error('Failed to search posts');
+        }
     }
     async deletePost(postId) {
-        return this.elasticsearchService.delete({
-            index: 'posts',
-            id: postId,
-        });
+        try {
+            return await this.elasticsearchService.delete({
+                index: 'posts',
+                id: postId,
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to delete post: ${postId}`, error.stack);
+            throw new Error('Failed to delete post');
+        }
     }
     async updatePost(postId, updatedPost) {
-        return this.elasticsearchService.update({
-            index: 'posts',
-            id: postId,
-            body: {
-                doc: updatedPost,
-            },
-        });
+        try {
+            const { _id, ...body } = updatedPost;
+            return await this.elasticsearchService.update({
+                index: 'posts',
+                id: postId,
+                body: {
+                    doc: body,
+                },
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to update post: ${postId}`, error.stack);
+            throw new Error('Failed to update post');
+        }
+    }
+    async bulkIndexPosts(posts) {
+        try {
+            const operations = posts.flatMap(post => {
+                const { _id, ...body } = post;
+                return [{ index: { _index: 'posts', _id: _id.toString() } }, body];
+            });
+            return await this.elasticsearchService.bulk({ operations });
+        }
+        catch (error) {
+            this.logger.error('Failed to bulk index posts', error.stack);
+            throw new Error('Failed to bulk index posts');
+        }
     }
 };
 exports.SearchService = SearchService;
-exports.SearchService = SearchService = __decorate([
+exports.SearchService = SearchService = SearchService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [typeof (_a = typeof elasticsearch_1.ElasticsearchService !== "undefined" && elasticsearch_1.ElasticsearchService) === "function" ? _a : Object])
 ], SearchService);
@@ -12490,7 +12533,7 @@ exports.SearchService = SearchService = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("3014d18b5d120bfb4884")
+/******/ 		__webpack_require__.h = () => ("1582eedb94e0054d9e50")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
