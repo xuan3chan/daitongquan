@@ -147,6 +147,8 @@ export class UsersService {
     ).exec();
     if (user) {
       await this.deleteCache(`user:${account}`);
+      await this.deleteCache(`user:${user._id}:profile`);
+
     }
     return user;
   }
@@ -166,6 +168,8 @@ export class UsersService {
     };
     await user.save();
     await this.deleteCache(`user:authCode:${authCode}`);
+    await this.deleteCache(`user:${user._id}:profile`);
+
     return user;
   }
 
@@ -198,6 +202,7 @@ export class UsersService {
     const savedUser = await newUser.save();
     await this.deleteCache(`user:${email}`);
     await this.deleteCache(`user:username:${username}`);
+
     return savedUser;
   }
 
@@ -386,6 +391,7 @@ export class UsersService {
     await this.checkRankService(userId);
     await user.save();
     await this.deleteCache(`user:${userId}`);
+    await this.deleteCache(`user:${userId}:profile`);
     return user;
   }
 
@@ -414,6 +420,8 @@ export class UsersService {
     user.rankScore.attendance.dateAttendance = new Date();
     await user.save();
     await this.deleteCache(`user:${userId}`);
+    await this.deleteCache(`user:${userId}:profile`);
+
     return { message: 'Attendance marked successfully' };
   }
 

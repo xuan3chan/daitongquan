@@ -21,6 +21,10 @@ export class RankService {
     await this.redisService.setJSON(key, '$', JSON.stringify(data));
   }
 
+  private async plushCache() {
+    await this.redisService.flushAll();
+  }
+
   async createRankService(
     rankName: string,
     attendanceScore: number,
@@ -44,7 +48,8 @@ export class RankService {
     const savedRank = await rank.save();
 
     await this.deleteCache('ranks:all');
-    
+    await this.setCache(`ranks:detail:${savedRank._id}`, savedRank);
+    await this.plushCache();
     return savedRank;
   }
 
@@ -76,6 +81,7 @@ export class RankService {
 
     await this.deleteCache('ranks:all');
     await this.deleteCache(`ranks:detail:${rankId}`);
+    await this.plushCache();
 
     return updatedRank;
   }
@@ -90,6 +96,8 @@ export class RankService {
 
     await this.deleteCache('ranks:all');
     await this.deleteCache(`ranks:detail:${rankId}`);
+    
+    await this.plushCache();
 
     return { message: 'Delete rank successfully' };
   }
@@ -98,10 +106,8 @@ export class RankService {
     const cacheKey = 'ranks:all';
     const cachedRanks = await this.redisService.getJSON(cacheKey, '$');
     if (cachedRanks) {
-      console.log('cache');
       return JSON.parse(cachedRanks as string);
     }
-    console.log('non cache');
     const ranks = await this.RankModel.find();
     await this.setCache(cacheKey, ranks);
 

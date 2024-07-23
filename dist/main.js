@@ -741,6 +741,7 @@ let UsersService = class UsersService {
         const user = await this.userModel.findOneAndUpdate({ $or: [{ email: account }, { username: account }] }, { refreshToken }, { new: true }).exec();
         if (user) {
             await this.deleteCache(`user:${account}`);
+            await this.deleteCache(`user:${user._id}:profile`);
         }
         return user;
     }
@@ -755,6 +756,7 @@ let UsersService = class UsersService {
         };
         await user.save();
         await this.deleteCache(`user:authCode:${authCode}`);
+        await this.deleteCache(`user:${user._id}:profile`);
         return user;
     }
     async createUserService(email, password, username, firstname, lastname, refreshToken) {
@@ -931,6 +933,7 @@ let UsersService = class UsersService {
         await this.checkRankService(userId);
         await user.save();
         await this.deleteCache(`user:${userId}`);
+        await this.deleteCache(`user:${userId}:profile`);
         return user;
     }
     async attendanceService(userId) {
@@ -958,6 +961,7 @@ let UsersService = class UsersService {
         user.rankScore.attendance.dateAttendance = new Date();
         await user.save();
         await this.deleteCache(`user:${userId}`);
+        await this.deleteCache(`user:${userId}:profile`);
         return { message: 'Attendance marked successfully' };
     }
     async checkRankService(userId) {
@@ -8818,6 +8822,9 @@ let RankService = class RankService {
     async setCache(key, data) {
         await this.redisService.setJSON(key, '$', JSON.stringify(data));
     }
+    async plushCache() {
+        await this.redisService.flushAll();
+    }
     async createRankService(rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
         const existedRank = await this.RankModel.findOne({ rankName });
         if (existedRank) {
@@ -8833,6 +8840,8 @@ let RankService = class RankService {
         });
         const savedRank = await rank.save();
         await this.deleteCache('ranks:all');
+        await this.setCache(`ranks:detail:${savedRank._id}`, savedRank);
+        await this.plushCache();
         return savedRank;
     }
     async updateRankService(rankId, rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
@@ -8849,6 +8858,7 @@ let RankService = class RankService {
         const updatedRank = await existedRank.save();
         await this.deleteCache('ranks:all');
         await this.deleteCache(`ranks:detail:${rankId}`);
+        await this.plushCache();
         return updatedRank;
     }
     async deleteRankService(rankId) {
@@ -8860,16 +8870,15 @@ let RankService = class RankService {
         await existedRank.deleteOne();
         await this.deleteCache('ranks:all');
         await this.deleteCache(`ranks:detail:${rankId}`);
+        await this.plushCache();
         return { message: 'Delete rank successfully' };
     }
     async getRankService() {
         const cacheKey = 'ranks:all';
         const cachedRanks = await this.redisService.getJSON(cacheKey, '$');
         if (cachedRanks) {
-            console.log('cache');
             return JSON.parse(cachedRanks);
         }
-        console.log('non cache');
         const ranks = await this.RankModel.find();
         await this.setCache(cacheKey, ranks);
         return ranks;
@@ -9084,12 +9093,14 @@ const admin_module_1 = __webpack_require__(70);
 const favoritePost_schema_1 = __webpack_require__(128);
 const comment_schema_1 = __webpack_require__(129);
 const redis_module_1 = __webpack_require__(62);
+const search_module_1 = __webpack_require__(157);
 let PostModule = class PostModule {
 };
 exports.PostModule = PostModule;
 exports.PostModule = PostModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            search_module_1.SearchModule,
             cloudinary_module_1.CloudinaryModule,
             users_module_1.UsersModule,
             admin_module_1.AdminModule,
@@ -9129,7 +9140,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f;
+var _a, _b, _c, _d, _e, _f, _g;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostService = void 0;
 const common_1 = __webpack_require__(6);
@@ -9139,14 +9150,16 @@ const post_schema_1 = __webpack_require__(125);
 const cloudinary_service_1 = __webpack_require__(14);
 const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(22);
+const search_service_1 = __webpack_require__(160);
 let PostService = class PostService {
-    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService, redisService) {
+    constructor(postModel, favoritePostModel, commentModel, cloudinaryService, usersService, redisService, searchService) {
         this.postModel = postModel;
         this.favoritePostModel = favoritePostModel;
         this.commentModel = commentModel;
         this.cloudinaryService = cloudinaryService;
         this.usersService = usersService;
         this.redisService = redisService;
+        this.searchService = searchService;
     }
     async deleteCache(key) {
         const keys = Array.isArray(key) ? key : [key];
@@ -9163,6 +9176,7 @@ let PostService = class PostService {
         }
         await this.usersService.updateScoreRankService(userId, true);
         const savedPost = await post.save();
+        await this.searchService.indexPost(savedPost);
         await this.deleteCache(`posts:user:${userId}`);
         return savedPost;
     }
@@ -9180,6 +9194,7 @@ let PostService = class PostService {
         if (isShow !== undefined)
             post.isShow = isShow;
         const updatedPost = await post.save();
+        await this.searchService.updatePost(postId, updatedPost);
         await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return updatedPost;
     }
@@ -9189,6 +9204,7 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         if (post.postImage)
             await this.cloudinaryService.deleteMediaService(post.postImage);
+        await this.searchService.deletePost(postId);
         await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return post;
     }
@@ -9199,7 +9215,14 @@ let PostService = class PostService {
             return JSON.parse(cachedPost);
         const post = await this.postModel.findById(postId)
             .populate('userReaction.userId', 'firstname lastname avatar')
-            .populate('userId', 'firstname lastname avatar rankID');
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon '
+            }
+        });
         await this.setCache(cacheKey, post);
         return post;
     }
@@ -9212,6 +9235,9 @@ let PostService = class PostService {
                 await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
+        for (const postId of postIds) {
+            await this.searchService.deletePost(postId);
+        }
         await this.deleteCache([`posts:user:${userId}`, `posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
         return posts;
     }
@@ -9221,26 +9247,28 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         post.status = status;
         const updatedPost = await post.save();
+        await this.searchService.updatePost(postId, updatedPost);
         await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
         return updatedPost;
     }
     async updateApproveService(postId, isApproved) {
         const post = await this.postModel.findOne({ _id: postId });
-        if (!post)
-            throw new common_1.BadRequestException('Post not found');
+        if (!post || post.status == 'rejected')
+            throw new common_1.BadRequestException('Post not found or rejected');
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
         const updatedPost = await post.save();
+        await this.searchService.updatePost(postId, updatedPost);
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
         return updatedPost;
     }
     async rejectPostService(postId) {
-        const post = await this.postModel.findOne({ _id: postId
-        });
+        const post = await this.postModel.findOne({ _id: postId });
         if (!post)
             throw new common_1.BadRequestException('Post not found');
         post.status = 'rejected';
         const updatedPost = await post.save();
+        await this.searchService.updatePost(postId, updatedPost);
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
         return updatedPost;
     }
@@ -9248,13 +9276,26 @@ let PostService = class PostService {
         const posts = await this.postModel
             .find({ status: 'active', isShow: true })
             .populate('userReaction.userId', 'firstname lastname avatar')
-            .populate('userId', 'firstname lastname avatar rankID')
-            .sort({ createAt: -1 });
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon '
+            }
+        }).sort({ createdAt: -1 });
         return posts;
     }
     async viewListPostService() {
         const posts = await this.postModel.find()
-            .populate('userId', 'firstname lastname avatar rankID')
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon '
+            }
+        })
             .sort({ createdAt: -1 });
         return posts;
     }
@@ -9264,16 +9305,37 @@ let PostService = class PostService {
         if (cachedPosts)
             return JSON.parse(cachedPosts);
         const posts = await this.postModel.find({ userId })
-            .populate('userId', 'firstname lastname avatar rankID')
-            .populate('userReaction.userId', 'firstname lastname avatar rankID')
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon '
+            }
+        }).populate({
+            path: 'userReaction.userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon '
+            }
+        })
             .sort({ createdAt: -1 });
         await this.setCache(cacheKey, posts);
         return posts;
     }
     async searchPostService(searchKey) {
-        const posts = await this.postModel
-            .find({ $text: { $search: searchKey } })
-            .sort({ createdAt: -1 });
+        const response = await this.searchService.searchPosts(searchKey);
+        const postIds = response.hits.hits.map(hit => hit._id);
+        const posts = await this.postModel.find({ _id: { $in: postIds } })
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon'
+            }
+        }).sort({ createdAt: -1 });
         return posts;
     }
     async addReactionPostService(userId, postId, reaction) {
@@ -9298,8 +9360,9 @@ let PostService = class PostService {
         if (!updatedPost)
             throw new common_1.BadRequestException('Post not found or you have already reacted to this post');
         if (!postExists && reaction === 'like') {
-            await this.usersService.updateScoreRankService(updatedPost.userId.toString(), true, false, false);
+            await this.usersService.updateScoreRankService(updatedPost.userId.toString(), false, false, true);
         }
+        await this.searchService.updatePost(postId, updatedPost);
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return { message };
     }
@@ -9310,6 +9373,7 @@ let PostService = class PostService {
         }, { new: true });
         if (!post)
             throw new common_1.BadRequestException('You have not reacted to this post');
+        await this.searchService.updatePost(postId, post);
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return post;
     }
@@ -9332,7 +9396,14 @@ let PostService = class PostService {
         const favoritePosts = await this.favoritePostModel.find({ userId });
         const postIds = favoritePosts.map(post => post.postId);
         const posts = await this.postModel.find({ _id: { $in: postIds } })
-            .populate('userId', 'firstname lastname avatar rankID');
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon'
+            }
+        });
         await this.setCache(cacheKey, posts);
         return posts;
     }
@@ -9341,8 +9412,14 @@ let PostService = class PostService {
         limit = limit || 10;
         const posts = await this.postModel
             .find({ status: 'active', isShow: true })
-            .populate('userId', 'firstname lastname avatar rankID')
-            .sort({ createdAt: -1 })
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: '_id rankName rankIcon'
+            }
+        }).sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
         return posts;
@@ -9354,7 +9431,7 @@ exports.PostService = PostService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(post_schema_1.Post.name)),
     __param(1, (0, mongoose_1.InjectModel)('FavoritePost')),
     __param(2, (0, mongoose_1.InjectModel)('Comment')),
-    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _f : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _a : Object, typeof (_b = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _b : Object, typeof (_c = typeof mongoose_2.Model !== "undefined" && mongoose_2.Model) === "function" ? _c : Object, typeof (_d = typeof cloudinary_service_1.CloudinaryService !== "undefined" && cloudinary_service_1.CloudinaryService) === "function" ? _d : Object, typeof (_e = typeof users_service_1.UsersService !== "undefined" && users_service_1.UsersService) === "function" ? _e : Object, typeof (_f = typeof redis_service_1.RedisService !== "undefined" && redis_service_1.RedisService) === "function" ? _f : Object, typeof (_g = typeof search_service_1.SearchService !== "undefined" && search_service_1.SearchService) === "function" ? _g : Object])
 ], PostService);
 
 
@@ -12234,21 +12311,122 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SearchModule = void 0;
 const common_1 = __webpack_require__(6);
+const elasticsearch_1 = __webpack_require__(158);
+const config_1 = __webpack_require__(8);
+const search_service_1 = __webpack_require__(160);
 let SearchModule = class SearchModule {
 };
 exports.SearchModule = SearchModule;
 exports.SearchModule = SearchModule = __decorate([
-    (0, common_1.Module)({})
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot({
+                envFilePath: '.env',
+                isGlobal: true,
+            }),
+            elasticsearch_1.ElasticsearchModule.registerAsync({
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: async (configService) => {
+                    const node = configService.get('ELASTICSEARCH_NODE');
+                    const username = configService.get('ELASTICSEARCH_USERNAME');
+                    const password = configService.get('ELASTICSEARCH_PASSWORD');
+                    if (!node || !username || !password) {
+                        throw new Error('Elasticsearch configuration is missing in environment variables');
+                    }
+                    const config = {
+                        node,
+                        auth: { username, password },
+                    };
+                    return config;
+                },
+            }),
+        ],
+        providers: [search_service_1.SearchService],
+        exports: [elasticsearch_1.ElasticsearchModule, search_service_1.SearchService],
+    })
 ], SearchModule);
 
 
 /***/ }),
-/* 158 */,
+/* 158 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("@nestjs/elasticsearch");
+
+/***/ }),
 /* 159 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("compression");
+
+/***/ }),
+/* 160 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchService = void 0;
+const common_1 = __webpack_require__(6);
+const elasticsearch_1 = __webpack_require__(158);
+let SearchService = class SearchService {
+    constructor(elasticsearchService) {
+        this.elasticsearchService = elasticsearchService;
+    }
+    async indexPost(post) {
+        return this.elasticsearchService.index({
+            index: 'posts',
+            id: post._id,
+            body: post,
+        });
+    }
+    async searchPosts(query) {
+        return this.elasticsearchService.search({
+            index: 'posts',
+            body: {
+                query: {
+                    match: {
+                        content: query,
+                    },
+                },
+            },
+        });
+    }
+    async deletePost(postId) {
+        return this.elasticsearchService.delete({
+            index: 'posts',
+            id: postId,
+        });
+    }
+    async updatePost(postId, updatedPost) {
+        return this.elasticsearchService.update({
+            index: 'posts',
+            id: postId,
+            body: {
+                doc: updatedPost,
+            },
+        });
+    }
+};
+exports.SearchService = SearchService;
+exports.SearchService = SearchService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof elasticsearch_1.ElasticsearchService !== "undefined" && elasticsearch_1.ElasticsearchService) === "function" ? _a : Object])
+], SearchService);
+
 
 /***/ })
 /******/ 	]);
@@ -12312,7 +12490,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("4714f30811f9e2816c3e")
+/******/ 		__webpack_require__.h = () => ("3014d18b5d120bfb4884")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

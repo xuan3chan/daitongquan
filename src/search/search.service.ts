@@ -5,35 +5,43 @@ import { ElasticsearchService } from '@nestjs/elasticsearch';
 
 @Injectable()
 export class SearchService {
-  // constructor(private readonly elasticsearchService: ElasticsearchService) {}
+  constructor(private readonly elasticsearchService: ElasticsearchService) {}
 
-  // async createIndex(index: string) {
-  //   return await this.elasticsearchService.indices.create({
-  //     index,
-  //   });
-  // }
+  async indexPost(post: any) {
+    return this.elasticsearchService.index({
+      index: 'posts',
+      id: post._id,
+      body: post,
+    });
+  }
 
-  // async indexDocument(index: string, id: string, body: any) {
-  //   return await this.elasticsearchService.index({
-  //     index,
-  //     id,
-  //     body,
-  //   });
-  // }
+  async searchPosts(query: string) {
+    return this.elasticsearchService.search({
+      index: 'posts',
+      body: {
+        query: {
+          match: {
+            content: query,
+          },
+        },
+      },
+    });
+  }
 
-  // async search(index: string, query: any) {
-  //   return await this.elasticsearchService.search({
-  //     index,
-  //     body: {
-  //       query,
-  //     },
-  //   });
-  // }
+  async deletePost(postId: string) {
+    return this.elasticsearchService.delete({
+      index: 'posts',
+      id: postId,
+    });
+  }
 
-  // async deleteDocument(index: string, id: string) {
-  //   return await this.elasticsearchService.delete({
-  //     index,
-  //     id,
-  //   });
-  // }
+  async updatePost(postId: string, updatedPost: any) {
+    return this.elasticsearchService.update({
+      index: 'posts',
+      id: postId,
+      body: {
+        doc: updatedPost,
+      },
+    });
+  }
 }
