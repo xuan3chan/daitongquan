@@ -9163,7 +9163,7 @@ let PostService = class PostService {
     }
     async deleteCache(key) {
         const keys = Array.isArray(key) ? key : [key];
-        await Promise.all(keys.map(k => this.redisService.delJSON(k, '$')));
+        await Promise.all(keys.map((k) => this.redisService.delJSON(k, '$')));
     }
     async setCache(key, data) {
         await this.redisService.setJSON(key, '$', JSON.stringify(data));
@@ -9194,8 +9194,18 @@ let PostService = class PostService {
         if (isShow !== undefined)
             post.isShow = isShow;
         const updatedPost = await post.save();
-        await this.searchService.updatePost(postId, updatedPost);
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.updatePost(postId, updatedPost);
+        }
+        else {
+            await this.searchService.indexPost(updatedPost);
+        }
+        await this.deleteCache([
+            `posts:user:${userId}`,
+            `posts:detail:${postId}`,
+            `posts:favorites:${userId}`,
+        ]);
         return updatedPost;
     }
     async deletePostService(userId, postId) {
@@ -9204,8 +9214,15 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         if (post.postImage)
             await this.cloudinaryService.deleteMediaService(post.postImage);
-        await this.searchService.deletePost(postId);
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.deletePost(postId);
+        }
+        await this.deleteCache([
+            `posts:user:${userId}`,
+            `posts:detail:${postId}`,
+            `posts:favorites:${userId}`,
+        ]);
         return post;
     }
     async viewDetailPostService(postId) {
@@ -9213,15 +9230,16 @@ let PostService = class PostService {
         const cachedPost = await this.redisService.getJSON(cacheKey, '$');
         if (cachedPost)
             return JSON.parse(cachedPost);
-        const post = await this.postModel.findById(postId)
+        const post = await this.postModel
+            .findById(postId)
             .populate('userReaction.userId', 'firstname lastname avatar')
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon '
-            }
+                select: '_id rankName rankIcon ',
+            },
         });
         await this.setCache(cacheKey, post);
         return post;
@@ -9235,8 +9253,12 @@ let PostService = class PostService {
                 await this.cloudinaryService.deleteMediaService(post.postImage);
         }
         await this.postModel.deleteMany({ _id: { $in: postIds } });
-        await Promise.all(postIds.map(postId => this.searchService.deletePost(postId)));
-        await this.deleteCache([`posts:user:${userId}`, `posts:favorites:${userId}`, ...postIds.map(id => `posts:detail:${id}`)]);
+        await Promise.all(postIds.map((postId) => this.searchService.deletePost(postId)));
+        await this.deleteCache([
+            `posts:user:${userId}`,
+            `posts:favorites:${userId}`,
+            ...postIds.map((id) => `posts:detail:${id}`),
+        ]);
         return posts;
     }
     async updateStatusService(userId, postId, status) {
@@ -9245,8 +9267,18 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         post.status = status;
         const updatedPost = await post.save();
-        await this.searchService.updatePost(postId, updatedPost);
-        await this.deleteCache([`posts:user:${userId}`, `posts:detail:${postId}`, `posts:favorites:${userId}`]);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.updatePost(postId, updatedPost);
+        }
+        else {
+            await this.searchService.indexPost(updatedPost);
+        }
+        await this.deleteCache([
+            `posts:user:${userId}`,
+            `posts:detail:${postId}`,
+            `posts:favorites:${userId}`,
+        ]);
         return updatedPost;
     }
     async updateApproveService(postId, isApproved) {
@@ -9256,8 +9288,18 @@ let PostService = class PostService {
         post.isApproved = isApproved;
         post.status = isApproved ? 'active' : 'inactive';
         const updatedPost = await post.save();
-        await this.searchService.updatePost(postId, updatedPost);
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.updatePost(postId, updatedPost);
+        }
+        else {
+            await this.searchService.indexPost(updatedPost);
+        }
+        await this.deleteCache([
+            `posts:detail:${postId}`,
+            `posts:user:${post.userId}`,
+            `posts:favorites:${post.userId}`,
+        ]);
         return updatedPost;
     }
     async rejectPostService(postId) {
@@ -9267,7 +9309,11 @@ let PostService = class PostService {
         post.status = 'rejected';
         const updatedPost = await post.save();
         await this.searchService.updatePost(postId, updatedPost);
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${post.userId}`, `posts:favorites:${post.userId}`]);
+        await this.deleteCache([
+            `posts:detail:${postId}`,
+            `posts:user:${post.userId}`,
+            `posts:favorites:${post.userId}`,
+        ]);
         return updatedPost;
     }
     async viewAllPostService() {
@@ -9279,21 +9325,22 @@ let PostService = class PostService {
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon '
-            }
+                select: '_id rankName rankIcon ',
+            },
         })
             .sort({ createdAt: -1 });
         return posts;
     }
     async viewListPostService() {
-        const posts = await this.postModel.find()
+        const posts = await this.postModel
+            .find()
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon '
-            }
+                select: '_id rankName rankIcon ',
+            },
         })
             .sort({ createdAt: -1 });
         return posts;
@@ -9303,22 +9350,23 @@ let PostService = class PostService {
         const cachedPosts = await this.redisService.getJSON(cacheKey, '$');
         if (cachedPosts)
             return JSON.parse(cachedPosts);
-        const posts = await this.postModel.find({ userId })
+        const posts = await this.postModel
+            .find({ userId })
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon '
-            }
+                select: '_id rankName rankIcon ',
+            },
         })
             .populate({
             path: 'userReaction.userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon '
-            }
+                select: '_id rankName rankIcon ',
+            },
         })
             .sort({ createdAt: -1 });
         await this.setCache(cacheKey, posts);
@@ -9326,15 +9374,16 @@ let PostService = class PostService {
     }
     async searchPostService(searchKey) {
         const response = await this.searchService.searchPosts(searchKey);
-        const postIds = response.hits.hits.map(hit => hit._id);
-        const posts = await this.postModel.find({ _id: { $in: postIds } })
+        const postIds = response.hits.hits.map((hit) => hit._id);
+        const posts = await this.postModel
+            .find({ _id: { $in: postIds } })
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon'
-            }
+                select: '_id rankName rankIcon',
+            },
         })
             .sort({ createdAt: -1 });
         return posts;
@@ -9370,7 +9419,11 @@ let PostService = class PostService {
         else {
             await this.searchService.indexPost(updatedPost);
         }
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
+        await this.deleteCache([
+            `posts:detail:${postId}`,
+            `posts:user:${userId}`,
+            `posts:favorites:${userId}`,
+        ]);
         return { message };
     }
     async removeReactionPostService(userId, postId) {
@@ -9387,18 +9440,28 @@ let PostService = class PostService {
         else {
             await this.searchService.indexPost(post);
         }
-        await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
+        await this.deleteCache([
+            `posts:detail:${postId}`,
+            `posts:user:${userId}`,
+            `posts:favorites:${userId}`,
+        ]);
         return post;
     }
     async addFavoritePostService(userId, postId) {
         const favoritePost = new this.favoritePostModel({ userId, postId });
         await favoritePost.save();
-        await this.deleteCache([`posts:favorites:${userId}`, `posts:detail:${postId}`]);
+        await this.deleteCache([
+            `posts:favorites:${userId}`,
+            `posts:detail:${postId}`,
+        ]);
         return { message: 'Favorite post added successfully' };
     }
     async removeFavoritePostService(userId, postId) {
         await this.favoritePostModel.findOneAndDelete({ userId, postId });
-        await this.deleteCache([`posts:favorites:${userId}`, `posts:detail:${postId}`]);
+        await this.deleteCache([
+            `posts:favorites:${userId}`,
+            `posts:detail:${postId}`,
+        ]);
         return { message: 'Favorite post removed successfully' };
     }
     async viewMyFavoritePostService(userId) {
@@ -9407,15 +9470,16 @@ let PostService = class PostService {
         if (cachedPosts)
             return JSON.parse(cachedPosts);
         const favoritePosts = await this.favoritePostModel.find({ userId });
-        const postIds = favoritePosts.map(post => post.postId);
-        const posts = await this.postModel.find({ _id: { $in: postIds } })
+        const postIds = favoritePosts.map((post) => post.postId);
+        const posts = await this.postModel
+            .find({ _id: { $in: postIds } })
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon'
-            }
+                select: '_id rankName rankIcon',
+            },
         });
         await this.setCache(cacheKey, posts);
         return posts;
@@ -9430,8 +9494,8 @@ let PostService = class PostService {
             select: 'firstname lastname avatar rankID',
             populate: {
                 path: 'rankID',
-                select: '_id rankName rankIcon'
-            }
+                select: '_id rankName rankIcon',
+            },
         })
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
@@ -12558,7 +12622,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("5b6db7a8568d81b91537")
+/******/ 		__webpack_require__.h = () => ("e94641a44a4c896f3bde")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
