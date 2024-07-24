@@ -45,45 +45,36 @@ export class CloudinaryService {
   }
 
   async uploadImageService(
-    imageName: string,
-    file: Express.Multer.File,
-  ): Promise<{
-    uploadResult: UploadApiResponse | UploadApiErrorResponse,
-  }> {
-    const timestamp = new Date();
-    this.validateFile(file, 'image');
+      imageName: string,
+      file: Express.Multer.File,
+    ): Promise<{
+      uploadResult: UploadApiResponse | UploadApiErrorResponse,
+    }> {
+      const timestamp = new Date();
+      this.validateFile(file, 'image');
+      
+      // Normalize the string to remove diacritics (accents) and then remove non-alphanumeric characters
+      const normalizedImageName = imageName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25);
+      
+      const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
+      const uploadResult = await this.uploadFile(file, { public_id: publicId });
     
-    // Normalize the string to remove diacritics (accents) and then remove non-alphanumeric characters
-    const normalizedImageName = imageName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '');
-    
-    const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
-    const uploadResult = await this.uploadFile(file, { public_id: publicId });
-  
-    return { uploadResult };
-  }
+      return { uploadResult };
+    }
 
   async uploadVideoService(
     videoName: string,
     file: Express.Multer.File,
   ): Promise<{
     uploadResult: UploadApiResponse | UploadApiErrorResponse,
-    optimizedUrl: string
+   
   }> {
     this.validateFile(file, 'video');
     const publicId = `daitongquan/videos/${videoName}`;
     const uploadResult = await this.uploadFile(file, { public_id: publicId, resource_type: 'video' });
 
-    const optimizedUrl = cloudinary.url(publicId, {
-      transformation: [
-        { width: 1000, crop: "scale" },
-        { quality: "auto" },
-        { fetch_format: "auto" }
-      ],
-      resource_type: 'video',
-    });
-
-    return { uploadResult, optimizedUrl };
+    return { uploadResult };
   }
 
   async deleteMediaService(url: string): Promise<UploadApiResponse | UploadApiErrorResponse> {

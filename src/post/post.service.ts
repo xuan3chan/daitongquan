@@ -7,7 +7,7 @@ import { UsersService } from 'src/users/users.service';
 import { FavoritePost } from './schema/favoritePost.schema';
 import { RedisService } from 'src/redis/redis.service';
 import { SearchService } from '../search/search.service';
-import { SearchResponse } from '@elastic/elasticsearch/lib/api/types';
+import { AggregationsAggregate, SearchResponse, SearchResponseBody } from '@elastic/elasticsearch/lib/api/types';
 
 @Injectable()
 export class PostService {
@@ -48,7 +48,7 @@ export class PostService {
     const savedPost = await post.save();
 
     // Index the new post in Elasticsearch
-    await this.searchService.indexPost(savedPost);
+    await this.searchService.indexPost(savedPost.toObject());
 
     await this.deleteCache(`posts:user:${userId}`);
     return savedPost;
@@ -81,10 +81,10 @@ export class PostService {
     const documentExists = await this.searchService.checkDocumentExists(postId);
     if (documentExists) {
       // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost);
+      await this.searchService.updatePost(postId, updatedPost.toObject());
     } else {
       // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost);
+      await this.searchService.indexPost(updatedPost.toObject());
     }
     await this.deleteCache([
       `posts:user:${userId}`,
@@ -178,10 +178,10 @@ export class PostService {
     const documentExists = await this.searchService.checkDocumentExists(postId);
     if (documentExists) {
       // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost);
+      await this.searchService.updatePost(postId, updatedPost.toObject());
     } else {
       // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost);
+      await this.searchService.indexPost(updatedPost.toObject());
     }
 
     await this.deleteCache([
@@ -208,10 +208,10 @@ export class PostService {
     const documentExists = await this.searchService.checkDocumentExists(postId);
     if (documentExists) {
       // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost);
+      await this.searchService.updatePost(postId, updatedPost.toObject());
     } else {
       // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost);
+      await this.searchService.indexPost(updatedPost.toObject());
     }
 
     await this.deleteCache([
@@ -230,7 +230,7 @@ export class PostService {
     const updatedPost = await post.save();
 
     // Update the post in Elasticsearch
-    await this.searchService.updatePost(postId, updatedPost);
+    await this.searchService.updatePost(postId, updatedPost.toObject());
 
     await this.deleteCache([
       `posts:detail:${postId}`,
@@ -301,24 +301,13 @@ export class PostService {
     return posts;
   }
 
-  async searchPostService(searchKey: string): Promise<Post[]> {
-    const response: SearchResponse<any> =
-      await this.searchService.searchPosts(searchKey);
-    const postIds = response.hits.hits.map((hit) => hit._id);
-
-    const posts = await this.postModel
-      .find({ _id: { $in: postIds } })
-      .populate({
-        path: 'userId',
-        select: 'firstname lastname avatar rankID',
-        populate: {
-          path: 'rankID',
-          select: '_id rankName rankIcon',
-        },
-      })
-      .sort({ createdAt: -1 });
-
-    return posts;
+  
+  
+  async searchPostService(searchKey: string): Promise<any> {
+    const searchResult = await this.searchService.searchPosts(searchKey);
+    // Filter posts where status is 'active' and isShow is true
+    const result = searchResult.filter(post => post.status === 'active' && post.isShow === true);
+    return result;
   }
 
   async addReactionPostService(
@@ -367,10 +356,10 @@ export class PostService {
     const documentExists = await this.searchService.checkDocumentExists(postId);
     if (documentExists) {
       // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost);
+      await this.searchService.updatePost(postId, updatedPost.toObject());
     } else {
       // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost);
+      await this.searchService.indexPost(updatedPost.toObject());
     }
     await this.deleteCache([
       `posts:detail:${postId}`,
@@ -399,10 +388,10 @@ export class PostService {
     const documentExists = await this.searchService.checkDocumentExists(postId);
     if (documentExists) {
       // If the document exists, update it
-      await this.searchService.updatePost(postId, post);
+      await this.searchService.updatePost(postId, post.toObject());
     } else {
       // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(post);
+      await this.searchService.indexPost(post.toObject());
     }
 
     await this.deleteCache([

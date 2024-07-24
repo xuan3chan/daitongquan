@@ -1215,7 +1215,7 @@ let CloudinaryService = class CloudinaryService {
         const timestamp = new Date();
         this.validateFile(file, 'image');
         const normalizedImageName = imageName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '');
+        const newImageName = normalizedImageName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 25);
         const publicId = `daitongquan/images/${newImageName}-${timestamp.getTime()}`;
         const uploadResult = await this.uploadFile(file, { public_id: publicId });
         return { uploadResult };
@@ -1224,15 +1224,7 @@ let CloudinaryService = class CloudinaryService {
         this.validateFile(file, 'video');
         const publicId = `daitongquan/videos/${videoName}`;
         const uploadResult = await this.uploadFile(file, { public_id: publicId, resource_type: 'video' });
-        const optimizedUrl = cloudinary_1.v2.url(publicId, {
-            transformation: [
-                { width: 1000, crop: "scale" },
-                { quality: "auto" },
-                { fetch_format: "auto" }
-            ],
-            resource_type: 'video',
-        });
-        return { uploadResult, optimizedUrl };
+        return { uploadResult };
     }
     async deleteMediaService(url) {
         const publicId = url.split('/').slice(-2).join('/').split('.')[0];
@@ -9176,7 +9168,7 @@ let PostService = class PostService {
         }
         await this.usersService.updateScoreRankService(userId, true);
         const savedPost = await post.save();
-        await this.searchService.indexPost(savedPost);
+        await this.searchService.indexPost(savedPost.toObject());
         await this.deleteCache(`posts:user:${userId}`);
         return savedPost;
     }
@@ -9196,10 +9188,10 @@ let PostService = class PostService {
         const updatedPost = await post.save();
         const documentExists = await this.searchService.checkDocumentExists(postId);
         if (documentExists) {
-            await this.searchService.updatePost(postId, updatedPost);
+            await this.searchService.updatePost(postId, updatedPost.toObject());
         }
         else {
-            await this.searchService.indexPost(updatedPost);
+            await this.searchService.indexPost(updatedPost.toObject());
         }
         await this.deleteCache([
             `posts:user:${userId}`,
@@ -9269,10 +9261,10 @@ let PostService = class PostService {
         const updatedPost = await post.save();
         const documentExists = await this.searchService.checkDocumentExists(postId);
         if (documentExists) {
-            await this.searchService.updatePost(postId, updatedPost);
+            await this.searchService.updatePost(postId, updatedPost.toObject());
         }
         else {
-            await this.searchService.indexPost(updatedPost);
+            await this.searchService.indexPost(updatedPost.toObject());
         }
         await this.deleteCache([
             `posts:user:${userId}`,
@@ -9290,10 +9282,10 @@ let PostService = class PostService {
         const updatedPost = await post.save();
         const documentExists = await this.searchService.checkDocumentExists(postId);
         if (documentExists) {
-            await this.searchService.updatePost(postId, updatedPost);
+            await this.searchService.updatePost(postId, updatedPost.toObject());
         }
         else {
-            await this.searchService.indexPost(updatedPost);
+            await this.searchService.indexPost(updatedPost.toObject());
         }
         await this.deleteCache([
             `posts:detail:${postId}`,
@@ -9308,7 +9300,7 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('Post not found');
         post.status = 'rejected';
         const updatedPost = await post.save();
-        await this.searchService.updatePost(postId, updatedPost);
+        await this.searchService.updatePost(postId, updatedPost.toObject());
         await this.deleteCache([
             `posts:detail:${postId}`,
             `posts:user:${post.userId}`,
@@ -9373,20 +9365,9 @@ let PostService = class PostService {
         return posts;
     }
     async searchPostService(searchKey) {
-        const response = await this.searchService.searchPosts(searchKey);
-        const postIds = response.hits.hits.map((hit) => hit._id);
-        const posts = await this.postModel
-            .find({ _id: { $in: postIds } })
-            .populate({
-            path: 'userId',
-            select: 'firstname lastname avatar rankID',
-            populate: {
-                path: 'rankID',
-                select: '_id rankName rankIcon',
-            },
-        })
-            .sort({ createdAt: -1 });
-        return posts;
+        const searchResult = await this.searchService.searchPosts(searchKey);
+        const result = searchResult.filter(post => post.status === 'active' && post.isShow === true);
+        return result;
     }
     async addReactionPostService(userId, postId, reaction) {
         const postQuery = { _id: postId, 'userReaction.userId': userId };
@@ -9414,10 +9395,10 @@ let PostService = class PostService {
         }
         const documentExists = await this.searchService.checkDocumentExists(postId);
         if (documentExists) {
-            await this.searchService.updatePost(postId, updatedPost);
+            await this.searchService.updatePost(postId, updatedPost.toObject());
         }
         else {
-            await this.searchService.indexPost(updatedPost);
+            await this.searchService.indexPost(updatedPost.toObject());
         }
         await this.deleteCache([
             `posts:detail:${postId}`,
@@ -9435,10 +9416,10 @@ let PostService = class PostService {
             throw new common_1.BadRequestException('You have not reacted to this post');
         const documentExists = await this.searchService.checkDocumentExists(postId);
         if (documentExists) {
-            await this.searchService.updatePost(postId, post);
+            await this.searchService.updatePost(postId, post.toObject());
         }
         else {
-            await this.searchService.indexPost(post);
+            await this.searchService.indexPost(post.toObject());
         }
         await this.deleteCache([
             `posts:detail:${postId}`,
@@ -9634,89 +9615,82 @@ let SearchService = SearchService_1 = class SearchService {
     }
     async indexPost(post) {
         try {
-            const { _id, ...body } = post;
-            return await this.elasticsearchService.index({
+            const { _id, ...postWithoutId } = post;
+            await this.elasticsearchService.index({
                 index: 'posts',
-                id: _id.toString(),
-                body,
+                id: _id,
+                document: postWithoutId,
             });
         }
         catch (error) {
-            this.logger.error(`Failed to index post: ${post._id}`, error.stack);
-            throw new Error('Failed to index post');
+            this.logger.error(`Failed to index post with ID ${post._id}`, { error });
+            throw error;
         }
     }
-    async searchPosts(query, fields = ['content']) {
+    async updatePost(postId, post) {
         try {
-            return await this.elasticsearchService.search({
+            const postToUpdate = { ...post };
+            delete postToUpdate._id;
+            await this.elasticsearchService.update({
                 index: 'posts',
+                id: postId.toString(),
                 body: {
-                    query: {
-                        multi_match: {
-                            query,
-                            fields,
-                        },
-                    },
+                    doc: postToUpdate,
                 },
             });
         }
         catch (error) {
-            this.logger.error(`Failed to search posts with query: ${query}`, error.stack);
-            throw new Error('Failed to search posts');
+            this.logger.error(`Failed to update post with ID ${postId}`, { error });
+            throw error;
         }
     }
     async deletePost(postId) {
         try {
-            return await this.elasticsearchService.delete({
+            await this.elasticsearchService.delete({
                 index: 'posts',
                 id: postId,
             });
         }
         catch (error) {
-            this.logger.error(`Failed to delete post: ${postId}`, error.stack);
-            throw new Error('Failed to delete post');
+            this.logger.error(`Failed to delete post with ID ${postId}`, { error });
+            throw error;
         }
     }
-    async updatePost(postId, updatedPost) {
+    async searchPosts(searchKey) {
         try {
-            const { _id, ...body } = updatedPost;
-            return await this.elasticsearchService.update({
+            const response = await this.elasticsearchService.search({
                 index: 'posts',
-                id: postId,
                 body: {
-                    doc: body,
+                    query: {
+                        match: {
+                            content: searchKey,
+                        },
+                    },
                 },
             });
+            if (response.hits && response.hits.hits) {
+                return response.hits.hits.map((hit) => hit._source);
+            }
+            else {
+                this.logger.warn(`No results found for search key ${searchKey}`);
+                return [];
+            }
         }
         catch (error) {
-            this.logger.error(`Failed to update post: ${postId}`, error.stack);
-            throw new Error('Failed to update post');
-        }
-    }
-    async bulkIndexPosts(posts) {
-        try {
-            const operations = posts.flatMap(post => {
-                const { _id, ...body } = post;
-                return [{ index: { _index: 'posts', _id: _id.toString() } }, body];
-            });
-            return await this.elasticsearchService.bulk({ operations });
-        }
-        catch (error) {
-            this.logger.error('Failed to bulk index posts', error.stack);
-            throw new Error('Failed to bulk index posts');
+            this.logger.error(`Failed to search posts with key ${searchKey}`, { error });
+            throw error;
         }
     }
     async checkDocumentExists(postId) {
         try {
-            const response = await this.elasticsearchService.exists({
+            return await this.elasticsearchService.exists({
                 index: 'posts',
                 id: postId,
             });
-            return response;
         }
         catch (error) {
-            this.logger.error(`Failed to check if document exists: ${postId}`, error.stack);
-            return false;
+            this.logger.error(`Failed to check if document exists with ID ${postId}`, { error });
+            throw error;
         }
     }
 };
@@ -10076,7 +10050,7 @@ exports.CreatePostDto = CreatePostDto;
 __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MaxLength)(700),
+    (0, class_validator_1.MaxLength)(1500),
     __metadata("design:type", String)
 ], CreatePostDto.prototype, "content", void 0);
 class UpdatePostDto {
@@ -12622,7 +12596,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("ff0a491ddca8e9d668e2")
+/******/ 		__webpack_require__.h = () => ("b7abe80eaca9ce7378e4")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

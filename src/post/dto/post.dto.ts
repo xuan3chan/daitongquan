@@ -5,7 +5,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsInt, IsMongoId, IsNotEmpty, IsNumber,
 export class CreatePostDto {
   @IsNotEmpty()
   @IsString()
-  @MaxLength(700)
+  @MaxLength(1500)
   content: string;
 }
 export class UpdatePostDto {

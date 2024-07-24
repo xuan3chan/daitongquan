@@ -1,9 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 
-interface Post {
+export interface Post {
   _id: string;
-  [key: string]: any;
+  userId: string;
+  content: string;
+  commentCount: number;
+  reactionCount: number;
+  status: string;
+  isShow: boolean;
+  isApproved: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  postImage: string;
+  userReaction: string;
+  $assertPopulated: string;
+  $clone: string;
 }
 
 @Injectable()
@@ -12,90 +24,94 @@ export class SearchService {
 
   constructor(private readonly elasticsearchService: ElasticsearchService) {}
 
-  async indexPost(post: Post): Promise<any> {
+  async indexPost(post: Post & { _id: string }): Promise<void> {
     try {
-      const { _id, ...body } = post;
-      return await this.elasticsearchService.index({
+      // Remove _id from the document
+      const { _id, ...postWithoutId } = post;
+  
+      // Index the document without _id field
+      await this.elasticsearchService.index({
         index: 'posts',
-        id: _id.toString(),
-        body,
+        id: _id,  // Set _id as the document ID
+        document: postWithoutId,  // Document without _id field
       });
     } catch (error) {
-      this.logger.error(`Failed to index post: ${post._id}`, error.stack);
-      throw new Error('Failed to index post');
+      this.logger.error(`Failed to index post with ID ${post._id}`, { error });
+      throw error;
+    }
+  }
+  
+  
+
+  async updatePost(postId: string, post: Partial<Post>): Promise<void> {
+      try {
+        // Clone the post object to avoid mutating the original object
+        const postToUpdate = { ...post };
+        // Remove the _id field if it exists
+        delete postToUpdate._id;
+  
+        await this.elasticsearchService.update({
+          index: 'posts',
+          id: postId.toString(),
+          body: {
+            doc: postToUpdate,
+          },
+        });
+      } catch (error) {
+        this.logger.error(`Failed to update post with ID ${postId}`, { error });
+        throw error;
+      }
+    }
+
+  async deletePost(postId: string): Promise<void> {
+    try {
+      await this.elasticsearchService.delete({
+        index: 'posts',
+        id: postId,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to delete post with ID ${postId}`, { error });
+      throw error;
     }
   }
 
-  async searchPosts(query: string, fields: string[] = ['content']): Promise<any> {
+  async searchPosts(searchKey: string): Promise<Post[]> {
     try {
-      return await this.elasticsearchService.search({
+      // Directly destructure the response without assuming a 'body' property
+      const response = await this.elasticsearchService.search<Post>({
         index: 'posts',
         body: {
           query: {
-            multi_match: {
-              query,
-              fields,
+            match: {
+              content: searchKey,
             },
           },
         },
       });
+  
+      // Check if hits exist in the response and map accordingly
+      if (response.hits && response.hits.hits) {
+        return response.hits.hits.map((hit) => hit._source);
+      } else {
+        // Log and handle the case where hits are missing
+        this.logger.warn(`No results found for search key ${searchKey}`);
+        return [];
+      }
     } catch (error) {
-      this.logger.error(`Failed to search posts with query: ${query}`, error.stack);
-      throw new Error('Failed to search posts');
+      this.logger.error(`Failed to search posts with key ${searchKey}`, { error });
+      throw error;
     }
   }
 
-  async deletePost(postId: string): Promise<any> {
-    try {
-      return await this.elasticsearchService.delete({
-        index: 'posts',
-        id: postId,
-      });
-    } catch (error) {
-      this.logger.error(`Failed to delete post: ${postId}`, error.stack);
-      throw new Error('Failed to delete post');
-    }
-  }
-
-  async updatePost(postId: string, updatedPost: Post): Promise<any> {
-    try {
-      const { _id, ...body } = updatedPost;
-      return await this.elasticsearchService.update({
-        index: 'posts',
-        id: postId,
-        body: {
-          doc: body,
-        },
-      });
-    } catch (error) {
-      this.logger.error(`Failed to update post: ${postId}`, error.stack);
-      throw new Error('Failed to update post');
-    }
-  }
-
-  // Example of a bulk index method
-  async bulkIndexPosts(posts: Post[]): Promise<any> {
-    try {
-      const operations = posts.flatMap(post => {
-        const { _id, ...body } = post;
-        return [{ index: { _index: 'posts', _id: _id.toString() } }, body];
-      });
-      return await this.elasticsearchService.bulk({ operations });
-    } catch (error) {
-      this.logger.error('Failed to bulk index posts', error.stack);
-      throw new Error('Failed to bulk index posts');
-    }
-  }
   async checkDocumentExists(postId: string): Promise<boolean> {
     try {
-      const response = await this.elasticsearchService.exists({
+      return await this.elasticsearchService.exists({
         index: 'posts',
         id: postId,
       });
-      return response;
     } catch (error) {
-      this.logger.error(`Failed to check if document exists: ${postId}`, error.stack);
-      return false;
+      this.logger.error(`Failed to check if document exists with ID ${postId}`, { error });
+      throw error;
     }
   }
 }
