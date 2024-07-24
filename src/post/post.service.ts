@@ -268,9 +268,15 @@ export class PostService {
       await this.usersService.updateScoreRankService(updatedPost.userId.toString(), false, false, true);
     }
 
-    // Update the post in Elasticsearch
+    
+    const documentExists = await this.searchService.checkDocumentExists(postId);
+  if (documentExists) {
+    // If the document exists, update it
     await this.searchService.updatePost(postId, updatedPost);
-
+  } else {
+    // If the document does not exist, index it as a new document
+    await this.searchService.indexPost(updatedPost);
+  }
     await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
     return { message };
   }
@@ -287,8 +293,14 @@ export class PostService {
 
     if (!post) throw new BadRequestException('You have not reacted to this post');
 
-    // Update the post in Elasticsearch
-    await this.searchService.updatePost(postId, post);
+    const documentExists = await this.searchService.checkDocumentExists(postId);
+    if (documentExists) {
+      // If the document exists, update it
+      await this.searchService.updatePost(postId, post);
+    } else {
+      // If the document does not exist, index it as a new document
+      await this.searchService.indexPost(post);
+    }
 
     await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
     return post;

@@ -86,4 +86,16 @@ export class SearchService {
       throw new Error('Failed to bulk index posts');
     }
   }
+  async checkDocumentExists(postId: string): Promise<boolean> {
+    try {
+      const response = await this.elasticsearchService.exists({
+        index: 'posts',
+        id: postId,
+      });
+      return response;
+    } catch (error) {
+      this.logger.error(`Failed to check if document exists: ${postId}`, error.stack);
+      return false;
+    }
+  }
 }

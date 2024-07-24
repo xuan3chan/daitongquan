@@ -195,7 +195,7 @@ const core_1 = __webpack_require__(4);
 const app_module_1 = __webpack_require__(5);
 const swagger_1 = __webpack_require__(32);
 const common_1 = __webpack_require__(6);
-const compression = __webpack_require__(159);
+const compression = __webpack_require__(160);
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors();
@@ -260,14 +260,14 @@ const schedule_module_1 = __webpack_require__(113);
 const app_controller_1 = __webpack_require__(119);
 const rank_module_1 = __webpack_require__(120);
 const post_module_1 = __webpack_require__(123);
-const comment_module_1 = __webpack_require__(130);
-const report_module_1 = __webpack_require__(134);
-const statistics_module_1 = __webpack_require__(139);
-const event_gateway_1 = __webpack_require__(143);
-const story_module_1 = __webpack_require__(151);
-const message_module_1 = __webpack_require__(155);
+const comment_module_1 = __webpack_require__(133);
+const report_module_1 = __webpack_require__(137);
+const statistics_module_1 = __webpack_require__(142);
+const event_gateway_1 = __webpack_require__(146);
+const story_module_1 = __webpack_require__(154);
+const message_module_1 = __webpack_require__(158);
 const redis_module_1 = __webpack_require__(62);
-const search_module_1 = __webpack_require__(157);
+const search_module_1 = __webpack_require__(132);
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -9083,7 +9083,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostModule = void 0;
 const common_1 = __webpack_require__(6);
 const post_service_1 = __webpack_require__(124);
-const post_controller_1 = __webpack_require__(126);
+const post_controller_1 = __webpack_require__(128);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const post_schema_1 = __webpack_require__(125);
@@ -9091,10 +9091,10 @@ const cloudinary_module_1 = __webpack_require__(53);
 const users_module_1 = __webpack_require__(9);
 const abilities_factory_1 = __webpack_require__(36);
 const admin_module_1 = __webpack_require__(70);
-const favoritePost_schema_1 = __webpack_require__(128);
-const comment_schema_1 = __webpack_require__(129);
+const favoritePost_schema_1 = __webpack_require__(130);
+const comment_schema_1 = __webpack_require__(131);
 const redis_module_1 = __webpack_require__(62);
-const search_module_1 = __webpack_require__(157);
+const search_module_1 = __webpack_require__(132);
 let PostModule = class PostModule {
 };
 exports.PostModule = PostModule;
@@ -9151,7 +9151,7 @@ const post_schema_1 = __webpack_require__(125);
 const cloudinary_service_1 = __webpack_require__(14);
 const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(22);
-const search_service_1 = __webpack_require__(160);
+const search_service_1 = __webpack_require__(126);
 let PostService = class PostService {
     constructor(postModel, favoritePostModel, cloudinaryService, usersService, redisService, searchService) {
         this.postModel = postModel;
@@ -9363,7 +9363,13 @@ let PostService = class PostService {
         if (!postExists && reaction === 'like') {
             await this.usersService.updateScoreRankService(updatedPost.userId.toString(), false, false, true);
         }
-        await this.searchService.updatePost(postId, updatedPost);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.updatePost(postId, updatedPost);
+        }
+        else {
+            await this.searchService.indexPost(updatedPost);
+        }
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return { message };
     }
@@ -9374,7 +9380,13 @@ let PostService = class PostService {
         }, { new: true });
         if (!post)
             throw new common_1.BadRequestException('You have not reacted to this post');
-        await this.searchService.updatePost(postId, post);
+        const documentExists = await this.searchService.checkDocumentExists(postId);
+        if (documentExists) {
+            await this.searchService.updatePost(postId, post);
+        }
+        else {
+            await this.searchService.indexPost(post);
+        }
         await this.deleteCache([`posts:detail:${postId}`, `posts:user:${userId}`, `posts:favorites:${userId}`]);
         return post;
     }
@@ -9545,6 +9557,134 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var SearchService_1;
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchService = void 0;
+const common_1 = __webpack_require__(6);
+const elasticsearch_1 = __webpack_require__(127);
+let SearchService = SearchService_1 = class SearchService {
+    constructor(elasticsearchService) {
+        this.elasticsearchService = elasticsearchService;
+        this.logger = new common_1.Logger(SearchService_1.name);
+    }
+    async indexPost(post) {
+        try {
+            const { _id, ...body } = post;
+            return await this.elasticsearchService.index({
+                index: 'posts',
+                id: _id.toString(),
+                body,
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to index post: ${post._id}`, error.stack);
+            throw new Error('Failed to index post');
+        }
+    }
+    async searchPosts(query, fields = ['content']) {
+        try {
+            return await this.elasticsearchService.search({
+                index: 'posts',
+                body: {
+                    query: {
+                        multi_match: {
+                            query,
+                            fields,
+                        },
+                    },
+                },
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to search posts with query: ${query}`, error.stack);
+            throw new Error('Failed to search posts');
+        }
+    }
+    async deletePost(postId) {
+        try {
+            return await this.elasticsearchService.delete({
+                index: 'posts',
+                id: postId,
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to delete post: ${postId}`, error.stack);
+            throw new Error('Failed to delete post');
+        }
+    }
+    async updatePost(postId, updatedPost) {
+        try {
+            const { _id, ...body } = updatedPost;
+            return await this.elasticsearchService.update({
+                index: 'posts',
+                id: postId,
+                body: {
+                    doc: body,
+                },
+            });
+        }
+        catch (error) {
+            this.logger.error(`Failed to update post: ${postId}`, error.stack);
+            throw new Error('Failed to update post');
+        }
+    }
+    async bulkIndexPosts(posts) {
+        try {
+            const operations = posts.flatMap(post => {
+                const { _id, ...body } = post;
+                return [{ index: { _index: 'posts', _id: _id.toString() } }, body];
+            });
+            return await this.elasticsearchService.bulk({ operations });
+        }
+        catch (error) {
+            this.logger.error('Failed to bulk index posts', error.stack);
+            throw new Error('Failed to bulk index posts');
+        }
+    }
+    async checkDocumentExists(postId) {
+        try {
+            const response = await this.elasticsearchService.exists({
+                index: 'posts',
+                id: postId,
+            });
+            return response;
+        }
+        catch (error) {
+            this.logger.error(`Failed to check if document exists: ${postId}`, error.stack);
+            return false;
+        }
+    }
+};
+exports.SearchService = SearchService;
+exports.SearchService = SearchService = SearchService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [typeof (_a = typeof elasticsearch_1.ElasticsearchService !== "undefined" && elasticsearch_1.ElasticsearchService) === "function" ? _a : Object])
+], SearchService);
+
+
+/***/ }),
+/* 127 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("@nestjs/elasticsearch");
+
+/***/ }),
+/* 128 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
@@ -9556,7 +9696,7 @@ const swagger_1 = __webpack_require__(32);
 const post_service_1 = __webpack_require__(124);
 const platform_express_1 = __webpack_require__(34);
 const jwt = __webpack_require__(33);
-const post_dto_1 = __webpack_require__(127);
+const post_dto_1 = __webpack_require__(129);
 const member_gaurd_1 = __webpack_require__(52);
 const permission_gaurd_1 = __webpack_require__(35);
 const casl_decorator_1 = __webpack_require__(43);
@@ -9847,7 +9987,7 @@ exports.PostController = PostController = __decorate([
 
 
 /***/ }),
-/* 127 */
+/* 129 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9935,7 +10075,7 @@ __decorate([
 
 
 /***/ }),
-/* 128 */
+/* 130 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9972,7 +10112,7 @@ exports.FavoritePostSchema = mongoose_1.SchemaFactory.createForClass(FavoritePos
 
 
 /***/ }),
-/* 129 */
+/* 131 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10024,7 +10164,59 @@ exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
 
 
 /***/ }),
-/* 130 */
+/* 132 */
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SearchModule = void 0;
+const common_1 = __webpack_require__(6);
+const elasticsearch_1 = __webpack_require__(127);
+const config_1 = __webpack_require__(8);
+const search_service_1 = __webpack_require__(126);
+let SearchModule = class SearchModule {
+};
+exports.SearchModule = SearchModule;
+exports.SearchModule = SearchModule = __decorate([
+    (0, common_1.Module)({
+        imports: [
+            config_1.ConfigModule.forRoot({
+                envFilePath: '.env',
+                isGlobal: true,
+            }),
+            elasticsearch_1.ElasticsearchModule.registerAsync({
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: async (configService) => {
+                    const node = configService.get('ELASTICSEARCH_NODE');
+                    const username = configService.get('ELASTICSEARCH_USERNAME');
+                    const password = configService.get('ELASTICSEARCH_PASSWORD');
+                    if (!node || !username || !password) {
+                        throw new Error('Elasticsearch configuration is missing in environment variables');
+                    }
+                    const config = {
+                        node,
+                        auth: { username, password },
+                    };
+                    return config;
+                },
+            }),
+        ],
+        providers: [search_service_1.SearchService],
+        exports: [elasticsearch_1.ElasticsearchModule, search_service_1.SearchService],
+    })
+], SearchModule);
+
+
+/***/ }),
+/* 133 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10038,11 +10230,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentModule = void 0;
 const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(131);
-const comment_controller_1 = __webpack_require__(132);
+const comment_service_1 = __webpack_require__(134);
+const comment_controller_1 = __webpack_require__(135);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const comment_schema_1 = __webpack_require__(129);
+const comment_schema_1 = __webpack_require__(131);
 const post_module_1 = __webpack_require__(123);
 const users_module_1 = __webpack_require__(9);
 const post_schema_1 = __webpack_require__(125);
@@ -10071,7 +10263,7 @@ exports.CommentModule = CommentModule = __decorate([
 
 
 /***/ }),
-/* 131 */
+/* 134 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10094,7 +10286,7 @@ exports.CommentService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const comment_schema_1 = __webpack_require__(129);
+const comment_schema_1 = __webpack_require__(131);
 const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(22);
 let CommentService = class CommentService {
@@ -10265,7 +10457,7 @@ exports.CommentService = CommentService = __decorate([
 
 
 /***/ }),
-/* 132 */
+/* 135 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10286,9 +10478,9 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentController = void 0;
 const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(131);
+const comment_service_1 = __webpack_require__(134);
 const swagger_1 = __webpack_require__(32);
-const comment_dto_1 = __webpack_require__(133);
+const comment_dto_1 = __webpack_require__(136);
 const jwt = __webpack_require__(33);
 const member_gaurd_1 = __webpack_require__(52);
 let CommentController = class CommentController {
@@ -10415,7 +10607,7 @@ exports.CommentController = CommentController = __decorate([
 
 
 /***/ }),
-/* 133 */
+/* 136 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10470,7 +10662,7 @@ __decorate([
 
 
 /***/ }),
-/* 134 */
+/* 137 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10484,11 +10676,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportModule = void 0;
 const common_1 = __webpack_require__(6);
-const report_service_1 = __webpack_require__(135);
-const report_controller_1 = __webpack_require__(137);
+const report_service_1 = __webpack_require__(138);
+const report_controller_1 = __webpack_require__(140);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
-const report_schema_1 = __webpack_require__(136);
+const report_schema_1 = __webpack_require__(139);
 const abilities_factory_1 = __webpack_require__(36);
 const admin_module_1 = __webpack_require__(70);
 const user_schema_1 = __webpack_require__(13);
@@ -10518,7 +10710,7 @@ exports.ReportModule = ReportModule = __decorate([
 
 
 /***/ }),
-/* 135 */
+/* 138 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10541,7 +10733,7 @@ exports.ReportService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const report_schema_1 = __webpack_require__(136);
+const report_schema_1 = __webpack_require__(139);
 const redis_service_1 = __webpack_require__(22);
 let ReportService = class ReportService {
     constructor(reportModel, userModel, postModel, redisService) {
@@ -10653,7 +10845,7 @@ exports.ReportService = ReportService = __decorate([
 
 
 /***/ }),
-/* 136 */
+/* 139 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10702,7 +10894,7 @@ exports.ReportSchema = mongoose_1.SchemaFactory.createForClass(Report);
 
 
 /***/ }),
-/* 137 */
+/* 140 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10723,12 +10915,12 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportController = void 0;
 const common_1 = __webpack_require__(6);
-const report_service_1 = __webpack_require__(135);
+const report_service_1 = __webpack_require__(138);
 const swagger_1 = __webpack_require__(32);
 const member_gaurd_1 = __webpack_require__(52);
 const express_1 = __webpack_require__(44);
 const jwt = __webpack_require__(33);
-const report_dto_1 = __webpack_require__(138);
+const report_dto_1 = __webpack_require__(141);
 const permission_gaurd_1 = __webpack_require__(35);
 const casl_decorator_1 = __webpack_require__(43);
 let ReportController = class ReportController {
@@ -10829,7 +11021,7 @@ exports.ReportController = ReportController = __decorate([
 
 
 /***/ }),
-/* 138 */
+/* 141 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10871,7 +11063,7 @@ __decorate([
 
 
 /***/ }),
-/* 139 */
+/* 142 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10885,8 +11077,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsModule = void 0;
 const common_1 = __webpack_require__(6);
-const statistics_service_1 = __webpack_require__(140);
-const statistics_controller_1 = __webpack_require__(141);
+const statistics_service_1 = __webpack_require__(143);
+const statistics_controller_1 = __webpack_require__(144);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const user_schema_1 = __webpack_require__(13);
@@ -10921,7 +11113,7 @@ exports.StatisticsModule = StatisticsModule = __decorate([
 
 
 /***/ }),
-/* 140 */
+/* 143 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11139,7 +11331,7 @@ exports.StatisticsService = StatisticsService = __decorate([
 
 
 /***/ }),
-/* 141 */
+/* 144 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11161,11 +11353,11 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
-const statistics_service_1 = __webpack_require__(140);
+const statistics_service_1 = __webpack_require__(143);
 const swagger_1 = __webpack_require__(32);
 const permission_gaurd_1 = __webpack_require__(35);
 const casl_decorator_1 = __webpack_require__(43);
-const querydate_dto_1 = __webpack_require__(142);
+const querydate_dto_1 = __webpack_require__(145);
 const redis_service_1 = __webpack_require__(22);
 let StatisticsController = StatisticsController_1 = class StatisticsController {
     constructor(statisticsService, redisService) {
@@ -11324,7 +11516,7 @@ exports.StatisticsController = StatisticsController = StatisticsController_1 = _
 
 
 /***/ }),
-/* 142 */
+/* 145 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11366,7 +11558,7 @@ __decorate([
 
 
 /***/ }),
-/* 143 */
+/* 146 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11386,14 +11578,14 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EventGateway = void 0;
-const websockets_1 = __webpack_require__(144);
-const socket_io_1 = __webpack_require__(145);
+const websockets_1 = __webpack_require__(147);
+const socket_io_1 = __webpack_require__(148);
 const auth_service_1 = __webpack_require__(85);
 const schedule_service_1 = __webpack_require__(114);
-const story_service_1 = __webpack_require__(146);
-const message_service_1 = __webpack_require__(148);
+const story_service_1 = __webpack_require__(149);
+const message_service_1 = __webpack_require__(151);
 const common_1 = __webpack_require__(6);
-const stream_1 = __webpack_require__(150);
+const stream_1 = __webpack_require__(153);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(26);
 const mailer_service_1 = __webpack_require__(86);
@@ -11576,21 +11768,21 @@ exports.EventGateway = EventGateway = __decorate([
 
 
 /***/ }),
-/* 144 */
+/* 147 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("@nestjs/websockets");
 
 /***/ }),
-/* 145 */
+/* 148 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("socket.io");
 
 /***/ }),
-/* 146 */
+/* 149 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11613,7 +11805,7 @@ exports.StoryService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const story_schema_1 = __webpack_require__(147);
+const story_schema_1 = __webpack_require__(150);
 const cloudinary_service_1 = __webpack_require__(14);
 let StoryService = class StoryService {
     constructor(storyModel, cloudinaryService) {
@@ -11711,7 +11903,7 @@ exports.StoryService = StoryService = __decorate([
 
 
 /***/ }),
-/* 147 */
+/* 150 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11756,7 +11948,7 @@ exports.StorySchema = mongoose_1.SchemaFactory.createForClass(Story);
 
 
 /***/ }),
-/* 148 */
+/* 151 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11779,7 +11971,7 @@ exports.MessageService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const message_schema_1 = __webpack_require__(149);
+const message_schema_1 = __webpack_require__(152);
 const cloudinary_service_1 = __webpack_require__(14);
 const encryption_service_1 = __webpack_require__(26);
 const redis_service_1 = __webpack_require__(22);
@@ -11871,7 +12063,7 @@ exports.MessageService = MessageService = __decorate([
 
 
 /***/ }),
-/* 149 */
+/* 152 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11921,14 +12113,14 @@ exports.MessageSchema = mongoose_1.SchemaFactory.createForClass(Message);
 
 
 /***/ }),
-/* 150 */
+/* 153 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("stream");
 
 /***/ }),
-/* 151 */
+/* 154 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11942,10 +12134,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryModule = void 0;
 const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(146);
-const story_controller_1 = __webpack_require__(152);
+const story_service_1 = __webpack_require__(149);
+const story_controller_1 = __webpack_require__(155);
 const mongoose_1 = __webpack_require__(7);
-const story_schema_1 = __webpack_require__(147);
+const story_schema_1 = __webpack_require__(150);
 const cloudinary_module_1 = __webpack_require__(53);
 const rank_module_1 = __webpack_require__(120);
 let StoryModule = class StoryModule {
@@ -11966,7 +12158,7 @@ exports.StoryModule = StoryModule = __decorate([
 
 
 /***/ }),
-/* 152 */
+/* 155 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11987,13 +12179,13 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryController = void 0;
 const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(146);
-const story_dto_1 = __webpack_require__(153);
+const story_service_1 = __webpack_require__(149);
+const story_dto_1 = __webpack_require__(156);
 const member_gaurd_1 = __webpack_require__(52);
 const jwt = __webpack_require__(33);
 const swagger_1 = __webpack_require__(32);
 const platform_express_1 = __webpack_require__(34);
-const rank_gaurd_1 = __webpack_require__(154);
+const rank_gaurd_1 = __webpack_require__(157);
 let StoryController = class StoryController {
     constructor(storyService) {
         this.storyService = storyService;
@@ -12093,7 +12285,7 @@ exports.StoryController = StoryController = __decorate([
 
 
 /***/ }),
-/* 153 */
+/* 156 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12127,7 +12319,7 @@ __decorate([
 
 
 /***/ }),
-/* 154 */
+/* 157 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12183,7 +12375,7 @@ exports.RankGuard = RankGuard = __decorate([
 
 
 /***/ }),
-/* 155 */
+/* 158 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12197,10 +12389,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageModule = void 0;
 const common_1 = __webpack_require__(6);
-const message_service_1 = __webpack_require__(148);
-const message_controller_1 = __webpack_require__(156);
+const message_service_1 = __webpack_require__(151);
+const message_controller_1 = __webpack_require__(159);
 const mongoose_1 = __webpack_require__(7);
-const message_schema_1 = __webpack_require__(149);
+const message_schema_1 = __webpack_require__(152);
 const cloudinary_module_1 = __webpack_require__(53);
 const encryption_module_1 = __webpack_require__(82);
 const redis_module_1 = __webpack_require__(62);
@@ -12223,7 +12415,7 @@ exports.MessageModule = MessageModule = __decorate([
 
 
 /***/ }),
-/* 156 */
+/* 159 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12244,7 +12436,7 @@ var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageController = void 0;
 const common_1 = __webpack_require__(6);
-const message_service_1 = __webpack_require__(148);
+const message_service_1 = __webpack_require__(151);
 const jwt = __webpack_require__(33);
 const swagger_1 = __webpack_require__(32);
 let MessageController = class MessageController {
@@ -12298,178 +12490,11 @@ exports.MessageController = MessageController = __decorate([
 
 
 /***/ }),
-/* 157 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SearchModule = void 0;
-const common_1 = __webpack_require__(6);
-const elasticsearch_1 = __webpack_require__(158);
-const config_1 = __webpack_require__(8);
-const search_service_1 = __webpack_require__(160);
-let SearchModule = class SearchModule {
-};
-exports.SearchModule = SearchModule;
-exports.SearchModule = SearchModule = __decorate([
-    (0, common_1.Module)({
-        imports: [
-            config_1.ConfigModule.forRoot({
-                envFilePath: '.env',
-                isGlobal: true,
-            }),
-            elasticsearch_1.ElasticsearchModule.registerAsync({
-                imports: [config_1.ConfigModule],
-                inject: [config_1.ConfigService],
-                useFactory: async (configService) => {
-                    const node = configService.get('ELASTICSEARCH_NODE');
-                    const username = configService.get('ELASTICSEARCH_USERNAME');
-                    const password = configService.get('ELASTICSEARCH_PASSWORD');
-                    if (!node || !username || !password) {
-                        throw new Error('Elasticsearch configuration is missing in environment variables');
-                    }
-                    const config = {
-                        node,
-                        auth: { username, password },
-                    };
-                    return config;
-                },
-            }),
-        ],
-        providers: [search_service_1.SearchService],
-        exports: [elasticsearch_1.ElasticsearchModule, search_service_1.SearchService],
-    })
-], SearchModule);
-
-
-/***/ }),
-/* 158 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("@nestjs/elasticsearch");
-
-/***/ }),
-/* 159 */
+/* 160 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("compression");
-
-/***/ }),
-/* 160 */
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-var SearchService_1;
-var _a;
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SearchService = void 0;
-const common_1 = __webpack_require__(6);
-const elasticsearch_1 = __webpack_require__(158);
-let SearchService = SearchService_1 = class SearchService {
-    constructor(elasticsearchService) {
-        this.elasticsearchService = elasticsearchService;
-        this.logger = new common_1.Logger(SearchService_1.name);
-    }
-    async indexPost(post) {
-        try {
-            const { _id, ...body } = post;
-            return await this.elasticsearchService.index({
-                index: 'posts',
-                id: _id.toString(),
-                body,
-            });
-        }
-        catch (error) {
-            this.logger.error(`Failed to index post: ${post._id}`, error.stack);
-            throw new Error('Failed to index post');
-        }
-    }
-    async searchPosts(query, fields = ['content']) {
-        try {
-            return await this.elasticsearchService.search({
-                index: 'posts',
-                body: {
-                    query: {
-                        multi_match: {
-                            query,
-                            fields,
-                        },
-                    },
-                },
-            });
-        }
-        catch (error) {
-            this.logger.error(`Failed to search posts with query: ${query}`, error.stack);
-            throw new Error('Failed to search posts');
-        }
-    }
-    async deletePost(postId) {
-        try {
-            return await this.elasticsearchService.delete({
-                index: 'posts',
-                id: postId,
-            });
-        }
-        catch (error) {
-            this.logger.error(`Failed to delete post: ${postId}`, error.stack);
-            throw new Error('Failed to delete post');
-        }
-    }
-    async updatePost(postId, updatedPost) {
-        try {
-            const { _id, ...body } = updatedPost;
-            return await this.elasticsearchService.update({
-                index: 'posts',
-                id: postId,
-                body: {
-                    doc: body,
-                },
-            });
-        }
-        catch (error) {
-            this.logger.error(`Failed to update post: ${postId}`, error.stack);
-            throw new Error('Failed to update post');
-        }
-    }
-    async bulkIndexPosts(posts) {
-        try {
-            const operations = posts.flatMap(post => {
-                const { _id, ...body } = post;
-                return [{ index: { _index: 'posts', _id: _id.toString() } }, body];
-            });
-            return await this.elasticsearchService.bulk({ operations });
-        }
-        catch (error) {
-            this.logger.error('Failed to bulk index posts', error.stack);
-            throw new Error('Failed to bulk index posts');
-        }
-    }
-};
-exports.SearchService = SearchService;
-exports.SearchService = SearchService = SearchService_1 = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [typeof (_a = typeof elasticsearch_1.ElasticsearchService !== "undefined" && elasticsearch_1.ElasticsearchService) === "function" ? _a : Object])
-], SearchService);
-
 
 /***/ })
 /******/ 	]);
@@ -12533,7 +12558,7 @@ exports.SearchService = SearchService = SearchService_1 = __decorate([
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("1582eedb94e0054d9e50")
+/******/ 		__webpack_require__.h = () => ("5b6db7a8568d81b91537")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
