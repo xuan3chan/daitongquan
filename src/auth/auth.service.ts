@@ -121,7 +121,7 @@ export class AuthService {
             gender: user.gender,
             nickname: user.nickname,
             phone: user.phone,
-            dateAttendance:user.rankScore.attendance.dateAttendance,
+            dateAttendance: user.rankScore?.attendance?.dateAttendance ?? null,
           }
         : {
             fullname: admin.fullname,

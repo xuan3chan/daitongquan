@@ -5712,7 +5712,7 @@ let AuthService = class AuthService {
                     gender: user.gender,
                     nickname: user.nickname,
                     phone: user.phone,
-                    dateAttendance: user.rankScore.attendance.dateAttendance,
+                    dateAttendance: user.rankScore?.attendance?.dateAttendance ?? null,
                 }
                 : {
                     fullname: admin.fullname,
@@ -12622,7 +12622,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("e94641a44a4c896f3bde")
+/******/ 		__webpack_require__.h = () => ("ff0a491ddca8e9d668e2")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
