@@ -15,6 +15,7 @@ import { CategoryService } from '../category/category.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { Rank } from 'src/rank/schema/rank.schema';
 import { RedisService } from 'src/redis/redis.service';
+import {SearchService} from 'src/search/search.service';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
     @Inject(forwardRef(() => EncryptionService))
     private encryptionService: EncryptionService,
     private redisService: RedisService, // Add RedisService
+    private searchService: SearchService,
   ) {}
 
   private async deleteCache(key: string) {
@@ -82,28 +84,14 @@ export class UsersService {
   }
 
   async findOneReTokenService(refreshToken: string): Promise<User> {
-    const cacheKey = `user:reToken:${refreshToken}`;
-    const cachedUser = await this.getCache(cacheKey);
-    if (cachedUser) {
-      return cachedUser;
-    }
     const user = await this.userModel.findOne({ refreshToken }).exec();
-    if (user) {
-      await this.setCache(cacheKey, user);
-    }
+
     return user;
   }
 
   async findOneCodeService(Code: string): Promise<User> {
-    const cacheKey = `user:authCode:${Code}`;
-    const cachedUser = await this.getCache(cacheKey);
-    if (cachedUser) {
-      return cachedUser;
-    }
     const user = await this.userModel.findOne({ 'authCode.code': Code }).exec();
-    if (user) {
-      await this.setCache(cacheKey, user);
-    }
+
     return user;
   }
 
@@ -217,9 +205,14 @@ export class UsersService {
       encryptKey: createEncryptKey,
       refreshToken,
     });
+    
+    // elastic search
+    this.searchService.indexUser(newUser.toObject());
+    
     const savedUser = await newUser.save();
     await this.deleteCache(`user:${email}`);
     await this.deleteCache(`user:username:${username}`);
+    await this.deleteCache(`user:list`);
 
     return savedUser;
   }
@@ -274,10 +267,18 @@ export class UsersService {
         { new: true },
       )
       .exec();
+    // elastic
+    const checkElatic = await this.searchService.checkUserExists(_id);
+    if (!checkElatic) {
+      this.searchService.indexUser(updatedUser.toObject());
+    } else {
+      this.searchService.updateUser(_id, updatedUser.toObject());
+    }
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
       await this.deleteCache(`user:${updatedUser.email}`);
       await this.deleteCache(`user:username:${updatedUser.username}`);
+      await this.deleteCache(`user:list`);
     }
     return updatedUser;
   }
@@ -291,60 +292,91 @@ export class UsersService {
     const updatedUser = await this.userModel
       .findOneAndUpdate({ _id }, { avatar }, { new: true })
       .exec();
+      //elastic
+    const checkElatic = await this.searchService.checkUserExists(_id);
+    if (!checkElatic) {
+      this.searchService.indexUser(updatedUser.toObject());
+    } else {
+      this.searchService.updateUser(_id, updatedUser.toObject());
+    }
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
+      await this.deleteCache(`user:list`);
     }
     return updatedUser;
   }
 
+  // async searchUserService(
+  //   searchKey: string,
+  // ): Promise<{ message: string; user: User[] }> {
+  //   try {
+  //     const cacheKey = `users:search:${searchKey}`;
+  //     const cachedUsers = await this.getCache(cacheKey);
+  //     if (cachedUsers) {
+  //       return {
+  //         message: `Found ${cachedUsers.length} user(s)`,
+  //         user: cachedUsers,
+  //       };
+  //     }
+
+  //     const users = await this.userModel.find({}, { password: 0 }).exec();
+  //     const preprocessString = (str: string) =>
+  //       str
+  //         ? removeAccents(str)
+  //             .replace(/[^a-zA-Z0-9\s]/gi, '')
+  //             .trim()
+  //             .toLowerCase()
+  //         : '';
+  //     const preprocessedSearchKey = preprocessString(searchKey);
+  //     const regex = new RegExp(`${preprocessedSearchKey}`, 'i');
+  //     const matchedUsers = users.filter((user) => {
+  //       const { username, firstname, lastname, email } = user;
+  //       const fullname = `${firstname} ${lastname}`;
+  //       const [preprocessedUsername, preprocessedFullname, preprocessedEmail] =
+  //         [username, fullname, email].map((field) => preprocessString(field));
+  //       return (
+  //         regex.test(preprocessedUsername) ||
+  //         regex.test(preprocessedFullname) ||
+  //         regex.test(preprocessedEmail)
+  //       );
+  //     });
+
+  //     if (matchedUsers.length > 0) {
+  //       await this.setCache(cacheKey, matchedUsers);
+  //       return {
+  //         message: `Found ${matchedUsers.length} user(s)`,
+  //         user: matchedUsers,
+  //       };
+  //     }
+  //     return { message: 'No user found', user: [] };
+  //   } catch (error) {
+  //     if (error instanceof NotFoundException) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException(error.message);
+  //   }
+  // }
   async searchUserService(
     searchKey: string,
-  ): Promise<{ message: string; user: User[] }> {
+  ): Promise<any> {
     try {
-      const cacheKey = `users:search:${searchKey}`;
-      const cachedUsers = await this.getCache(cacheKey);
-      if (cachedUsers) {
-        return {
-          message: `Found ${cachedUsers.length} user(s)`,
-          user: cachedUsers,
-        };
+      // Assuming searchService has a method searchUsers that returns an array of User entities
+      const users = await this.searchService.searchUsers(searchKey);
+
+      if (users.length === 0) {
+        throw new NotFoundException(`No users found with the search key "${searchKey}"`);
       }
 
-      const users = await this.userModel.find({}, { password: 0 }).exec();
-      const preprocessString = (str: string) =>
-        str
-          ? removeAccents(str)
-              .replace(/[^a-zA-Z0-9\s]/gi, '')
-              .trim()
-              .toLowerCase()
-          : '';
-      const preprocessedSearchKey = preprocessString(searchKey);
-      const regex = new RegExp(`${preprocessedSearchKey}`, 'i');
-      const matchedUsers = users.filter((user) => {
-        const { username, firstname, lastname, email } = user;
-        const fullname = `${firstname} ${lastname}`;
-        const [preprocessedUsername, preprocessedFullname, preprocessedEmail] =
-          [username, fullname, email].map((field) => preprocessString(field));
-        return (
-          regex.test(preprocessedUsername) ||
-          regex.test(preprocessedFullname) ||
-          regex.test(preprocessedEmail)
-        );
-      });
-
-      if (matchedUsers.length > 0) {
-        await this.setCache(cacheKey, matchedUsers);
-        return {
-          message: `Found ${matchedUsers.length} user(s)`,
-          user: matchedUsers,
-        };
-      }
-      return { message: 'No user found', user: [] };
+      return {
+        message: `Found ${users.length} user(s)`,
+        user:users,
+      };
     } catch (error) {
+      // Re-throw the error if it's already a NotFoundException, otherwise throw a generic error
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException(error.message);
+      throw new Error('An error occurred while searching for users');
     }
   }
 
@@ -354,7 +386,9 @@ export class UsersService {
       .exec();
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
+      await this.deleteCache(`user:list`);
     }
+
     return updatedUser;
   }
 
@@ -365,10 +399,16 @@ export class UsersService {
     }
     await this.categoryService.deleteOfUser(_id);
     const deletedUser = await this.userModel.findOneAndDelete({ _id }).exec();
+    // elastic
+    const checkElatic = await this.searchService.checkUserExists(_id);
+    if (checkElatic) {
+      this.searchService.deleteUser(_id);
+    }   
     if (deletedUser) {
-      await this.deleteCache(`user:${_id}:profile`);
-      await this.deleteCache(`user:${deletedUser.email}`);
-      await this.deleteCache(`user:username:${deletedUser.username}`);
+      this.deleteCache(`user:${_id}:profile`);
+      this.deleteCache(`user:${deletedUser.email}`);
+      this.deleteCache(`user:username:${deletedUser.username}`);
+      this.deleteCache(`user:list`);
     }
     return deletedUser;
   }
@@ -384,7 +424,7 @@ export class UsersService {
       await this.setCache(cacheKey, user);
     }
     return user;
-  }
+  }nguyen
 
   async updateScoreRankService(
     userId: string,
@@ -420,6 +460,8 @@ export class UsersService {
     await user.save();
     await this.deleteCache(`user:${userId}`);
     await this.deleteCache(`user:${userId}:profile`);
+    await this.deleteCache(`user:list`);
+
     return user;
   }
 
@@ -455,8 +497,10 @@ export class UsersService {
     await user.save();
     await this.deleteCache(`user:${userId}`);
     await this.deleteCache(`user:${userId}:profile`);
+    await this.deleteCache(`user:list`);
 
-    return { message: 'Attendance marked successfully' };
+
+    return { message: 'Attendance marked successfuawaitlly' };
   }
 
   async checkRankService(userId: string): Promise<any> {
@@ -497,6 +541,8 @@ export class UsersService {
       user.rankID = highestRank._id;
       await user.save();
       await this.deleteCache(`user:${userId}`);
+      await this.deleteCache(`user:list`);
+
     }
     return true;
   }

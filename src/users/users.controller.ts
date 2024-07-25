@@ -22,6 +22,7 @@ import {
   ApiOkResponse,
   ApiTags,
   ApiQuery,
+  ApiOperation,
 } from '@nestjs/swagger';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
@@ -160,6 +161,22 @@ export class UsersController {
     description: 'The search key',
   })
   async searchUserController(@Req() request: Request): Promise<{ data: any }> {
+    const searchKey = request.query.searchKey as string;
+    const data = await this.usersService.searchUserService(searchKey);
+    return { data };
+  }
+  @Get('search-user')
+  @UseGuards(MemberGuard)
+  @ApiOperation({ summary: 'Search for user' })
+  @ApiOkResponse({ description: 'Search user success' })
+  @ApiBadRequestResponse({ description: 'bad request' })
+  @ApiQuery({
+    name: 'searchKey',
+    required: true,
+    type: String,
+    description: 'The search key',
+  })
+  async searchUserForUserController(@Req() request: Request): Promise<{ data: any }> {
     const searchKey = request.query.searchKey as string;
     const data = await this.usersService.searchUserService(searchKey);
     return { data };
