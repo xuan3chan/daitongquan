@@ -50,9 +50,11 @@ export class UsersService {
     if (cachedUser) {
       return cachedUser;
     }
-    const user = await this.userModel.findOne({
-      $or: [{ email: account }, { username: account }],
-    }).exec();
+    const user = await this.userModel
+      .findOne({
+        $or: [{ email: account }, { username: account }],
+      })
+      .exec();
     if (user) {
       await this.setCache(cacheKey, user);
     }
@@ -69,7 +71,8 @@ export class UsersService {
     if (cachedUser) {
       return cachedUser;
     }
-    const user = await this.userModel.findOne({ _id: userId })
+    const user = await this.userModel
+      .findOne({ _id: userId })
       .select('firstname avatar lastname')
       .exec();
     if (user) {
@@ -104,14 +107,23 @@ export class UsersService {
     return user;
   }
 
-  async updatePasswordService(code: string, newPassword: string): Promise<User> {
+  async updatePasswordService(
+    code: string,
+    newPassword: string,
+  ): Promise<User> {
     const user = await this.findOneCodeService(code);
     if (!user) {
       return null;
     }
     const encryptKey = user.encryptKey;
-    const decryptKey = this.encryptionService.decryptEncryptKey(encryptKey, user.password);
-    const newEncryptKey = this.encryptionService.updateEncryptKey(newPassword, decryptKey);
+    const decryptKey = this.encryptionService.decryptEncryptKey(
+      encryptKey,
+      user.password,
+    );
+    const newEncryptKey = this.encryptionService.updateEncryptKey(
+      newPassword,
+      decryptKey,
+    );
     user.encryptKey = newEncryptKey;
     user.password = newPassword;
     user.authCode = null;
@@ -139,16 +151,20 @@ export class UsersService {
     return users;
   }
 
-  async updateRefreshTokenService(account: string, refreshToken: string): Promise<User> {
-    const user = await this.userModel.findOneAndUpdate(
-      { $or: [{ email: account }, { username: account }] },
-      { refreshToken },
-      { new: true }
-    ).exec();
+  async updateRefreshTokenService(
+    account: string,
+    refreshToken: string,
+  ): Promise<User> {
+    const user = await this.userModel
+      .findOneAndUpdate(
+        { $or: [{ email: account }, { username: account }] },
+        { refreshToken },
+        { new: true },
+      )
+      .exec();
     if (user) {
       await this.deleteCache(`user:${account}`);
       await this.deleteCache(`user:${user._id}:profile`);
-
     }
     return user;
   }
@@ -189,7 +205,9 @@ export class UsersService {
     if (userExist) {
       return { message: 'Email or username already exists' };
     }
-    const createEncryptKey = this.encryptionService.createEncryptKey(password.toString());
+    const createEncryptKey = this.encryptionService.createEncryptKey(
+      password.toString(),
+    );
     const newUser = new this.userModel({
       email,
       password,
@@ -279,12 +297,17 @@ export class UsersService {
     return updatedUser;
   }
 
-  async searchUserService(searchKey: string): Promise<{ message: string; user: User[] }> {
+  async searchUserService(
+    searchKey: string,
+  ): Promise<{ message: string; user: User[] }> {
     try {
       const cacheKey = `users:search:${searchKey}`;
       const cachedUsers = await this.getCache(cacheKey);
       if (cachedUsers) {
-        return { message: `Found ${cachedUsers.length} user(s)`, user: cachedUsers };
+        return {
+          message: `Found ${cachedUsers.length} user(s)`,
+          user: cachedUsers,
+        };
       }
 
       const users = await this.userModel.find({}, { password: 0 }).exec();
@@ -311,7 +334,10 @@ export class UsersService {
 
       if (matchedUsers.length > 0) {
         await this.setCache(cacheKey, matchedUsers);
-        return { message: `Found ${matchedUsers.length} user(s)`, user: matchedUsers };
+        return {
+          message: `Found ${matchedUsers.length} user(s)`,
+          user: matchedUsers,
+        };
       }
       return { message: 'No user found', user: [] };
     } catch (error) {
@@ -323,7 +349,9 @@ export class UsersService {
   }
 
   async blockUserService(_id: string, isBlock: boolean): Promise<User> {
-    const updatedUser = await this.userModel.findOneAndUpdate({ _id }, { isBlock }, { new: true }).exec();
+    const updatedUser = await this.userModel
+      .findOneAndUpdate({ _id }, { isBlock }, { new: true })
+      .exec();
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
     }
@@ -362,7 +390,7 @@ export class UsersService {
     userId: string,
     blogScore?: boolean,
     commentScore?: boolean,
-    likeScore?: boolean
+    likeScore?: boolean,
   ): Promise<User> {
     const user = await this.userModel.findOne({ _id: userId }).exec();
     if (!user) {
@@ -412,9 +440,15 @@ export class UsersService {
       };
     }
     const today = new Date();
-    const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
-    if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
-      throw new BadRequestException("You have already marked attendance today.");
+    const lastAttendanceDate = new Date(
+      user.rankScore.attendance.dateAttendance,
+    );
+    if (
+      today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)
+    ) {
+      throw new BadRequestException(
+        'You have already marked attendance today.',
+      );
     }
     user.rankScore.attendance.attendanceScore += 1;
     user.rankScore.attendance.dateAttendance = new Date();
@@ -447,10 +481,13 @@ export class UsersService {
     }
     let highestRank = null;
     for (const rank of ranks) {
-      if (user.rankScore.attendance.attendanceScore >= rank.score.attendanceScore
-        && user.rankScore.numberOfComment >= rank.score.numberOfComment
-        && user.rankScore.numberOfBlog >= rank.score.numberOfBlog
-        && user.rankScore.numberOfLike >= rank.score.numberOfLike) {
+      if (
+        user.rankScore.attendance.attendanceScore >=
+          rank.score.attendanceScore &&
+        user.rankScore.numberOfComment >= rank.score.numberOfComment &&
+        user.rankScore.numberOfBlog >= rank.score.numberOfBlog &&
+        user.rankScore.numberOfLike >= rank.score.numberOfLike
+      ) {
         if (!highestRank || rank.rankScoreGoal > highestRank.rankScoreGoal) {
           highestRank = rank;
         }

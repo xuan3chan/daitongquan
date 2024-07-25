@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsOctal, IsOptional, MaxLength } from "class-validator";
+import {  IsOptional, MaxLength } from "class-validator";
 
 export class StoryDto {
     @ApiProperty({

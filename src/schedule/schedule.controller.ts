@@ -5,7 +5,6 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseArrayPipe,
   Post,
   Put,
   Query,

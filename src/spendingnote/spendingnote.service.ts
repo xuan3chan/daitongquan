@@ -21,7 +21,7 @@ export class SpendingNoteService {
     private categoryService: CategoryService,
     private spendingLimitService: SpendingLimitService,
   ) {}
-async createSpendingNoteService(
+  async createSpendingNoteService(
     cateId: string,
     userId: string,
     title: string,
@@ -29,22 +29,34 @@ async createSpendingNoteService(
     paymentMethod: string,
     amount: number,
     content?: string,
-  ): Promise<{ successMessage: string, warningMessage?: string }> {
+  ): Promise<{ successMessage: string; warningMessage?: string }> {
     // Check if the category exists
-    const checkExist = await this.categoryService.findOneCateService(userId, cateId);
+    const checkExist = await this.categoryService.findOneCateService(
+      userId,
+      cateId,
+    );
     if (!checkExist) {
       throw new NotFoundException('Category not found');
     }
-  
+
     // Get current spending limit for the category
     const cate = await this.categoryService.findOneCateService(userId, cateId);
-    const spendingLimit = await this.spendingLimitService.findSpendingLimitByIdService(cate.spendingLimitId);
-    const currentSpendingNotes = await this.spendingNoteModel.find({ cateId, userId });
-    const currentTotalSpending = currentSpendingNotes.reduce((total, note) => total + note.amount, 0);
-  
+    const spendingLimit =
+      await this.spendingLimitService.findSpendingLimitByIdService(
+        cate.spendingLimitId,
+      );
+    const currentSpendingNotes = await this.spendingNoteModel.find({
+      cateId,
+      userId,
+    });
+    const currentTotalSpending = currentSpendingNotes.reduce(
+      (total, note) => total + note.amount,
+      0,
+    );
+
     // Calculate new total spending
     const newTotalSpending = currentTotalSpending + amount;
-  
+
     // Create new spending note
     const newSpendingNote = new this.spendingNoteModel({
       cateId,
@@ -62,10 +74,9 @@ async createSpendingNoteService(
     if (spendingLimit && newTotalSpending > spendingLimit.budget) {
       warningMessage = 'Warning: Spending limit exceeded';
     }
-  
-   return { successMessage, warningMessage };
+
+    return { successMessage, warningMessage };
   }
-  
 
   async updateSpendingNoteService(
     spendingNoteId: string,
@@ -76,48 +87,64 @@ async createSpendingNoteService(
     amount?: number,
     content?: string,
     cateId?: string,
-  ): Promise<{ updatedSpendingNote: SpendingNote, warningMessage?: string }> {
+  ): Promise<{ updatedSpendingNote: SpendingNote; warningMessage?: string }> {
     const spendingNote = await this.spendingNoteModel.findOne({
       _id: spendingNoteId,
       userId,
     });
-  
+
     if (!spendingNote) {
       throw new NotFoundException('Note not found');
     }
-  
+
     if (cateId) {
       // Check if the new category exists
-      const category = await this.categoryService.findOneCateService(userId, cateId);
+      const category = await this.categoryService.findOneCateService(
+        userId,
+        cateId,
+      );
       if (!category) {
         throw new NotFoundException('Category not found');
       }
     }
-  
+
     // If amount is provided, calculate new total spending for the category
     let warningMessage;
     if (amount !== undefined && spendingNote.amount !== amount) {
-      const currentSpendingNotes = await this.spendingNoteModel.find({ cateId: spendingNote.cateId, userId });
-      const currentTotalSpending = currentSpendingNotes.reduce((total, note) => total + note.amount, 0);
-      const newTotalSpending = currentTotalSpending - spendingNote.amount + amount;
-  
-      const category = await this.categoryService.findOneCateService(userId, spendingNote.cateId);
-      const spendingLimit = await this.spendingLimitService.findSpendingLimitByIdService(category.spendingLimitId);
-  
+      const currentSpendingNotes = await this.spendingNoteModel.find({
+        cateId: spendingNote.cateId,
+        userId,
+      });
+      const currentTotalSpending = currentSpendingNotes.reduce(
+        (total, note) => total + note.amount,
+        0,
+      );
+      const newTotalSpending =
+        currentTotalSpending - spendingNote.amount + amount;
+
+      const category = await this.categoryService.findOneCateService(
+        userId,
+        spendingNote.cateId,
+      );
+      const spendingLimit =
+        await this.spendingLimitService.findSpendingLimitByIdService(
+          category.spendingLimitId,
+        );
+
       if (spendingLimit && newTotalSpending > spendingLimit.budget) {
         warningMessage = 'Warning: Spending limit exceeded';
       }
     }
-  
+
     const updatedSpendingNote = await this.spendingNoteModel.findOneAndUpdate(
       { _id: spendingNoteId, userId },
       { title, spendingDate, paymentMethod, amount, content, cateId },
       { new: true },
     );
-  
+
     return { updatedSpendingNote, warningMessage };
   }
-  
+
   async deleteOneSpendingNoteService(
     spendingNoteId: string,
     userId: string,
@@ -503,7 +530,7 @@ async createSpendingNoteService(
     let totalCosts = 0;
 
     const spendingNotes = await this.spendingNoteModel.find(query);
-    
+
     let groupedSpendingDetails = {};
     if (filterBy === 'month') {
       let year = currentYear;
@@ -529,14 +556,14 @@ async createSpendingNoteService(
         };
       }
     }
-    
+
     spendingNotes.forEach((note) => {
       const noteDate = new Date(note.spendingDate);
       const key =
         filterBy === 'month'
           ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1}`
           : noteDate.getUTCFullYear();
-    
+
       if (groupedSpendingDetails[key]) {
         groupedSpendingDetails[key].totalCost += note.amount;
         groupedSpendingDetails[key].items.push({
@@ -549,73 +576,88 @@ async createSpendingNoteService(
         totalCosts += note.amount;
       }
     });
-    
-    return { start, end, totalCosts, groupedSpendingDetails };
-    }
 
-async notifySpendingNoteService(
+    return { start, end, totalCosts, groupedSpendingDetails };
+  }
+
+  async notifySpendingNoteService(
     userId: string,
-): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
+  ): Promise<{ message: string; outOfBudgetCategories?: any[] }> {
     const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
 
     const processedCategories = new Map<string, any>(); // Map to track processed categories
 
     for (const note of spendingNotes) {
-        const { cateId } = note;
+      const { cateId } = note;
 
-        const infoCate = await this.categoryService.findOneCateService(userId, cateId);
-        if (!infoCate) {
-            throw new NotFoundException('Category not found');
-        }
+      const infoCate = await this.categoryService.findOneCateService(
+        userId,
+        cateId,
+      );
+      if (!infoCate) {
+        throw new NotFoundException('Category not found');
+      }
 
-        const limitCate = await this.spendingLimitService.findSpendingLimitByIdService(infoCate.spendingLimitId);
-        if (!limitCate) {
-            throw new NotFoundException('Spending limit not found');
-        }
+      const limitCate =
+        await this.spendingLimitService.findSpendingLimitByIdService(
+          infoCate.spendingLimitId,
+        );
+      if (!limitCate) {
+        throw new NotFoundException('Spending limit not found');
+      }
 
-        let category = processedCategories.get(infoCate.name);
-        if (!category) {
-            const totalCost = await this.getTotalSpendingForCategory(userId, cateId);
-            category = {
-                id: cateId, // added id field
-                nameCate: infoCate.name,
-                budget: limitCate.budget,
-                budgetUsed: totalCost,
-            };
-            processedCategories.set(infoCate.name, category);
-        }
+      let category = processedCategories.get(infoCate.name);
+      if (!category) {
+        const totalCost = await this.getTotalSpendingForCategory(
+          userId,
+          cateId,
+        );
+        category = {
+          id: cateId, // added id field
+          nameCate: infoCate.name,
+          budget: limitCate.budget,
+          budgetUsed: totalCost,
+        };
+        processedCategories.set(infoCate.name, category);
+      }
     }
 
-    const outOfBudgetCategories = Array.from(processedCategories.values()).filter(
-        (category) => category.budgetUsed >= category.budget
-    );
+    const outOfBudgetCategories = Array.from(
+      processedCategories.values(),
+    ).filter((category) => category.budgetUsed >= category.budget);
 
     if (outOfBudgetCategories.length === 0) {
-        return { message: 'All of your spending notes are within budget' };
+      return { message: 'All of your spending notes are within budget' };
     }
     return {
-        message: 'You have categories that have reached or exceeded the budget',
-        outOfBudgetCategories,
+      message: 'You have categories that have reached or exceeded the budget',
+      outOfBudgetCategories,
     };
-}
+  }
 
-private async getTotalSpendingForCategory(
+  private async getTotalSpendingForCategory(
     userId: string,
     categoryId: string,
-): Promise<number> {
-    const categorySpendingNotes = await this.spendingNoteModel.find({ userId, cateId: categoryId }).lean();
-    return categorySpendingNotes.reduce((total, note) => total + note.amount, 0);
-}
-
+  ): Promise<number> {
+    const categorySpendingNotes = await this.spendingNoteModel
+      .find({ userId, cateId: categoryId })
+      .lean();
+    return categorySpendingNotes.reduce(
+      (total, note) => total + note.amount,
+      0,
+    );
+  }
 
   async findSpendingNoteByCateIdService(
     cateId: string,
   ): Promise<SpendingNote[]> {
     return this.spendingNoteModel.find({ cateId });
   }
-  async deleteAllSpendingNoteByCateIdService(userId: string,cateId:string): Promise<any> {
-
-    await this.spendingNoteModel.deleteMany({ userId,cateId });
+  async deleteAllSpendingNoteByCateIdService(
+    userId: string,
+    cateId: string,
+  ): Promise<any> {
+    await this.spendingNoteModel.deleteMany({ userId, cateId });
     return { message: 'Delete all note successfully' };
   }
-} 
+}

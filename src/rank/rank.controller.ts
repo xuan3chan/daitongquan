@@ -28,9 +28,7 @@ import { Action, Subject } from 'src/decorator/casl.decorator';
 @ApiBearerAuth()
 @Controller('rank')
 export class RankController {
-  constructor(
-    private readonly rankService: RankService,
-  ) {}
+  constructor(private readonly rankService: RankService) {}
 
   @UseGuards(PermissionGuard)
   @Action('create')
@@ -143,5 +141,4 @@ export class RankController {
   async getRankByIdController(@Param('rankId') rankId: string) {
     return this.rankService.getRankDetailService(rankId);
   }
-
 }

@@ -18,7 +18,10 @@ export class RedisService
 {
   private client: RedisClientType;
 
-  constructor(private config: RedisClientOptions, private logger: Logger) {
+  constructor(
+    private config: RedisClientOptions,
+    private logger: Logger,
+  ) {
     this.client = this.initializeClient();
     this.client.on('error', (err) => {
       this.logger.error('Redis Client Error', err);
@@ -63,7 +66,7 @@ export class RedisService
   async set(
     key: RedisCacheKeyArgument,
     value: RedisCacheValueArgument,
-    ttl?: number
+    ttl?: number,
   ): Promise<void> {
     try {
       if (ttl) {
@@ -86,10 +89,10 @@ export class RedisService
     }
   }
 
-  async hSet<TKey extends RedisCacheKeyArgument, TValue extends RedisCacheValueArgumentObject>(
-    key: TKey,
-    value: TValue
-  ): Promise<number> {
+  async hSet<
+    TKey extends RedisCacheKeyArgument,
+    TValue extends RedisCacheValueArgumentObject,
+  >(key: TKey, value: TValue): Promise<number> {
     try {
       return await this.client.hSet(key, value);
     } catch (err) {
@@ -99,13 +102,15 @@ export class RedisService
   }
 
   async hGetAll<TKey extends RedisCacheKeyArgument>(
-    key: TKey
+    key: TKey,
   ): Promise<RedisCacheValueArgumentObject> {
     try {
       return await this.client.hGetAll(key);
     } catch (err) {
       this.logger.error(`Error getting all hash values for key ${key}: `, err);
-      throw new InternalServerErrorException(`Error getting all hash values for key ${key}`);
+      throw new InternalServerErrorException(
+        `Error getting all hash values for key ${key}`,
+      );
     }
   }
 
@@ -114,19 +119,33 @@ export class RedisService
       const result = await this.client.json.get(key, { path });
       return result ? JSON.parse(JSON.stringify(result))[0] : null;
     } catch (err) {
-      this.logger.error(`Error getting JSON for key ${key} and path ${path}: `, err);
-      throw new InternalServerErrorException(`Error getting JSON for key ${key} and path ${path}`);
+      this.logger.error(
+        `Error getting JSON for key ${key} and path ${path}: `,
+        err,
+      );
+      throw new InternalServerErrorException(
+        `Error getting JSON for key ${key} and path ${path}`,
+      );
     }
   }
 
-  async setJSON<TValue extends RedisJSON>(key: string, path = '$', value: TValue): Promise<'OK'> {
+  async setJSON<TValue extends RedisJSON>(
+    key: string,
+    path = '$',
+    value: TValue,
+  ): Promise<'OK'> {
     try {
-       await this.client.json.set(key, path, value);
-       await this.client.expire(key, 3600);
+      await this.client.json.set(key, path, value);
+      await this.client.expire(key, 3600);
       return 'OK';
     } catch (err) {
-      this.logger.error(`Error setting JSON for key ${key} and path ${path}: `, err);
-      throw new InternalServerErrorException(`Error setting JSON for key ${key} and path ${path}`);
+      this.logger.error(
+        `Error setting JSON for key ${key} and path ${path}: `,
+        err,
+      );
+      throw new InternalServerErrorException(
+        `Error setting JSON for key ${key} and path ${path}`,
+      );
     }
   }
 
@@ -134,17 +153,26 @@ export class RedisService
     try {
       return await this.client.json.DEL(key, path);
     } catch (err) {
-      this.logger.error(`Error deleting JSON for key ${key} and path ${path}: `, err);
-      throw new InternalServerErrorException(`Error deleting JSON for key ${key} and path ${path}`);
+      this.logger.error(
+        `Error deleting JSON for key ${key} and path ${path}: `,
+        err,
+      );
+      throw new InternalServerErrorException(
+        `Error deleting JSON for key ${key} and path ${path}`,
+      );
     }
   }
 
-  async exists<TKey extends RedisCacheKeyArgument>(keys: TKey | TKey[]): Promise<number> {
+  async exists<TKey extends RedisCacheKeyArgument>(
+    keys: TKey | TKey[],
+  ): Promise<number> {
     try {
       return await this.client.exists(keys);
     } catch (err) {
       this.logger.error(`Error checking existence of key(s) ${keys}: `, err);
-      throw new InternalServerErrorException(`Error checking existence of key(s) ${keys}`);
+      throw new InternalServerErrorException(
+        `Error checking existence of key(s) ${keys}`,
+      );
     }
   }
 
@@ -153,7 +181,9 @@ export class RedisService
       await this.client.pExpire(key, ttl);
     } catch (err) {
       this.logger.error(`Error setting TTL for key ${key}: `, err);
-      throw new InternalServerErrorException(`Error setting TTL for key ${key}`);
+      throw new InternalServerErrorException(
+        `Error setting TTL for key ${key}`,
+      );
     }
   }
 

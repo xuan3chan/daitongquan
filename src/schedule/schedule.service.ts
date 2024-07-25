@@ -109,7 +109,17 @@ export class ScheduleService {
     try {
       const updatedSchedule = await this.scheduleModel.findOneAndUpdate(
         { userId, _id: scheduleId },
-        { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url },
+        {
+          title,
+          location,
+          isAllDay,
+          startDateTime,
+          endDateTime,
+          note,
+          isLoop,
+          calendars,
+          url,
+        },
         { new: true },
       );
       await this.deleteCache(`schedules:${userId}`);
@@ -120,7 +130,10 @@ export class ScheduleService {
     }
   }
 
-  async deleteScheduleService(userId: string, scheduleId: string): Promise<any> {
+  async deleteScheduleService(
+    userId: string,
+    scheduleId: string,
+  ): Promise<any> {
     const schedule = await this.scheduleModel.findOne({
       userId,
       _id: scheduleId,
@@ -140,7 +153,10 @@ export class ScheduleService {
     }
   }
 
-  async deleteManyScheduleService(userId: string, scheduleIds: string[]): Promise<any> {
+  async deleteManyScheduleService(
+    userId: string,
+    scheduleIds: string[],
+  ): Promise<any> {
     const schedules = await this.scheduleModel.find({
       userId,
       _id: { $in: scheduleIds },
@@ -151,16 +167,23 @@ export class ScheduleService {
     }
 
     try {
-      await this.scheduleModel.deleteMany({ userId, _id: { $in: scheduleIds } }).exec();
+      await this.scheduleModel
+        .deleteMany({ userId, _id: { $in: scheduleIds } })
+        .exec();
       await this.deleteCache(`schedules:${userId}`);
-      scheduleIds.forEach(async (id) => await this.deleteCache(`schedule:${id}`));
+      scheduleIds.forEach(
+        async (id) => await this.deleteCache(`schedule:${id}`),
+      );
       return { message: 'Delete schedules successfully' };
     } catch (error) {
       throw new InternalServerErrorException('Error deleting schedules');
     }
   }
 
-  async viewListScheduleService(userId: string, calendars: string[]): Promise<Schedule[]> {
+  async viewListScheduleService(
+    userId: string,
+    calendars: string[],
+  ): Promise<Schedule[]> {
     const cacheKey = `schedules:${userId}`;
     const cachedSchedules = await this.getCache(cacheKey);
     if (cachedSchedules) {
@@ -181,14 +204,25 @@ export class ScheduleService {
       throw new BadRequestException('Schedules not found');
     }
 
-    const decryptedSchedules = schedules.map(schedule => {
+    const decryptedSchedules = schedules.map((schedule) => {
       if (schedule.isEncrypted) {
         const encryptedKey = findUser.encryptKey;
-        const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
+        const decryptedKey = this.encryptionService.decryptEncryptKey(
+          encryptedKey,
+          findUser.password,
+        );
 
-        schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
-        schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-        schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+        schedule.title = this.encryptionService.decryptData(
+          schedule.title,
+          decryptedKey,
+        );
+        schedule.location = this.encryptionService.decryptData(
+          schedule.location,
+          decryptedKey,
+        );
+        schedule.note = schedule.note
+          ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+          : undefined;
       }
       return schedule;
     });
@@ -200,49 +234,49 @@ export class ScheduleService {
   async notifyScheduleService(userId: string): Promise<any> {
     const TIMEZONE_OFFSET_HOURS = 7;
     const NOTIFICATION_TIME_MINUTES = 15;
-  
+
     const nowTime = new Date(
       new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
     );
     const notificationTime = new Date(
       nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
     );
-  
+
     try {
       const nonLoopedSchedules = await this.scheduleModel.find({
         userId,
         isLoop: false,
         startDateTime: { $gte: nowTime, $lte: notificationTime },
       });
-  
+
       const loopedSchedules = await this.scheduleModel.find({
         userId,
         isLoop: true,
       });
-  
+
       const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
         const startDateTime = new Date(schedule.startDateTime);
         const startHours = startDateTime.getUTCHours();
         const startMinutes = startDateTime.getUTCMinutes();
-  
+
         const nowHours = nowTime.getUTCHours();
         const nowMinutes = nowTime.getUTCMinutes();
         const notificationHours = notificationTime.getUTCHours();
         const notificationMinutes = notificationTime.getUTCMinutes();
-  
+
         const nowTotalMinutes = nowHours * 60 + nowMinutes;
         const notificationTotalMinutes =
           notificationHours * 60 + notificationMinutes;
         const startTotalMinutes = startHours * 60 + startMinutes;
-  
+
         return (
           startTotalMinutes >= nowTotalMinutes &&
           startTotalMinutes <= notificationTotalMinutes
         );
       });
-  
+
       const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-  
+
       // Format dates using moment
       const formattedSchedules = schedules.map((schedule) => ({
         ...schedule.toObject(),

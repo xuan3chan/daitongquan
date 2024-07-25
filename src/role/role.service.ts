@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role } from './schema/role.schema';
@@ -42,48 +46,64 @@ export class RoleService {
     return newRole;
   }
 
-  async updateRoleService(id: string, name?: string, permissionIDs?: number[]): Promise<Role> {
-      // Check if the role exists
-      const role = await this.roleModel.findById(id).exec();
-      if (!role) {
-        throw new BadRequestException('Role does not exist.');
+  async updateRoleService(
+    id: string,
+    name?: string,
+    permissionIDs?: number[],
+  ): Promise<Role> {
+    // Check if the role exists
+    const role = await this.roleModel.findById(id).exec();
+    if (!role) {
+      throw new BadRequestException('Role does not exist.');
+    }
+    if (name) {
+      const roleDuplicate = await this.roleModel.findOne({ name }).exec();
+      if (roleDuplicate && roleDuplicate._id.toString() !== id) {
+        throw new BadRequestException('Role name already exists.');
       }
-      if (name) {
-          const roleDuplicate = await this.roleModel.findOne({ name }).exec();
-          if (roleDuplicate && roleDuplicate._id.toString() !== id) {
-            throw new BadRequestException('Role name already exists.');
-          }
-          role.name = name;
-      }
-      if (permissionIDs) {
-          role.permissionID = permissionIDs;
-        }
-      await role.save();
-      await this.setCache(`role:${id}`, role);
-      await this.deleteCache('roles:all');  
-      return role;
+      role.name = name;
+    }
+    if (permissionIDs) {
+      role.permissionID = permissionIDs;
+    }
+    await role.save();
+    await this.setCache(`role:${id}`, role);
+    await this.deleteCache('roles:all');
+    return role;
   }
 
   async findRoleService(ids: string[]): Promise<Role[]> {
     const cacheKeys = ids.map((id) => `role:${id}`);
-    const cachedRoles = await Promise.all(cacheKeys.map((key) => this.getCache(key)));
-  
+    const cachedRoles = await Promise.all(
+      cacheKeys.map((key) => this.getCache(key)),
+    );
+
     // Identify missed cache entries
-    const missedCacheIndices = cachedRoles.map((role, index) => role ? null : index).filter((index) => index !== null);
+    const missedCacheIndices = cachedRoles
+      .map((role, index) => (role ? null : index))
+      .filter((index) => index !== null);
     const missedCacheIds = missedCacheIndices.map((index) => ids[index]);
-  
+
     if (missedCacheIds.length === 0) {
       // All roles found in cache, parse and return them
       return cachedRoles.map((role) => JSON.parse(role));
     } else {
       // Fetch missed roles from the database
-      const rolesFromDb = await this.roleModel.find({ _id: { $in: missedCacheIds } }).exec();
-  
+      const rolesFromDb = await this.roleModel
+        .find({ _id: { $in: missedCacheIds } })
+        .exec();
+
       // Set cache for the newly fetched roles
-      await Promise.all(rolesFromDb.map((role) => this.setCache(`role:${role.id}`, JSON.stringify(role))));
-  
+      await Promise.all(
+        rolesFromDb.map((role) =>
+          this.setCache(`role:${role.id}`, JSON.stringify(role)),
+        ),
+      );
+
       // Combine cached roles (excluding nulls) and roles from DB for the final result
-      const rolesFromCache = cachedRoles.filter((role) => role !== null).map((role) => JSON.parse(role));
+      const rolesFromCache = cachedRoles
+        .filter((role) => role !== null)
+        .map((role) => JSON.parse(role));
       return [...rolesFromCache, ...rolesFromDb];
     }
   }
@@ -104,7 +124,8 @@ export class RoleService {
 
   async deleteRoleService(id: string): Promise<{ message: string }> {
     try {
-      const checkRoleExistInAdmin = await this.adminService.findOneAdminbyIdRoleService(id);
+      const checkRoleExistInAdmin =
+        await this.adminService.findOneAdminbyIdRoleService(id);
       if (checkRoleExistInAdmin) {
         throw new BadRequestException('Role exists in admin');
       }

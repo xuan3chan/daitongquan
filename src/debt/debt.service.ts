@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Debt, DebtDocument } from './schema/debt.schema';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';

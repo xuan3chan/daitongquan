@@ -26,43 +26,48 @@ export class StoryService {
     }
   }
 
- async createStoryService(
-  userId: string,
-  title: string,
-  file?: Express.Multer.File,
-): Promise<Story> {
-  if (!file) {
-    throw new BadRequestException('No file provided');
-  }
+  async createStoryService(
+    userId: string,
+    title: string,
+    file?: Express.Multer.File,
+  ): Promise<Story> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
 
-  try {
-    const checkFileType = await this.checkFile(file); // Ensure this method exists and is implemented correctly
-    let mediaUrl: string;
+    try {
+      const checkFileType = await this.checkFile(file); // Ensure this method exists and is implemented correctly
+      let mediaUrl: string;
 
-    // Determine the upload service based on file type
-    const uploadService = checkFileType === 'image'
-      ? this.cloudinaryService.uploadImageService
-      : this.cloudinaryService.uploadVideoService;
+      // Determine the upload service based on file type
+      const uploadService =
+        checkFileType === 'image'
+          ? this.cloudinaryService.uploadImageService
+          : this.cloudinaryService.uploadVideoService;
 
-    // Upload the file and get the URL
-    const fileUpload = await uploadService.call(this.cloudinaryService, title, file);
-    mediaUrl = fileUpload.uploadResult.url;
+      // Upload the file and get the URL
+      const fileUpload = await uploadService.call(
+        this.cloudinaryService,
+        title,
+        file,
+      );
+      mediaUrl = fileUpload.uploadResult.url;
 
-    // Create and save the new story
-    const newStory = new this.storyModel({ userId, title, mediaUrl });
-    return await newStory.save();
-  } catch (error) {
-    console.error('Error in createStoryService:', error);
-    // Provide a more specific error message based on the caught error
-    if (error instanceof BadRequestException) {
-      throw error; // Re-throw if it's already a BadRequestException
-    } else if (error.http_code === 400) {
-      throw new BadRequestException('Invalid file type or upload error');
-    } else {
-      throw new BadRequestException('Error creating story');
+      // Create and save the new story
+      const newStory = new this.storyModel({ userId, title, mediaUrl });
+      return await newStory.save();
+    } catch (error) {
+      console.error('Error in createStoryService:', error);
+      // Provide a more specific error message based on the caught error
+      if (error instanceof BadRequestException) {
+        throw error; // Re-throw if it's already a BadRequestException
+      } else if (error.http_code === 400) {
+        throw new BadRequestException('Invalid file type or upload error');
+      } else {
+        throw new BadRequestException('Error creating story');
+      }
     }
   }
-}
 
   async deleteStoryService(
     userId: string,
@@ -93,13 +98,17 @@ export class StoryService {
       throw new BadRequestException('Error deleting story');
     }
   }
-async getListStoryService(): Promise<Story[]> {
-  return await this.storyModel.find({ status: 'active' })
-    .populate('userId', 'firstname lastname _id') // Only include firstname, lastname, and _id
-    .exec();
-}
+  async getListStoryService(): Promise<Story[]> {
+    return await this.storyModel
+      .find({ status: 'active' })
+      .populate('userId', 'firstname lastname _id') // Only include firstname, lastname, and _id
+      .exec();
+  }
   async getMyStoryService(userId: string): Promise<Story[]> {
-    return await this.storyModel.find({ userId: userId }).populate('userId', 'firstname lastname _id').exec();
+    return await this.storyModel
+      .find({ userId: userId })
+      .populate('userId', 'firstname lastname _id')
+      .exec();
   }
   //ones story live for 24 hours
   async checkExpiredStoryService(): Promise<{ message: string }> {

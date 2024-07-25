@@ -4,12 +4,10 @@ import {
   Delete, 
   Get, 
   HttpCode, 
-  Inject, 
   Patch, 
   Post, 
   Put, 
   UseGuards, 
-  UseInterceptors 
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/createAdmin.dto';
@@ -50,12 +48,10 @@ export class AdminController {
       createAdminDto.password, 
       createAdminDto.roleId
     );
-    
     // Cache the created admin in Redis
     await this.redisService.setJSON(`admin:${result._id}`,'$', JSON.stringify(result));
     // Invalidate the 'admin:all' cache
     await this.redisService.delJSON('admin:all','$');
-    
     return result;
   }
 
@@ -74,8 +70,6 @@ export class AdminController {
       updateAdminDto.password, 
       updateAdminDto.roleId
     );
-
-    // Update the cached admin in Redis
     await this.redisService.setJSON(`admin:${updateAdminDto.id}`,'$', JSON.stringify(result));
     // Invalidate the 'admin:all' cache
     await this.redisService.delJSON('admin:all','$');
@@ -91,12 +85,8 @@ export class AdminController {
   @Delete()
   async deleteAdminController(@Body() deleteAdminDto: DeleteAdminDto) {
     const result = await this.adminService.deleteAdminService(deleteAdminDto.id);
-
-    // Remove the admin from the Redis cache
     await this.redisService.delJSON(`admin:${deleteAdminDto.id}`,'$');
-    // Invalidate the 'admin:all' cache
     await this.redisService.delJSON('admin:all','$');
-    
     return result;
   }
 
@@ -116,7 +106,6 @@ export class AdminController {
     const result = await this.adminService.listAdminService();
     // Cache the list of admins in Redis
     await this.redisService.setJSON('admin:all','$', JSON.stringify(result));
-    
     return result;
   }
 
@@ -132,7 +121,6 @@ export class AdminController {
       blockAdminDto.id, 
       blockAdminDto.isBlock
     );
-
     // Update the cached admin block status in Redis
     const cachedAdmin = await this.redisService.get(`admin:${blockAdminDto.id}`);
     if (cachedAdmin) {
@@ -142,7 +130,6 @@ export class AdminController {
     }
     // Invalidate the 'admin:all' cache
     await this.redisService.delJSON('admin:all','$');
-    
     return result;
   }
 }

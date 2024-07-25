@@ -5,7 +5,6 @@ import {
     UnauthorizedException,
   } from '@nestjs/common';
   import { JwtService } from '@nestjs/jwt';
-  import { Request } from 'express';
   import { RankService } from 'src/rank/rank.service';
   import { AuthGuard } from './auth.gaurd';
   

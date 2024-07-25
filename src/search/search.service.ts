@@ -1,22 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
-
-export interface Post {
-  _id: string;
-  userId: string;
-  content: string;
-  commentCount: number;
-  reactionCount: number;
-  status: string;
-  isShow: boolean;
-  isApproved: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  postImage: string;
-  userReaction: string;
-  $assertPopulated: string;
-  $clone: string;
-}
+import { Post } from './interface/post.interface';
 
 @Injectable()
 export class SearchService {
@@ -28,40 +12,38 @@ export class SearchService {
     try {
       // Remove _id from the document
       const { _id, ...postWithoutId } = post;
-  
+
       // Index the document without _id field
       await this.elasticsearchService.index({
         index: 'posts',
-        id: _id,  // Set _id as the document ID
-        document: postWithoutId,  // Document without _id field
+        id: _id, // Set _id as the document ID
+        document: postWithoutId, // Document without _id field
       });
     } catch (error) {
       this.logger.error(`Failed to index post with ID ${post._id}`, { error });
       throw error;
     }
   }
-  
-  
 
   async updatePost(postId: string, post: Partial<Post>): Promise<void> {
-      try {
-        // Clone the post object to avoid mutating the original object
-        const postToUpdate = { ...post };
-        // Remove the _id field if it exists
-        delete postToUpdate._id;
-  
-        await this.elasticsearchService.update({
-          index: 'posts',
-          id: postId.toString(),
-          body: {
-            doc: postToUpdate,
-          },
-        });
-      } catch (error) {
-        this.logger.error(`Failed to update post with ID ${postId}`, { error });
-        throw error;
-      }
+    try {
+      // Clone the post object to avoid mutating the original object
+      const postToUpdate = { ...post };
+      // Remove the _id field if it exists
+      delete postToUpdate._id;
+
+      await this.elasticsearchService.update({
+        index: 'posts',
+        id: postId.toString(),
+        body: {
+          doc: postToUpdate,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Failed to update post with ID ${postId}`, { error });
+      throw error;
     }
+  }
 
   async deletePost(postId: string): Promise<void> {
     try {
@@ -88,7 +70,7 @@ export class SearchService {
           },
         },
       });
-  
+
       // Check if hits exist in the response and map accordingly
       if (response.hits && response.hits.hits) {
         return response.hits.hits.map((hit) => hit._source);
@@ -98,7 +80,9 @@ export class SearchService {
         return [];
       }
     } catch (error) {
-      this.logger.error(`Failed to search posts with key ${searchKey}`, { error });
+      this.logger.error(`Failed to search posts with key ${searchKey}`, {
+        error,
+      });
       throw error;
     }
   }
@@ -110,7 +94,10 @@ export class SearchService {
         id: postId,
       });
     } catch (error) {
-      this.logger.error(`Failed to check if document exists with ID ${postId}`, { error });
+      this.logger.error(
+        `Failed to check if document exists with ID ${postId}`,
+        { error },
+      );
       throw error;
     }
   }

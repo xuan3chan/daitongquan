@@ -14,19 +14,7 @@ import { RedisCacheModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
-    // CacheModule.registerAsync({
-    //   imports: [ConfigModule],
-    //   inject: [ConfigService],
-    //   useFactory: async (configService: ConfigService): Promise<CacheModuleOptions> => ({
-    //     isGlobal: true,
-    //     store: redisStore,
-    //     host: configService.get<string>('REDIS_HOST'),
-    //     port: +configService.get<number>('REDIS_PORT'),
-    //     ttl: configService.get<number>('CACHE_TTL'),
-    //     // username: configService.get<string>('REDIS_USERNAME'),
-    //     // password: configService.get<string>('REDIS_PASSWORD'),
-    //   }),
-    // }),
+
     RedisCacheModule,
     AdminModule,
     MongooseModule.forFeature([

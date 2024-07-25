@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Comment } from './schema/comment.schema';
@@ -63,9 +63,7 @@ export class CommentService {
        this.deleteCache(`posts:detail:${comment.postId}`);
        this.deleteCache(`posts:user:${userId}`);
        this.deleteCache(`posts:favorites:${userId}`)
-
     }
-
     return {
       comment,
       message: comment ? 'Comment updated successfully.' : 'No comment found to update.',

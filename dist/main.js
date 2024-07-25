@@ -657,9 +657,11 @@ let UsersService = class UsersService {
         if (cachedUser) {
             return cachedUser;
         }
-        const user = await this.userModel.findOne({
+        const user = await this.userModel
+            .findOne({
             $or: [{ email: account }, { username: account }],
-        }).exec();
+        })
+            .exec();
         if (user) {
             await this.setCache(cacheKey, user);
         }
@@ -674,7 +676,8 @@ let UsersService = class UsersService {
         if (cachedUser) {
             return cachedUser;
         }
-        const user = await this.userModel.findOne({ _id: userId })
+        const user = await this.userModel
+            .findOne({ _id: userId })
             .select('firstname avatar lastname')
             .exec();
         if (user) {
@@ -738,7 +741,9 @@ let UsersService = class UsersService {
         return users;
     }
     async updateRefreshTokenService(account, refreshToken) {
-        const user = await this.userModel.findOneAndUpdate({ $or: [{ email: account }, { username: account }] }, { refreshToken }, { new: true }).exec();
+        const user = await this.userModel
+            .findOneAndUpdate({ $or: [{ email: account }, { username: account }] }, { refreshToken }, { new: true })
+            .exec();
         if (user) {
             await this.deleteCache(`user:${account}`);
             await this.deleteCache(`user:${user._id}:profile`);
@@ -840,7 +845,10 @@ let UsersService = class UsersService {
             const cacheKey = `users:search:${searchKey}`;
             const cachedUsers = await this.getCache(cacheKey);
             if (cachedUsers) {
-                return { message: `Found ${cachedUsers.length} user(s)`, user: cachedUsers };
+                return {
+                    message: `Found ${cachedUsers.length} user(s)`,
+                    user: cachedUsers,
+                };
             }
             const users = await this.userModel.find({}, { password: 0 }).exec();
             const preprocessString = (str) => str
@@ -861,7 +869,10 @@ let UsersService = class UsersService {
             });
             if (matchedUsers.length > 0) {
                 await this.setCache(cacheKey, matchedUsers);
-                return { message: `Found ${matchedUsers.length} user(s)`, user: matchedUsers };
+                return {
+                    message: `Found ${matchedUsers.length} user(s)`,
+                    user: matchedUsers,
+                };
             }
             return { message: 'No user found', user: [] };
         }
@@ -873,7 +884,9 @@ let UsersService = class UsersService {
         }
     }
     async blockUserService(_id, isBlock) {
-        const updatedUser = await this.userModel.findOneAndUpdate({ _id }, { isBlock }, { new: true }).exec();
+        const updatedUser = await this.userModel
+            .findOneAndUpdate({ _id }, { isBlock }, { new: true })
+            .exec();
         if (updatedUser) {
             await this.deleteCache(`user:${_id}:profile`);
         }
@@ -955,7 +968,7 @@ let UsersService = class UsersService {
         const today = new Date();
         const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
         if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
-            throw new common_1.BadRequestException("You have already marked attendance today.");
+            throw new common_1.BadRequestException('You have already marked attendance today.');
         }
         user.rankScore.attendance.attendanceScore += 1;
         user.rankScore.attendance.dateAttendance = new Date();
@@ -986,10 +999,11 @@ let UsersService = class UsersService {
         }
         let highestRank = null;
         for (const rank of ranks) {
-            if (user.rankScore.attendance.attendanceScore >= rank.score.attendanceScore
-                && user.rankScore.numberOfComment >= rank.score.numberOfComment
-                && user.rankScore.numberOfBlog >= rank.score.numberOfBlog
-                && user.rankScore.numberOfLike >= rank.score.numberOfLike) {
+            if (user.rankScore.attendance.attendanceScore >=
+                rank.score.attendanceScore &&
+                user.rankScore.numberOfComment >= rank.score.numberOfComment &&
+                user.rankScore.numberOfBlog >= rank.score.numberOfBlog &&
+                user.rankScore.numberOfLike >= rank.score.numberOfLike) {
                 if (!highestRank || rank.rankScoreGoal > highestRank.rankScoreGoal) {
                     highestRank = rank;
                 }
@@ -1831,7 +1845,10 @@ let SpendingNoteService = class SpendingNoteService {
         }
         const cate = await this.categoryService.findOneCateService(userId, cateId);
         const spendingLimit = await this.spendingLimitService.findSpendingLimitByIdService(cate.spendingLimitId);
-        const currentSpendingNotes = await this.spendingNoteModel.find({ cateId, userId });
+        const currentSpendingNotes = await this.spendingNoteModel.find({
+            cateId,
+            userId,
+        });
         const currentTotalSpending = currentSpendingNotes.reduce((total, note) => total + note.amount, 0);
         const newTotalSpending = currentTotalSpending + amount;
         const newSpendingNote = new this.spendingNoteModel({
@@ -1867,7 +1884,10 @@ let SpendingNoteService = class SpendingNoteService {
         }
         let warningMessage;
         if (amount !== undefined && spendingNote.amount !== amount) {
-            const currentSpendingNotes = await this.spendingNoteModel.find({ cateId: spendingNote.cateId, userId });
+            const currentSpendingNotes = await this.spendingNoteModel.find({
+                cateId: spendingNote.cateId,
+                userId,
+            });
             const currentTotalSpending = currentSpendingNotes.reduce((total, note) => total + note.amount, 0);
             const newTotalSpending = currentTotalSpending - spendingNote.amount + amount;
             const category = await this.categoryService.findOneCateService(userId, spendingNote.cateId);
@@ -2179,7 +2199,9 @@ let SpendingNoteService = class SpendingNoteService {
         };
     }
     async getTotalSpendingForCategory(userId, categoryId) {
-        const categorySpendingNotes = await this.spendingNoteModel.find({ userId, cateId: categoryId }).lean();
+        const categorySpendingNotes = await this.spendingNoteModel
+            .find({ userId, cateId: categoryId })
+            .lean();
         return categorySpendingNotes.reduce((total, note) => total + note.amount, 0);
     }
     async findSpendingNoteByCateIdService(cateId) {
@@ -5098,15 +5120,21 @@ let RoleService = class RoleService {
     async findRoleService(ids) {
         const cacheKeys = ids.map((id) => `role:${id}`);
         const cachedRoles = await Promise.all(cacheKeys.map((key) => this.getCache(key)));
-        const missedCacheIndices = cachedRoles.map((role, index) => role ? null : index).filter((index) => index !== null);
+        const missedCacheIndices = cachedRoles
+            .map((role, index) => (role ? null : index))
+            .filter((index) => index !== null);
         const missedCacheIds = missedCacheIndices.map((index) => ids[index]);
         if (missedCacheIds.length === 0) {
             return cachedRoles.map((role) => JSON.parse(role));
         }
         else {
-            const rolesFromDb = await this.roleModel.find({ _id: { $in: missedCacheIds } }).exec();
+            const rolesFromDb = await this.roleModel
+                .find({ _id: { $in: missedCacheIds } })
+                .exec();
             await Promise.all(rolesFromDb.map((role) => this.setCache(`role:${role.id}`, JSON.stringify(role))));
-            const rolesFromCache = cachedRoles.filter((role) => role !== null).map((role) => JSON.parse(role));
+            const rolesFromCache = cachedRoles
+                .filter((role) => role !== null)
+                .map((role) => JSON.parse(role));
             return [...rolesFromCache, ...rolesFromDb];
         }
     }
@@ -8084,7 +8112,17 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Start date time must be less than end date time');
         }
         try {
-            const updatedSchedule = await this.scheduleModel.findOneAndUpdate({ userId, _id: scheduleId }, { title, location, isAllDay, startDateTime, endDateTime, note, isLoop, calendars, url }, { new: true });
+            const updatedSchedule = await this.scheduleModel.findOneAndUpdate({ userId, _id: scheduleId }, {
+                title,
+                location,
+                isAllDay,
+                startDateTime,
+                endDateTime,
+                note,
+                isLoop,
+                calendars,
+                url,
+            }, { new: true });
             await this.deleteCache(`schedules:${userId}`);
             await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
             return updatedSchedule;
@@ -8120,7 +8158,9 @@ let ScheduleService = class ScheduleService {
             throw new common_1.BadRequestException('Schedules not found');
         }
         try {
-            await this.scheduleModel.deleteMany({ userId, _id: { $in: scheduleIds } }).exec();
+            await this.scheduleModel
+                .deleteMany({ userId, _id: { $in: scheduleIds } })
+                .exec();
             await this.deleteCache(`schedules:${userId}`);
             scheduleIds.forEach(async (id) => await this.deleteCache(`schedule:${id}`));
             return { message: 'Delete schedules successfully' };
@@ -8146,13 +8186,15 @@ let ScheduleService = class ScheduleService {
         if (!schedules.length) {
             throw new common_1.BadRequestException('Schedules not found');
         }
-        const decryptedSchedules = schedules.map(schedule => {
+        const decryptedSchedules = schedules.map((schedule) => {
             if (schedule.isEncrypted) {
                 const encryptedKey = findUser.encryptKey;
                 const decryptedKey = this.encryptionService.decryptEncryptKey(encryptedKey, findUser.password);
                 schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
                 schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-                schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+                schedule.note = schedule.note
+                    ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+                    : undefined;
             }
             return schedule;
         });
@@ -8842,7 +8884,13 @@ let RankService = class RankService {
         if (!existedRank) {
             throw new common_1.BadRequestException('Rank not found');
         }
-        this.updateRankDetails(existedRank, { rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike });
+        this.updateRankDetails(existedRank, {
+            rankName,
+            attendanceScore,
+            numberOfComment,
+            numberOfBlog,
+            numberOfLike,
+        });
         if (file) {
             await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
             existedRank.rankIcon = await this.uploadRankIcon(existedRank.rankName, file);
@@ -9677,7 +9725,9 @@ let SearchService = SearchService_1 = class SearchService {
             }
         }
         catch (error) {
-            this.logger.error(`Failed to search posts with key ${searchKey}`, { error });
+            this.logger.error(`Failed to search posts with key ${searchKey}`, {
+                error,
+            });
             throw error;
         }
     }
@@ -10817,7 +10867,7 @@ let ReportService = class ReportService {
             if (!acc[postId]) {
                 acc[postId] = {
                     post: report.postId,
-                    report: []
+                    report: [],
                 };
             }
             const { postId: _, ...reportWithoutPostId } = report.toObject();
@@ -11913,12 +11963,16 @@ let StoryService = class StoryService {
         }
     }
     async getListStoryService() {
-        return await this.storyModel.find({ status: 'active' })
+        return await this.storyModel
+            .find({ status: 'active' })
             .populate('userId', 'firstname lastname _id')
             .exec();
     }
     async getMyStoryService(userId) {
-        return await this.storyModel.find({ userId: userId }).populate('userId', 'firstname lastname _id').exec();
+        return await this.storyModel
+            .find({ userId: userId })
+            .populate('userId', 'firstname lastname _id')
+            .exec();
     }
     async checkExpiredStoryService() {
         try {
@@ -12596,7 +12650,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("b7abe80eaca9ce7378e4")
+/******/ 		__webpack_require__.h = () => ("2b74c23b5253de8e8d98")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

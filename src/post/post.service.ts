@@ -7,7 +7,6 @@ import { UsersService } from 'src/users/users.service';
 import { FavoritePost } from './schema/favoritePost.schema';
 import { RedisService } from 'src/redis/redis.service';
 import { SearchService } from '../search/search.service';
-import { AggregationsAggregate, SearchResponse, SearchResponseBody } from '@elastic/elasticsearch/lib/api/types';
 
 @Injectable()
 export class PostService {

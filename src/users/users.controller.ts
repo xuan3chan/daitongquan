@@ -32,7 +32,6 @@ import { Subject, Action } from 'src/decorator/casl.decorator';
 import { Request } from 'express';
 import {
   DeleteUserDto,
-  CreateUserDto,
   BlockUserDto,
   UpdateUserProfileDto,
 } from './dto/index';

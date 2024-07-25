@@ -3,24 +3,19 @@ import {
   Put,
   Patch,
   Controller,
-  Delete,
   HttpCode,
   HttpStatus,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
-  ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { AuthGuard } from '../gaurd/auth.gaurd';
 import {RegisterDto,LoginDto,RefreshTokenDto,ForgotPasswordDto,ResetPasswordDto} from './dto/index';
 
 @ApiTags('authentication')
