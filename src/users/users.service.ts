@@ -212,7 +212,7 @@ export class UsersService {
     const savedUser = await newUser.save();
     await this.deleteCache(`user:${email}`);
     await this.deleteCache(`user:username:${username}`);
-    await this.deleteCache(`user:list`);
+    await this.deleteCache(`users:list`);
 
     return savedUser;
   }
@@ -278,7 +278,7 @@ export class UsersService {
       await this.deleteCache(`user:${_id}:profile`);
       await this.deleteCache(`user:${updatedUser.email}`);
       await this.deleteCache(`user:username:${updatedUser.username}`);
-      await this.deleteCache(`user:list`);
+      await this.deleteCache(`users:list`);
     }
     return updatedUser;
   }
@@ -301,7 +301,7 @@ export class UsersService {
     }
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
-      await this.deleteCache(`user:list`);
+      await this.deleteCache(`users:list`);
     }
     return updatedUser;
   }
@@ -408,7 +408,7 @@ export class UsersService {
       this.deleteCache(`user:${_id}:profile`);
       this.deleteCache(`user:${deletedUser.email}`);
       this.deleteCache(`user:username:${deletedUser.username}`);
-      this.deleteCache(`user:list`);
+      this.deleteCache(`users:list`);
     }
     return deletedUser;
   }

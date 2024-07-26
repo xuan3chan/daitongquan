@@ -7,6 +7,7 @@ import { AuthGuard } from './auth.gaurd'; // Corrected the file name from 'auth.
 
 @Injectable()
 export class MemberGuard extends AuthGuard {
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       const canActivate = await super.canActivate(context);

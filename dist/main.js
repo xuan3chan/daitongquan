@@ -796,7 +796,7 @@ let UsersService = class UsersService {
         const savedUser = await newUser.save();
         await this.deleteCache(`user:${email}`);
         await this.deleteCache(`user:username:${username}`);
-        await this.deleteCache(`user:list`);
+        await this.deleteCache(`users:list`);
         return savedUser;
     }
     async viewProfileService(_id) {
@@ -841,7 +841,7 @@ let UsersService = class UsersService {
             await this.deleteCache(`user:${_id}:profile`);
             await this.deleteCache(`user:${updatedUser.email}`);
             await this.deleteCache(`user:username:${updatedUser.username}`);
-            await this.deleteCache(`user:list`);
+            await this.deleteCache(`users:list`);
         }
         return updatedUser;
     }
@@ -863,7 +863,7 @@ let UsersService = class UsersService {
         }
         if (updatedUser) {
             await this.deleteCache(`user:${_id}:profile`);
-            await this.deleteCache(`user:list`);
+            await this.deleteCache(`users:list`);
         }
         return updatedUser;
     }
@@ -910,7 +910,7 @@ let UsersService = class UsersService {
             this.deleteCache(`user:${_id}:profile`);
             this.deleteCache(`user:${deletedUser.email}`);
             this.deleteCache(`user:username:${deletedUser.username}`);
-            this.deleteCache(`user:list`);
+            this.deleteCache(`users:list`);
         }
         return deletedUser;
     }
@@ -12755,7 +12755,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("0a5b05938f5b2934bd6f")
+/******/ 		__webpack_require__.h = () => ("48ae1b48d769e4c60155")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
