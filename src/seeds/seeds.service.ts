@@ -14,7 +14,7 @@ export class SeedsService {
             { name: 'Food', description: 'Food Category',type:'spend', icon: 'mdi:food-outline',color:'#FF0000' },
             { name: 'Relax', description: 'Relax Category,',type:'spend',icon: 'mingcute:happy-line',color:'#006769' },
             { name: 'Shopping', description: 'Shopping Category',type:'spend',icon: 'mingcute:shopping-bag-1-line',color:'#FFBF00' },
-            { name: 'Chilling', description: 'Chilling Category',type:'spend',icon: 'abler:mood-happy',color:'#3572EF' },
+            { name: 'Chilling', description: 'Chilling Category',type:'spend',icon: 'material-symbols:relax-outline',color:'#3572EF' },
         ];
 
         return this.createCategories(categories, userId);
