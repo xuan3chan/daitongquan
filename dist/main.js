@@ -891,7 +891,7 @@ let UsersService = class UsersService {
             .exec();
         if (updatedUser) {
             await this.deleteCache(`user:${_id}:profile`);
-            await this.deleteCache(`user:list`);
+            await this.deleteCache(`users:list`);
         }
         return updatedUser;
     }
@@ -12755,7 +12755,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("3d798b0ae2593a8e30b2")
+/******/ 		__webpack_require__.h = () => ("52243f3ae8ff640cdffb")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
