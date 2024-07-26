@@ -389,7 +389,7 @@ export class UsersService {
       await this.deleteCache(`user:${_id}:profile`);
       await this.deleteCache(`users:list`);
       this.deleteCache(`user:${updatedUser.email}`);
-      this.deleteCache(`user:username:${updatedUser.username}`);
+      this.deleteCache(`user:${updatedUser.username}`);
     }
 
     return updatedUser;
