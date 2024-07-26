@@ -680,6 +680,7 @@ let UsersService = class UsersService {
         const cacheKey = `user:${account}`;
         const cachedUser = await this.getCache(cacheKey);
         if (cachedUser) {
+            console.log('cachedUser');
             return cachedUser;
         }
         const user = await this.userModel
@@ -892,6 +893,8 @@ let UsersService = class UsersService {
         if (updatedUser) {
             await this.deleteCache(`user:${_id}:profile`);
             await this.deleteCache(`users:list`);
+            this.deleteCache(`user:${updatedUser.email}`);
+            this.deleteCache(`user:username:${updatedUser.username}`);
         }
         return updatedUser;
     }
@@ -12755,7 +12758,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("48ae1b48d769e4c60155")
+/******/ 		__webpack_require__.h = () => ("56cdcbbcd7a9ddd2daf9")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

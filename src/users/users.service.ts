@@ -50,6 +50,7 @@ export class UsersService {
     const cacheKey = `user:${account}`;
     const cachedUser = await this.getCache(cacheKey);
     if (cachedUser) {
+      console.log('cachedUser');
       return cachedUser;
     }
     const user = await this.userModel
@@ -387,6 +388,8 @@ export class UsersService {
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
       await this.deleteCache(`users:list`);
+      this.deleteCache(`user:${updatedUser.email}`);
+      this.deleteCache(`user:username:${updatedUser.username}`);
     }
 
     return updatedUser;
