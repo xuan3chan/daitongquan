@@ -3,7 +3,7 @@ export interface IUser {
   firstname: string;
   lastname: string;
   email: string;
-  username: string;
+  phone: string;
   avatar: string;
   $assertPopulated: string;
   $clone: string;

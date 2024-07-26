@@ -2563,9 +2563,9 @@ let SearchService = SearchService_1 = class SearchService {
             const userDocument = {
                 id: user._id,
                 email: userWithoutId.email,
-                username: userWithoutId.username,
                 firstname: userWithoutId.firstname,
                 lastname: userWithoutId.lastname,
+                phone: userWithoutId.phone,
                 avatar: userWithoutId.avatar,
             };
             await this.elasticsearchService.index({
@@ -2581,13 +2581,19 @@ let SearchService = SearchService_1 = class SearchService {
     }
     async updateUser(userId, user) {
         try {
-            const userToUpdate = { ...user };
-            delete userToUpdate._id;
+            const { _id, ...userWithoutId } = user;
+            const userDocument = {
+                email: userWithoutId.email,
+                firstname: userWithoutId.firstname,
+                lastname: userWithoutId.lastname,
+                phone: userWithoutId.phone,
+                avatar: userWithoutId.avatar,
+            };
             await this.elasticsearchService.update({
                 index: 'users',
                 id: userId.toString(),
                 body: {
-                    doc: userToUpdate,
+                    doc: userDocument,
                 },
             });
         }
@@ -2616,7 +2622,8 @@ let SearchService = SearchService_1 = class SearchService {
                     query: {
                         multi_match: {
                             query: searchKey,
-                            fields: ["firstname", "lastname", "email", "username"],
+                            fields: ["firstname", "lastname", "email", "phone"],
+                            fuzziness: "AUTO"
                         },
                     },
                 },
@@ -12748,7 +12755,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("36c64e34f6a565ac4969")
+/******/ 		__webpack_require__.h = () => ("3d798b0ae2593a8e30b2")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

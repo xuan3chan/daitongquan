@@ -96,9 +96,9 @@ export class SearchService {
       const userDocument = {
         id: user._id,
         email: userWithoutId.email,
-        username: userWithoutId.username,
         firstname: userWithoutId.firstname,
         lastname: userWithoutId.lastname,
+        phone: userWithoutId.phone,
         avatar: userWithoutId.avatar,
         // Các trường khác nếu cần
       };
@@ -115,14 +115,21 @@ export class SearchService {
 
   async updateUser(userId: string, user: Partial<IUser>): Promise<void> {
     try {
-      const userToUpdate = { ...user };
-      delete userToUpdate._id;
+      const { _id, ...userWithoutId } = user;
+      const userDocument = {
+        email: userWithoutId.email,
+        firstname: userWithoutId.firstname,
+        lastname: userWithoutId.lastname,
+        phone: userWithoutId.phone,
+        avatar: userWithoutId.avatar,
+        // Các trường khác nếu cần
+      };
 
       await this.elasticsearchService.update({
         index: 'users',
         id: userId.toString(),
         body: {
-          doc: userToUpdate,
+          doc: userDocument,
         },
       });
     } catch (error) {
@@ -152,7 +159,8 @@ export class SearchService {
               multi_match: {
                 query: searchKey,
                 // Updated fields to match the updated IUser interface
-                fields: ["firstname", "lastname", "email", "username"],
+                fields: ["firstname", "lastname", "email", "phone"],
+                fuzziness: "AUTO"
               },
             },
           },
