@@ -4933,9 +4933,9 @@ let AdminController = class AdminController {
     }
     async blockAdminController(blockAdminDto) {
         const result = await this.adminService.blockAdminService(blockAdminDto.id, blockAdminDto.isBlock);
-        const cachedAdmin = await this.redisService.get(`admin:${blockAdminDto.id}`);
+        const cachedAdmin = await this.redisService.getJSON(`admin:${blockAdminDto.id}`, '$');
         if (cachedAdmin) {
-            const admin = JSON.parse(cachedAdmin);
+            const admin = JSON.parse(cachedAdmin.toString());
             admin.isBlock = blockAdminDto.isBlock;
             await this.redisService.set(`admin:${blockAdminDto.id}`, JSON.stringify(admin));
         }
@@ -12755,7 +12755,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("52243f3ae8ff640cdffb")
+/******/ 		__webpack_require__.h = () => ("25d5a44683f8fdb81d4f")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

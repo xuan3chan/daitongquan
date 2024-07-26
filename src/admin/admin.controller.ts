@@ -122,9 +122,9 @@ export class AdminController {
       blockAdminDto.isBlock
     );
     // Update the cached admin block status in Redis
-    const cachedAdmin = await this.redisService.get(`admin:${blockAdminDto.id}`);
+    const cachedAdmin = await this.redisService.getJSON(`admin:${blockAdminDto.id}`, '$');
     if (cachedAdmin) {
-      const admin = JSON.parse(cachedAdmin);
+      const admin = JSON.parse(cachedAdmin.toString());
       admin.isBlock = blockAdminDto.isBlock;
       await this.redisService.set(`admin:${blockAdminDto.id}`, JSON.stringify(admin));
     }
