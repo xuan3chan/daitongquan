@@ -938,7 +938,7 @@ let UsersService = class UsersService {
             user.rankScore = {
                 attendance: {
                     attendanceScore: 0,
-                    dateAttendance: new Date(),
+                    dateAttendance: null,
                 },
                 numberOfBlog: 0,
                 numberOfComment: 0,
@@ -962,6 +962,7 @@ let UsersService = class UsersService {
         return user;
     }
     async attendanceService(userId) {
+        console.log(userId);
         const user = await this.userModel.findOne({ _id: userId }).exec();
         if (!user) {
             throw new Error('User not found');
@@ -969,13 +970,14 @@ let UsersService = class UsersService {
         if (!user.rankScore) {
             user.rankScore = {
                 attendance: {
-                    attendanceScore: 0,
+                    attendanceScore: 1,
                     dateAttendance: new Date(),
                 },
                 numberOfBlog: 0,
                 numberOfComment: 0,
                 numberOfLike: 0,
             };
+            return { message: 'Attendance marked successfuawaitlly' };
         }
         const today = new Date();
         const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
@@ -1174,7 +1176,7 @@ __decorate([
         type: {
             attendance: {
                 attendanceScore: { type: mongoose_3.default.Schema.Types.Number, default: 0 },
-                dateAttendance: { type: mongoose_3.default.Schema.Types.Date, default: Date.now },
+                dateAttendance: { type: mongoose_3.default.Schema.Types.Date, default: null },
             },
             numberOfComment: { type: mongoose_3.default.Schema.Types.Number, default: 0 },
             numberOfBlog: { type: mongoose_3.default.Schema.Types.Number, default: 0 },
@@ -12771,7 +12773,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("3e71e63818d7eefa0250")
+/******/ 		__webpack_require__.h = () => ("2d8882edcd6db7dab4e1")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

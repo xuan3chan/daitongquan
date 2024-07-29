@@ -443,7 +443,7 @@ export class UsersService {
       user.rankScore = {
         attendance: {
           attendanceScore: 0,
-          dateAttendance: new Date(),
+          dateAttendance: null,
         },
         numberOfBlog: 0,
         numberOfComment: 0,
@@ -469,6 +469,7 @@ export class UsersService {
   }
 
   async attendanceService(userId: string): Promise<any> {
+    console.log(userId);
     const user = await this.userModel.findOne({ _id: userId }).exec();
     if (!user) {
       throw new Error('User not found');
@@ -476,13 +477,14 @@ export class UsersService {
     if (!user.rankScore) {
       user.rankScore = {
         attendance: {
-          attendanceScore: 0,
+          attendanceScore: 1,
           dateAttendance: new Date(),
         },
         numberOfBlog: 0,
         numberOfComment: 0,
         numberOfLike: 0,
       };
+      return { message: 'Attendance marked successfuawaitlly' };
     }
     const today = new Date();
     const lastAttendanceDate = new Date(
@@ -501,8 +503,6 @@ export class UsersService {
     await this.deleteCache(`user:${userId}`);
     await this.deleteCache(`user:${userId}:profile`);
     await this.deleteCache(`user:list`);
-
-
     return { message: 'Attendance marked successfuawaitlly' };
   }
 

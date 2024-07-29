@@ -87,7 +87,7 @@ export class User extends Document {
   type: {
     attendance: { 
       attendanceScore: { type: mongoose.Schema.Types.Number, default: 0 },
-      dateAttendance: { type: mongoose.Schema.Types.Date, default: Date.now },
+      dateAttendance: { type: mongoose.Schema.Types.Date, default: null },
     },
     numberOfComment: { type: mongoose.Schema.Types.Number, default: 0 },
     numberOfBlog: { type: mongoose.Schema.Types.Number, default: 0 },
