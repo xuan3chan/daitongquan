@@ -484,18 +484,15 @@ export class UsersService {
         numberOfComment: 0,
         numberOfLike: 0,
       };
-      return { message: 'Attendance marked successfuawaitlly' };
+      await user.save();
+      return { message: 'Attendance marked successfully' };
     }
     const today = new Date();
-    const lastAttendanceDate = new Date(
-      user.rankScore.attendance.dateAttendance,
-    );
-    if (
-      today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)
-    ) {
-      throw new BadRequestException(
-        'You have already marked attendance today.',
-      );
+    if (user.rankScore.attendance.dateAttendance) {
+      const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
+      if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
+        throw new BadRequestException('You have already marked attendance today.');
+      }
     }
     user.rankScore.attendance.attendanceScore += 1;
     user.rankScore.attendance.dateAttendance = new Date();
@@ -503,7 +500,7 @@ export class UsersService {
     await this.deleteCache(`user:${userId}`);
     await this.deleteCache(`user:${userId}:profile`);
     await this.deleteCache(`user:list`);
-    return { message: 'Attendance marked successfuawaitlly' };
+    return { message: 'Attendance marked successfully' };
   }
 
   async checkRankService(userId: string): Promise<any> {

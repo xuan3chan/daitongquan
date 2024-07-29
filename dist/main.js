@@ -977,12 +977,15 @@ let UsersService = class UsersService {
                 numberOfComment: 0,
                 numberOfLike: 0,
             };
-            return { message: 'Attendance marked successfuawaitlly' };
+            await user.save();
+            return { message: 'Attendance marked successfully' };
         }
         const today = new Date();
-        const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
-        if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
-            throw new common_1.BadRequestException('You have already marked attendance today.');
+        if (user.rankScore.attendance.dateAttendance) {
+            const lastAttendanceDate = new Date(user.rankScore.attendance.dateAttendance);
+            if (today.setHours(0, 0, 0, 0) === lastAttendanceDate.setHours(0, 0, 0, 0)) {
+                throw new common_1.BadRequestException('You have already marked attendance today.');
+            }
         }
         user.rankScore.attendance.attendanceScore += 1;
         user.rankScore.attendance.dateAttendance = new Date();
@@ -990,7 +993,7 @@ let UsersService = class UsersService {
         await this.deleteCache(`user:${userId}`);
         await this.deleteCache(`user:${userId}:profile`);
         await this.deleteCache(`user:list`);
-        return { message: 'Attendance marked successfuawaitlly' };
+        return { message: 'Attendance marked successfully' };
     }
     async checkRankService(userId) {
         const user = await this.userModel.findOne({ _id: userId }).exec();
@@ -12773,7 +12776,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("2d8882edcd6db7dab4e1")
+/******/ 		__webpack_require__.h = () => ("5bf83492f8b7175151b2")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
