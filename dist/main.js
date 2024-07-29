@@ -2064,6 +2064,18 @@ let SpendingNoteService = class SpendingNoteService {
             });
             const infoCate = await this.categoryService.findOneCateService(userId, cateId);
             const limitCate = await this.spendingLimitService.findSpendingLimitByIdService(infoCate.spendingLimitId);
+            if (!limitCate) {
+                return {
+                    nameCate: infoCate.name,
+                    percentHasUse: 0,
+                    budget: 0,
+                    spending: cateSpendingNotes.map((note) => ({
+                        title: note.title,
+                        cost: note.amount,
+                        percentHasUse: 0,
+                    })),
+                };
+            }
             const percentHasUse = Math.min((totalCost / limitCate.budget) * 100, 100);
             const spending = cateSpendingNotes.map((note) => ({
                 title: note.title,
@@ -4271,11 +4283,11 @@ let SpendingnoteController = class SpendingnoteController {
     }
     async createSpendingNoteController(req, dto) {
         const userId = this.getUserIdFromToken(req);
-        return this.spendingnoteService.createSpendingNoteService(dto.cateId, userId, dto.title, dto.spendingDate, dto.paymentMethod, dto.amount, dto.content);
+        return this.spendingnoteService.createSpendingNoteService(dto.cateId, userId, dto.title, dto.date, dto.method, dto.amount, dto.content);
     }
     async updateSpendingNoteController(req, dto) {
         const userId = this.getUserIdFromToken(req);
-        return this.spendingnoteService.updateSpendingNoteService(dto.spendingNoteId, userId, dto.title, dto.spendingDate, dto.paymentMethod, dto.amount, dto.content, dto.cateId);
+        return this.spendingnoteService.updateSpendingNoteService(dto.spendingNoteId, userId, dto.title, dto.date, dto.method, dto.amount, dto.content, dto.cateId);
     }
     async deleteManySpendingNoteController(req, dto) {
         console.log(dto);
@@ -4583,7 +4595,7 @@ __decorate([
     (0, class_validator_1.IsDateString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
-], CreateSpendingNoteDto.prototype, "spendingDate", void 0);
+], CreateSpendingNoteDto.prototype, "date", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Payment method ',
@@ -4592,7 +4604,7 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateSpendingNoteDto.prototype, "paymentMethod", void 0);
+], CreateSpendingNoteDto.prototype, "method", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Amount of spending note ',
@@ -4600,7 +4612,7 @@ __decorate([
     }),
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.Max)(100000000000000000),
+    (0, class_validator_1.Max)(10000000000000),
     __metadata("design:type", Number)
 ], CreateSpendingNoteDto.prototype, "amount", void 0);
 
@@ -4672,7 +4684,7 @@ __decorate([
     (0, class_validator_1.IsDateString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
-], UpdateSpendingNoteDto.prototype, "spendingDate", void 0);
+], UpdateSpendingNoteDto.prototype, "date", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Payment method ',
@@ -4681,7 +4693,7 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], UpdateSpendingNoteDto.prototype, "paymentMethod", void 0);
+], UpdateSpendingNoteDto.prototype, "method", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Amount of spending note ',
@@ -7153,11 +7165,11 @@ let IncomenoteController = class IncomenoteController {
     }
     async createIncomeNoteController(request, dto) {
         const userId = this.getUserIdFromToken(request);
-        return this.incomenoteService.createIncomeNoteService(userId, dto.cateId, dto.title, dto.content, dto.incomeDate, dto.method, dto.amount);
+        return this.incomenoteService.createIncomeNoteService(userId, dto.cateId, dto.title, dto.content, dto.date, dto.method, dto.amount);
     }
     async updateIncomeNoteController(request, incomeNoteId, dto) {
         const userId = this.getUserIdFromToken(request);
-        return this.incomenoteService.updateIncomeNoteService(userId, incomeNoteId, dto.cateId, dto.title, dto.content, dto.incomeDate, dto.method, dto.amount);
+        return this.incomenoteService.updateIncomeNoteService(userId, incomeNoteId, dto.cateId, dto.title, dto.content, dto.date, dto.method, dto.amount);
     }
     async deleteManyIncomeNoteController(request, dto) {
         const userId = this.getUserIdFromToken(request);
@@ -7401,7 +7413,7 @@ __decorate([
     (0, class_validator_1.IsDateString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
-], CreateIncomeNoteDto.prototype, "incomeDate", void 0);
+], CreateIncomeNoteDto.prototype, "date", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Payment method ',
@@ -7480,7 +7492,7 @@ __decorate([
     (0, class_validator_1.IsDateString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", typeof (_a = typeof Date !== "undefined" && Date) === "function" ? _a : Object)
-], UpdateIncomeNoteDto.prototype, "incomeDate", void 0);
+], UpdateIncomeNoteDto.prototype, "date", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
         description: 'Payment method ',
@@ -10513,6 +10525,7 @@ let CommentService = class CommentService {
         this.deleteCache(`comments:get:${postId}`);
         this.deleteCache(`posts:detail:${postId}`);
         this.deleteCache(`posts:user:${userId}`);
+        this.deleteCache(`posts:favorites:${userId}`);
         return { message: 'Comment created successfully.' };
     }
     async updateCommentService(userId, commentId, content) {
@@ -12758,7 +12771,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("331c062a7a9e7cae3552")
+/******/ 		__webpack_require__.h = () => ("3e71e63818d7eefa0250")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

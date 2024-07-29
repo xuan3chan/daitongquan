@@ -33,7 +33,7 @@ export class CreateIncomeNoteDto {
     })
     @IsDateString()
     @IsNotEmpty()
-    incomeDate: Date
+    date: Date
 
     @ApiProperty({
         description: 'Payment method ',

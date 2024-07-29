@@ -55,7 +55,7 @@ export class IncomenoteController {
       dto.cateId,
       dto.title,
       dto.content,
-      dto.incomeDate,
+      dto.date,
       dto.method,
       dto.amount,
     );
@@ -79,7 +79,7 @@ export class IncomenoteController {
       dto.cateId,
       dto.title,
       dto.content,
-      dto.incomeDate,
+      dto.date,
       dto.method,
       dto.amount,
     );

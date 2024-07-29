@@ -389,7 +389,7 @@ export class SpendingNoteService {
     startDate =
       startDate instanceof Date ? startDate : new Date(Date.parse(startDate));
     endDate = endDate instanceof Date ? endDate : new Date(Date.parse(endDate));
-
+  
     const start = new Date(
       Date.UTC(
         startDate.getFullYear(),
@@ -411,9 +411,9 @@ export class SpendingNoteService {
       spendingDate: { $gte: start, $lte: end },
       userId,
     });
-
+  
     const cateIdUnique = [...new Set(spendingNotes.map((note) => note.cateId))];
-
+  
     const spendingDetails = await Promise.all(
       cateIdUnique.map(async (cateId) => {
         let totalCost = 0;
@@ -424,7 +424,7 @@ export class SpendingNoteService {
           }
           return isMatch;
         });
-
+  
         const infoCate = await this.categoryService.findOneCateService(
           userId,
           cateId,
@@ -433,17 +433,31 @@ export class SpendingNoteService {
           await this.spendingLimitService.findSpendingLimitByIdService(
             infoCate.spendingLimitId,
           );
+  
+        if (!limitCate) {
+          return {
+            nameCate: infoCate.name,
+            percentHasUse: 0,
+            budget: 0,
+            spending: cateSpendingNotes.map((note) => ({
+              title: note.title,
+              cost: note.amount,
+              percentHasUse: 0,
+            })),
+          };
+        }
+  
         const percentHasUse = Math.min(
           (totalCost / limitCate.budget) * 100,
           100,
         );
-
+  
         const spending = cateSpendingNotes.map((note) => ({
           title: note.title,
           cost: note.amount,
           percentHasUse: (note.amount / limitCate.budget) * 100,
         }));
-
+  
         return {
           nameCate: infoCate.name,
           percentHasUse,
@@ -452,7 +466,7 @@ export class SpendingNoteService {
         };
       }),
     );
-
+  
     // Group spending details by category name
     const groupedSpendingDetails = spendingDetails.reduce((acc, curr) => {
       if (!acc.has(curr.nameCate)) {
@@ -468,7 +482,7 @@ export class SpendingNoteService {
       group.allOfPersentUse += curr.percentHasUse;
       return acc;
     }, new Map());
-
+  
     return {
       startDate: start,
       endDate: end,

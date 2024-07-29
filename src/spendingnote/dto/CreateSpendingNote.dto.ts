@@ -33,7 +33,7 @@ export class CreateSpendingNoteDto {
     })
     @IsDateString()
     @IsNotEmpty()
-    spendingDate: Date
+    date: Date
 
     @ApiProperty({
         description: 'Payment method ',
@@ -41,7 +41,7 @@ export class CreateSpendingNoteDto {
     })
     @IsString()
     @IsNotEmpty()
-    paymentMethod: string
+    method: string
 
     @ApiProperty({
         description: 'Amount of spending note ',
@@ -49,6 +49,6 @@ export class CreateSpendingNoteDto {
     })
     @IsNumber()
     @IsNotEmpty()
-    @Max(100000000000000000)
+    @Max(10000000000000)
     amount: number
 }

@@ -42,6 +42,7 @@ export class CommentService {
      this.deleteCache(`comments:get:${postId}`)
      this.deleteCache(`posts:detail:${postId}`);
      this.deleteCache(`posts:user:${userId}`);
+     this.deleteCache(`posts:favorites:${userId}`)
 
     return { message: 'Comment created successfully.' };
   }

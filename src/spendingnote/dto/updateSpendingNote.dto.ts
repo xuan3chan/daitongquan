@@ -42,7 +42,7 @@ export class UpdateSpendingNoteDto {
     @IsDateString()
     @IsOptional()
 
-    spendingDate: Date
+    date: Date
 
     @ApiProperty({
         description: 'Payment method ',
@@ -50,7 +50,7 @@ export class UpdateSpendingNoteDto {
     })
     @IsString()
     @IsOptional()
-    paymentMethod: string
+    method: string
 
     @ApiProperty({
         description: 'Amount of spending note ',
