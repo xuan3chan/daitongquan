@@ -10983,7 +10983,14 @@ let ReportService = class ReportService {
         }
         const reports = await this.reportModel
             .find()
-            .populate('userId', 'firstname lastname avatar')
+            .populate({
+            path: 'userId',
+            select: 'firstname lastname avatar rankID',
+            populate: {
+                path: 'rankID',
+                select: 'rankName rankIcon'
+            }
+        })
             .populate({
             path: 'postId',
             populate: {
@@ -12781,7 +12788,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("08efa2b922452dcf8d55")
+/******/ 		__webpack_require__.h = () => ("fe1c8bd447cd9e3c9f90")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

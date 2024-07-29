@@ -46,7 +46,14 @@ export class ReportService {
     // Fetch reports with populated data
     const reports = await this.reportModel
       .find()
-      .populate('userId', 'firstname lastname avatar')
+      .populate({
+        path: 'userId',
+        select: 'firstname lastname avatar rankID',
+        populate: {
+          path: 'rankID',
+          select: 'rankName rankIcon' // Adjust the fields as needed
+        }
+      })
       .populate({
         path: 'postId',
         populate: {
