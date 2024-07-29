@@ -143,4 +143,9 @@ export class ReportService {
     await this.deleteCache('reports:all');
     return { message: 'Report rejected successfully.' };
   }
+  async deleteAllReportsbyPostIdService(postId: string): Promise<{ message: string }> {
+    await this.reportModel.deleteMany({ postId });
+    await this.deleteCache('reports:all');
+    return { message: 'All reports deleted successfully.' };
+  }
 }

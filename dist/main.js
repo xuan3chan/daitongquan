@@ -11059,6 +11059,11 @@ let ReportService = class ReportService {
         await this.deleteCache('reports:all');
         return { message: 'Report rejected successfully.' };
     }
+    async deleteAllReportsbyPostIdService(postId) {
+        await this.reportModel.deleteMany({ postId });
+        await this.deleteCache('reports:all');
+        return { message: 'All reports deleted successfully.' };
+    }
 };
 exports.ReportService = ReportService;
 exports.ReportService = ReportService = __decorate([
@@ -11137,7 +11142,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportController = void 0;
 const common_1 = __webpack_require__(6);
@@ -11164,6 +11169,9 @@ let ReportController = class ReportController {
     }
     async getReportsController() {
         return { reports: await this.reportService.getReportsService() };
+    }
+    async deleteAllReportsbyPostIdController(postId) {
+        return await this.reportService.deleteAllReportsbyPostIdService(postId);
     }
     async deleteReportController(reportId) {
         return await this.reportService.deleteReportService(reportId);
@@ -11199,6 +11207,13 @@ __decorate([
     __metadata("design:returntype", typeof (_e = typeof Promise !== "undefined" && Promise) === "function" ? _e : Object)
 ], ReportController.prototype, "getReportsController", null);
 __decorate([
+    (0, common_1.Delete)('ss/:postId'),
+    __param(0, (0, common_1.Param)('postId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+], ReportController.prototype, "deleteAllReportsbyPostIdController", null);
+__decorate([
     (0, common_1.Delete)(':reportId'),
     (0, common_1.UseGuards)(permission_gaurd_1.PermissionGuard),
     (0, casl_decorator_1.Subject)('report'),
@@ -11206,7 +11221,7 @@ __decorate([
     __param(0, (0, common_1.Param)('reportId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", typeof (_f = typeof Promise !== "undefined" && Promise) === "function" ? _f : Object)
+    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
 ], ReportController.prototype, "deleteReportController", null);
 __decorate([
     (0, common_1.Patch)('block-user/:reportId'),
@@ -11216,7 +11231,7 @@ __decorate([
     __param(0, (0, common_1.Param)('reportId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", typeof (_g = typeof Promise !== "undefined" && Promise) === "function" ? _g : Object)
+    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
 ], ReportController.prototype, "blockUserByReportController", null);
 __decorate([
     (0, common_1.Patch)('block-post/:reportId'),
@@ -11226,7 +11241,7 @@ __decorate([
     __param(0, (0, common_1.Param)('reportId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", typeof (_h = typeof Promise !== "undefined" && Promise) === "function" ? _h : Object)
+    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
 ], ReportController.prototype, "blockPostByReportController", null);
 __decorate([
     (0, common_1.Patch)('reject/:reportId'),
@@ -11236,7 +11251,7 @@ __decorate([
     __param(0, (0, common_1.Param)('reportId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", typeof (_j = typeof Promise !== "undefined" && Promise) === "function" ? _j : Object)
+    __metadata("design:returntype", typeof (_k = typeof Promise !== "undefined" && Promise) === "function" ? _k : Object)
 ], ReportController.prototype, "rejectReportController", null);
 exports.ReportController = ReportController = __decorate([
     (0, swagger_1.ApiTags)('report'),
@@ -12788,7 +12803,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("fe1c8bd447cd9e3c9f90")
+/******/ 		__webpack_require__.h = () => ("05cca520a0f850707f53")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

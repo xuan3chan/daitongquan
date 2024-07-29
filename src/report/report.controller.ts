@@ -44,7 +44,15 @@ export class ReportController {
   async getReportsController(): Promise<{ reports: any }> {
     return { reports: await this.reportService.getReportsService() };
   }
-
+  @Delete('ss/:postId')
+  // @UseGuards(PermissionGuard)
+  // @Subject('report')
+  // @Action('delete')
+  async deleteAllReportsbyPostIdController(
+    @Param('postId') postId: string,
+  ): Promise<{ message: string }> {
+    return await this.reportService.deleteAllReportsbyPostIdService(postId);
+  }
   @Delete(':reportId')
   @UseGuards(PermissionGuard)
   @Subject('report')
@@ -54,6 +62,7 @@ export class ReportController {
   ): Promise<{ message: string }> {
     return await this.reportService.deleteReportService(reportId);
   }
+ 
   
   @Patch('block-user/:reportId')
   @UseGuards(PermissionGuard)
@@ -83,4 +92,5 @@ export class ReportController {
   ): Promise<{ message: string }> {
     return await this.reportService.rejectReportService(reportId);
   }
+
 }
