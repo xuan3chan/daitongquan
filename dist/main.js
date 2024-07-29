@@ -2146,6 +2146,7 @@ let SpendingNoteService = class SpendingNoteService {
             query.cateId = category;
         }
         let totalCosts = 0;
+        let highestCosts = 0;
         const spendingNotes = await this.spendingNoteModel.find(query);
         let groupedSpendingDetails = {};
         if (filterBy === 'month') {
@@ -2189,7 +2190,12 @@ let SpendingNoteService = class SpendingNoteService {
                 totalCosts += note.amount;
             }
         });
-        return { start, end, totalCosts, groupedSpendingDetails };
+        for (const key in groupedSpendingDetails) {
+            if (groupedSpendingDetails[key].totalCost > highestCosts) {
+                highestCosts = groupedSpendingDetails[key].totalCost;
+            }
+        }
+        return { start, end, highestCosts, totalCosts, groupedSpendingDetails };
     }
     async notifySpendingNoteService(userId) {
         const spendingNotes = await this.spendingNoteModel.find({ userId }).lean();
@@ -3489,6 +3495,7 @@ __decorate([
     }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.MaxLength)(1000),
     __metadata("design:type", String)
 ], UpdateUserProfileDto.prototype, "description", void 0);
 __decorate([
@@ -12803,7 +12810,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("05cca520a0f850707f53")
+/******/ 		__webpack_require__.h = () => ("d127fa699d60bb855842")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

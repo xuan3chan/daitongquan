@@ -500,7 +500,7 @@ export class SpendingNoteService {
     const currentDate = new Date();
     const currentYear = currentDate.getUTCFullYear();
     const currentMonth = currentDate.getUTCMonth();
-
+  
     switch (filterBy) {
       case 'month':
         start = new Date(
@@ -528,7 +528,7 @@ export class SpendingNoteService {
       default:
         throw new Error('Invalid filter type');
     }
-
+  
     const query: {
       spendingDate: { $gte: Date; $lte: Date };
       userId: string;
@@ -537,14 +537,15 @@ export class SpendingNoteService {
       spendingDate: { $gte: start, $lte: end },
       userId,
     };
-
+  
     if (category) {
       query.cateId = category;
     }
     let totalCosts = 0;
-
+    let highestCosts = 0;
+  
     const spendingNotes = await this.spendingNoteModel.find(query);
-
+  
     let groupedSpendingDetails = {};
     if (filterBy === 'month') {
       let year = currentYear;
@@ -570,14 +571,14 @@ export class SpendingNoteService {
         };
       }
     }
-
+  
     spendingNotes.forEach((note) => {
       const noteDate = new Date(note.spendingDate);
       const key =
         filterBy === 'month'
           ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1}`
           : noteDate.getUTCFullYear();
-
+  
       if (groupedSpendingDetails[key]) {
         groupedSpendingDetails[key].totalCost += note.amount;
         groupedSpendingDetails[key].items.push({
@@ -590,8 +591,15 @@ export class SpendingNoteService {
         totalCosts += note.amount;
       }
     });
-
-    return { start, end, totalCosts, groupedSpendingDetails };
+  
+    // Determine the highest total cost among all groups
+    for (const key in groupedSpendingDetails) {
+      if (groupedSpendingDetails[key].totalCost > highestCosts) {
+        highestCosts = groupedSpendingDetails[key].totalCost;
+      }
+    }
+  
+    return { start, end, highestCosts, totalCosts, groupedSpendingDetails };
   }
 
   async notifySpendingNoteService(

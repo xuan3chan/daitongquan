@@ -81,6 +81,7 @@ export class UpdateUserProfileDto {
   })
   @IsString()
   @IsOptional()
+  @MaxLength(1000)
   description: string;
 
   @ApiProperty({
