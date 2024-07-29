@@ -9804,7 +9804,7 @@ let PostService = class PostService {
         const favoritePosts = await this.favoritePostModel.find({ userId });
         const postIds = favoritePosts.map((post) => post.postId);
         const posts = await this.postModel
-            .find({ _id: { $in: postIds } })
+            .find({ _id: { $in: postIds }, isShow: true, status: 'active', isApproved: true })
             .populate({
             path: 'userId',
             select: 'firstname lastname avatar rankID',
@@ -12779,7 +12779,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("9a1d6bbee76d3ed6ff47")
+/******/ 		__webpack_require__.h = () => ("42c82c1d4f42dee0d30f")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

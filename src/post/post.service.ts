@@ -436,7 +436,7 @@ export class PostService {
     const favoritePosts = await this.favoritePostModel.find({ userId });
     const postIds = favoritePosts.map((post) => post.postId);
     const posts = await this.postModel
-      .find({ _id: { $in: postIds } })
+      .find({ _id: { $in: postIds },isShow: true,status: 'active',isApproved: true })
       .populate({
         path: 'userId',
         select: 'firstname lastname avatar rankID',
