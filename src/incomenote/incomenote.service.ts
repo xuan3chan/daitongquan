@@ -303,17 +303,17 @@ export class IncomenoteService {
     let start, end;
     const currentDate = new Date();
     const currentYear = currentDate.getUTCFullYear();
-    const currentMonth = currentDate.getUTCMonth() + 1;
-
+    const currentMonth = currentDate.getUTCMonth();
+  
     switch (filterBy) {
       case 'month':
         start = new Date(
-          Date.UTC(currentYear, currentMonth - numberOfItems, 1),
+          Date.UTC(currentYear, currentMonth - numberOfItems + 1, 1),
         );
         end = new Date(
           Date.UTC(
             currentYear,
-            currentMonth - 1,
+            currentMonth,
             currentDate.getUTCDate(),
             23,
             59,
@@ -325,29 +325,86 @@ export class IncomenoteService {
         start = new Date(Date.UTC(currentYear - numberOfItems + 1, 0, 1));
         end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
         break;
+      case 'category':
+        start = new Date(Date.UTC(currentYear, 0, 1));
+        end = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59));
+        break;
       default:
-        throw new BadRequestException(
-          'Invalid filterBy value. Please use "month" or "year".',
-        );
+        throw new BadRequestException('Invalid filterBy value. Please use "month" or "year".');
     }
-
-    const filter = { userId, incomeDate: { $gte: start, $lte: end } };
-    if (category) {
-      filter['cateId'] = category;
-    }
-
-    const incomeNotes = await this.incomeNoteModel.find(filter).exec();
-    const total = incomeNotes.reduce((sum, note) => sum + note.amount, 0);
-    const categorizedTotals = incomeNotes.reduce((acc, note) => {
-      acc[note.cateId] = (acc[note.cateId] || 0) + note.amount;
-      return acc;
-    }, {});
-
-    return {
-      filterBy,
-      total,
-      categorizedTotals,
-      incomeNotes,
+  
+    const query: {
+      incomeDate: { $gte: Date; $lte: Date };
+      userId: string;
+      cateId?: string;
+    } = {
+      incomeDate: { $gte: start, $lte: end },
+      userId,
     };
+  
+    if (category) {
+      query.cateId = category;
+    }
+  
+    const incomeNotes = await this.incomeNoteModel.find(query).exec();
+  
+    let groupedIncomeDetails = {};
+    if (filterBy === 'month') {
+      let year = currentYear;
+      let month = currentMonth;
+      for (let i = 0; i < numberOfItems; i++) {
+        const key = `${year}-${month + 1}`; // Create a string key in the format 'YYYY-MM'
+        groupedIncomeDetails[key] = {
+          totalAmount: 0,
+          items: [],
+        };
+        month -= 1;
+        if (month < 0) {
+          month = 11;
+          year -= 1;
+        }
+      }
+    } else if (filterBy === 'year') {
+      for (let i = 0; i < numberOfItems; i++) {
+        const year = currentYear - i;
+        groupedIncomeDetails[year] = {
+          totalAmount: 0,
+          items: [],
+        };
+      }
+    }
+  
+    let totalAmount = 0;
+    let highestAmount = 0;
+  
+    incomeNotes.forEach((note) => {
+      const noteDate = new Date(note.incomeDate);
+      const key =
+        filterBy === 'month'
+          ? `${noteDate.getUTCFullYear()}-${noteDate.getUTCMonth() + 1}`
+          : noteDate.getUTCFullYear();
+  
+      if (groupedIncomeDetails[key]) {
+        groupedIncomeDetails[key].totalAmount += note.amount;
+        groupedIncomeDetails[key].items.push({
+          title: note.title,
+          amount: note.amount,
+          category: note.cateId,
+          incomeDate: note.incomeDate,
+        });
+        // Accumulate the total amount
+        totalAmount += note.amount;
+      }
+    });
+  
+    // Determine the highest total amount among all groups
+    for (const key in groupedIncomeDetails) {
+      if (groupedIncomeDetails[key].totalAmount > highestAmount) {
+        highestAmount = groupedIncomeDetails[key].totalAmount;
+      }
+    }
+  
+    return { start, end, highestAmount, totalAmount, groupedIncomeDetails };
   }
+  
 }
