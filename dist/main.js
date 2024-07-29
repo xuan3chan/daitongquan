@@ -978,6 +978,9 @@ let UsersService = class UsersService {
                 numberOfLike: 0,
             };
             await user.save();
+            await this.deleteCache(`user:${userId}`);
+            await this.deleteCache(`user:${userId}:profile`);
+            await this.deleteCache(`user:list`);
             return { message: 'Attendance marked successfully' };
         }
         const today = new Date();
@@ -12776,7 +12779,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("5bf83492f8b7175151b2")
+/******/ 		__webpack_require__.h = () => ("9a1d6bbee76d3ed6ff47")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

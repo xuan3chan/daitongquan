@@ -485,6 +485,9 @@ export class UsersService {
         numberOfLike: 0,
       };
       await user.save();
+      await this.deleteCache(`user:${userId}`);
+      await this.deleteCache(`user:${userId}:profile`);
+      await this.deleteCache(`user:list`);
       return { message: 'Attendance marked successfully' };
     }
     const today = new Date();
