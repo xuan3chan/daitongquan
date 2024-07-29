@@ -11025,6 +11025,7 @@ let ReportService = class ReportService {
         report.status = 'Processed';
         await report.save();
         await this.deleteCache('reports:all');
+        await this.redisService.flushAll();
         return { message: 'User blocked successfully.' };
     }
     async blockPostByReportService(reportId) {
@@ -11038,6 +11039,7 @@ let ReportService = class ReportService {
         report.status = 'Processed';
         await report.save();
         await this.deleteCache('reports:all');
+        await this.redisService.flushAll();
         return { message: 'Post blocked successfully.' };
     }
     async rejectReportService(reportId) {
@@ -12779,7 +12781,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("42c82c1d4f42dee0d30f")
+/******/ 		__webpack_require__.h = () => ("08efa2b922452dcf8d55")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

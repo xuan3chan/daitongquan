@@ -103,6 +103,7 @@ export class ReportService {
     report.status = 'Processed';
     await report.save();
     await this.deleteCache('reports:all');
+    await this.redisService.flushAll();
     return { message: 'User blocked successfully.' };
   }
 
@@ -120,6 +121,7 @@ export class ReportService {
     await report.save();
 
     await this.deleteCache('reports:all');
+    await this.redisService.flushAll();
 
     return { message: 'Post blocked successfully.' };
   }
