@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -20,6 +21,7 @@ import {
   UpdateScheduleDto,
   DeleteManyDto,
   ViewScheduleDto,
+  statusScheduleDto,
 } from './dto/schedule.dto';
 import {
   ApiBadRequestResponse,
@@ -178,5 +180,20 @@ export class ScheduleController {
   ): Promise<any> {
     const userId = this.getUserIdFromToken(request);
     return this.scheduleService.disableEncryptionService(scheduleId, userId);
+  }
+  @Patch('update-status/:scheduleId')
+  @UseGuards(MemberGuard)
+  @ApiCreatedResponse({
+    description: 'The record has been successfully updated.',
+  })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @HttpCode(200)
+  async updateStatusController(
+    @Req() request: Request,
+    @Param('scheduleId') scheduleId: string,
+    @Body() dto: statusScheduleDto,
+  ): Promise<any> {
+    const userId = this.getUserIdFromToken(request);
+    return this.scheduleService.updateStatusService(userId, scheduleId, dto.status);
   }
 }

@@ -78,16 +78,18 @@ export class CloudinaryService {
   }
 
   async deleteMediaService(url: string): Promise<UploadApiResponse | UploadApiErrorResponse> {
-    const publicId = url.split('/').slice(-2).join('/').split('.')[0];
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.destroy(publicId, (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-           resolve(result);
-        }
+      // Extract the part of the URL after '/upload/'
+      const publicId = url.split('/upload/')[1].split('.')[0];
+      
+      return new Promise((resolve, reject) => {
+          cloudinary.uploader.destroy(publicId, (error, result) => {
+              if (error) {
+                  reject(error);
+              } else {
+                  resolve(result);
+              }
+          });
       });
-    });
   }
 
   async deleteManyImagesService(urls: string[]): Promise<void> {

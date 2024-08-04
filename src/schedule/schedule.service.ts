@@ -129,6 +129,33 @@ export class ScheduleService {
       throw new InternalServerErrorException('Error updating schedule');
     }
   }
+  async updateStatusService(
+    userId: string,
+    scheduleId: string,
+    status: string,
+  ): Promise<Schedule> {
+    const schedule = await this.scheduleModel.findOne({
+      userId,
+      _id: scheduleId,
+    });
+
+    if (!schedule) {
+      throw new BadRequestException('Schedule not found');
+    }
+
+    try {
+      const updatedSchedule = await this.scheduleModel.findOneAndUpdate(
+        { userId, _id: scheduleId },
+        { status },
+        { new: true },
+      );
+      await this.deleteCache(`schedules:${userId}`);
+      await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+      return updatedSchedule;
+    } catch (error) {
+      throw new InternalServerErrorException('Error updating schedule');
+    }
+  }
 
   async deleteScheduleService(
     userId: string,

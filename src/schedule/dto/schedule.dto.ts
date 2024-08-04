@@ -100,3 +100,10 @@ export class ViewScheduleDto {
   @Transform(({ value }) => Array.isArray(value) ? value : [value], { toClassOnly: true })
   calendars: string[];
 }
+
+export class statusScheduleDto {
+  @ApiProperty({ description: 'Status of schedule', example: 'readed or unread' })
+  @IsString()
+  @IsNotEmpty()
+  status: string;
+}

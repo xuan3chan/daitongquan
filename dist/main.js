@@ -865,6 +865,7 @@ let UsersService = class UsersService {
         if (updatedUser) {
             await this.deleteCache(`user:${_id}:profile`);
             await this.deleteCache(`users:list`);
+            await this.deleteCache(`posts:user:${_id}`);
         }
         return updatedUser;
     }
@@ -1263,7 +1264,7 @@ let CloudinaryService = class CloudinaryService {
         return { uploadResult };
     }
     async deleteMediaService(url) {
-        const publicId = url.split('/').slice(-2).join('/').split('.')[0];
+        const publicId = url.split('/upload/')[1].split('.')[0];
         return new Promise((resolve, reject) => {
             cloudinary_1.v2.uploader.destroy(publicId, (error, result) => {
                 if (error) {
@@ -8495,6 +8496,24 @@ let ScheduleService = class ScheduleService {
             throw new common_1.InternalServerErrorException('Error updating schedule');
         }
     }
+    async updateStatusService(userId, scheduleId, status) {
+        const schedule = await this.scheduleModel.findOne({
+            userId,
+            _id: scheduleId,
+        });
+        if (!schedule) {
+            throw new common_1.BadRequestException('Schedule not found');
+        }
+        try {
+            const updatedSchedule = await this.scheduleModel.findOneAndUpdate({ userId, _id: scheduleId }, { status }, { new: true });
+            await this.deleteCache(`schedules:${userId}`);
+            await this.setCache(`schedule:${scheduleId}`, updatedSchedule);
+            return updatedSchedule;
+        }
+        catch (error) {
+            throw new common_1.InternalServerErrorException('Error updating schedule');
+        }
+    }
     async deleteScheduleService(userId, scheduleId) {
         const schedule = await this.scheduleModel.findOne({
             userId,
@@ -8791,7 +8810,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleController = void 0;
 const common_1 = __webpack_require__(6);
@@ -8841,6 +8860,10 @@ let ScheduleController = class ScheduleController {
     async disableEncryptScheduleController(scheduleId, request) {
         const userId = this.getUserIdFromToken(request);
         return this.scheduleService.disableEncryptionService(scheduleId, userId);
+    }
+    async updateStatusController(request, scheduleId, dto) {
+        const userId = this.getUserIdFromToken(request);
+        return this.scheduleService.updateStatusService(userId, scheduleId, dto.status);
     }
 };
 exports.ScheduleController = ScheduleController;
@@ -8954,6 +8977,21 @@ __decorate([
     __metadata("design:paramtypes", [String, typeof (_v = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _v : Object]),
     __metadata("design:returntype", typeof (_w = typeof Promise !== "undefined" && Promise) === "function" ? _w : Object)
 ], ScheduleController.prototype, "disableEncryptScheduleController", null);
+__decorate([
+    (0, common_1.Patch)('update-status/:scheduleId'),
+    (0, common_1.UseGuards)(member_gaurd_1.MemberGuard),
+    (0, swagger_1.ApiCreatedResponse)({
+        description: 'The record has been successfully updated.',
+    }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Bad request' }),
+    (0, common_1.HttpCode)(200),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('scheduleId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [typeof (_x = typeof express_1.Request !== "undefined" && express_1.Request) === "function" ? _x : Object, String, typeof (_y = typeof schedule_dto_1.statusScheduleDto !== "undefined" && schedule_dto_1.statusScheduleDto) === "function" ? _y : Object]),
+    __metadata("design:returntype", typeof (_z = typeof Promise !== "undefined" && Promise) === "function" ? _z : Object)
+], ScheduleController.prototype, "updateStatusController", null);
 exports.ScheduleController = ScheduleController = __decorate([
     (0, swagger_1.ApiTags)('schedule'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -8979,7 +9017,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ViewScheduleDto = exports.DeleteManyDto = exports.UpdateScheduleDto = exports.CreateScheduleDto = void 0;
+exports.statusScheduleDto = exports.ViewScheduleDto = exports.DeleteManyDto = exports.UpdateScheduleDto = exports.CreateScheduleDto = void 0;
 const swagger_1 = __webpack_require__(34);
 const class_transformer_1 = __webpack_require__(51);
 const class_validator_1 = __webpack_require__(49);
@@ -9107,6 +9145,15 @@ __decorate([
     (0, class_transformer_1.Transform)(({ value }) => Array.isArray(value) ? value : [value], { toClassOnly: true }),
     __metadata("design:type", Array)
 ], ViewScheduleDto.prototype, "calendars", void 0);
+class statusScheduleDto {
+}
+exports.statusScheduleDto = statusScheduleDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Status of schedule', example: 'readed or unread' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], statusScheduleDto.prototype, "status", void 0);
 
 
 /***/ }),
@@ -12872,7 +12919,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("3098464f36b4ba700489")
+/******/ 		__webpack_require__.h = () => ("422eaa6c54dfa47c65d0")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

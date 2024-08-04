@@ -303,6 +303,7 @@ export class UsersService {
     if (updatedUser) {
       await this.deleteCache(`user:${_id}:profile`);
       await this.deleteCache(`users:list`);
+      await this.deleteCache(`posts:user:${_id}`)
     }
     return updatedUser;
   }
