@@ -113,10 +113,10 @@ export class MailerService {
         <strong>Location:</strong> ${schedule.location}
       </p>
       <p style="margin-bottom: 10px; color: #fff">
-        <strong>Start:</strong> ${new Date(schedule.startDateTime).toUTCString()}
+        <strong>Start:</strong> ${schedule.startDateTime}
       </p>
       <p style="margin-bottom: 10px; color: #fff">
-        <strong>End:</strong> ${new Date(schedule.endDateTime).toUTCString()}
+        <strong>End:</strong> ${schedule.endDateTime}
       </p>
       <p style="margin-bottom: 10px; color: #fff">
         <strong>Note:</strong> ${schedule.note || 'N/A'}
@@ -133,8 +133,7 @@ export class MailerService {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
-          color: #fff;
-        }
+          color: #fff;        }
       </style>
       <body style="background-color: #25293c">
         <div

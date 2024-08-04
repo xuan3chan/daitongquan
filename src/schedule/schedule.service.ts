@@ -304,8 +304,9 @@ export class ScheduleService {
 
       const formattedSchedules = decryptedSchedules.map((schedule) => ({
         ...schedule.toObject(),
+        startDateTime:new Date(schedule.startDateTime).toUTCString(),
+        endDateTime: new Date(schedule.endDateTime).toUTCString(),
       }));
-      console.log('formattedSchedules:', formattedSchedules);
       return formattedSchedules;
     } catch (error) {
       console.error('Error fetching schedules for notification:', error);
