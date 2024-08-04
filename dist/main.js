@@ -8561,6 +8561,8 @@ let ScheduleService = class ScheduleService {
                     ? this.encryptionService.decryptData(schedule.note, decryptedKey)
                     : undefined;
             }
+            schedule.startDateTime.toUTCString();
+            schedule.endDateTime.toUTCString();
             return schedule;
         });
         await this.setCache(cacheKey, decryptedSchedules);
@@ -8569,7 +8571,6 @@ let ScheduleService = class ScheduleService {
     async notifyScheduleService(userId) {
         const TIMEZONE_OFFSET_HOURS = 7;
         const NOTIFICATION_TIME_MINUTES = 15;
-        const TIMEZONE = 'Asia/Ho_Chi_Minh';
         const nowTime = new Date(Date.now() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
         const notificationTime = new Date(nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000);
         try {
@@ -8592,8 +8593,10 @@ let ScheduleService = class ScheduleService {
                 const startDateTime = new Date(schedule.startDateTime);
                 const startTotalMinutes = startDateTime.getUTCHours() * 60 + startDateTime.getUTCMinutes();
                 const nowTotalMinutes = nowTime.getUTCHours() * 60 + nowTime.getUTCMinutes();
-                const notificationTotalMinutes = notificationTime.getUTCHours() * 60 + notificationTime.getUTCMinutes();
-                return startTotalMinutes >= nowTotalMinutes && startTotalMinutes <= notificationTotalMinutes;
+                const notificationTotalMinutes = notificationTime.getUTCHours() * 60 +
+                    notificationTime.getUTCMinutes();
+                return (startTotalMinutes >= nowTotalMinutes &&
+                    startTotalMinutes <= notificationTotalMinutes);
             });
             const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
             const decryptedSchedules = schedules.map((schedule) => {
@@ -8601,7 +8604,9 @@ let ScheduleService = class ScheduleService {
                     const decryptedKey = this.encryptionService.decryptEncryptKey(user.encryptKey, user.password);
                     schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
                     schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-                    schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+                    schedule.note = schedule.note
+                        ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+                        : undefined;
                 }
                 return schedule;
             });
@@ -12867,7 +12872,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("4d3e871ece9bd73f68c9")
+/******/ 		__webpack_require__.h = () => ("a7786d508f8479ec8b5d")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

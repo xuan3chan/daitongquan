@@ -223,7 +223,10 @@ export class ScheduleService {
         schedule.note = schedule.note
           ? this.encryptionService.decryptData(schedule.note, decryptedKey)
           : undefined;
+      
       }
+      schedule.startDateTime.toUTCString();
+      schedule.endDateTime.toUTCString();
       return schedule;
     });
 
@@ -234,12 +237,13 @@ export class ScheduleService {
   async notifyScheduleService(userId: string): Promise<any> {
     const TIMEZONE_OFFSET_HOURS = 7;
     const NOTIFICATION_TIME_MINUTES = 15;
-    const TIMEZONE = 'Asia/Ho_Chi_Minh';
-    const nowTime = new Date(Date.now() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
-    const notificationTime = new Date(
-      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000
+    const nowTime = new Date(
+      Date.now() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
     );
-  
+    const notificationTime = new Date(
+      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
+    );
+
     try {
       const [nonLoopedSchedules, loopedSchedules, user] = await Promise.all([
         this.scheduleModel.find({
@@ -253,44 +257,64 @@ export class ScheduleService {
         }),
         this.usersService.findUserByIdService(userId),
       ]);
-  
+
       if (!user) {
         throw new BadRequestException('User not found');
       }
-  
+
       const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
         const startDateTime = new Date(schedule.startDateTime);
-        const startTotalMinutes = startDateTime.getUTCHours() * 60 + startDateTime.getUTCMinutes();
-        const nowTotalMinutes = nowTime.getUTCHours() * 60 + nowTime.getUTCMinutes();
-        const notificationTotalMinutes = notificationTime.getUTCHours() * 60 + notificationTime.getUTCMinutes();
-  
-        return startTotalMinutes >= nowTotalMinutes && startTotalMinutes <= notificationTotalMinutes;
+        const startTotalMinutes =
+          startDateTime.getUTCHours() * 60 + startDateTime.getUTCMinutes();
+        const nowTotalMinutes =
+          nowTime.getUTCHours() * 60 + nowTime.getUTCMinutes();
+        const notificationTotalMinutes =
+          notificationTime.getUTCHours() * 60 +
+          notificationTime.getUTCMinutes();
+
+        return (
+          startTotalMinutes >= nowTotalMinutes &&
+          startTotalMinutes <= notificationTotalMinutes
+        );
       });
-  
+
       const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-  
+
       const decryptedSchedules = schedules.map((schedule) => {
         if (schedule.isEncrypted) {
-          const decryptedKey = this.encryptionService.decryptEncryptKey(user.encryptKey, user.password);
-  
-          schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
-          schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
-          schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+          const decryptedKey = this.encryptionService.decryptEncryptKey(
+            user.encryptKey,
+            user.password,
+          );
+
+          schedule.title = this.encryptionService.decryptData(
+            schedule.title,
+            decryptedKey,
+          );
+          schedule.location = this.encryptionService.decryptData(
+            schedule.location,
+            decryptedKey,
+          );
+          schedule.note = schedule.note
+            ? this.encryptionService.decryptData(schedule.note, decryptedKey)
+            : undefined;
         }
         return schedule;
       });
-  
+
       const formattedSchedules = decryptedSchedules.map((schedule) => ({
-          ...schedule.toObject(),
+        ...schedule.toObject(),
       }));
       console.log('formattedSchedules:', formattedSchedules);
       return formattedSchedules;
     } catch (error) {
       console.error('Error fetching schedules for notification:', error);
-      throw new InternalServerErrorException('Error fetching schedules for notification');
+      throw new InternalServerErrorException(
+        'Error fetching schedules for notification',
+      );
     }
   }
-  
+
   async enableEncryptionService(
     scheduleId: string,
     userId: string,
