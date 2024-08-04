@@ -245,18 +245,18 @@ const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const users_module_1 = __webpack_require__(9);
 const auth_module_1 = __webpack_require__(86);
-const mailer_module_1 = __webpack_require__(98);
-const seed_module_1 = __webpack_require__(100);
+const mailer_module_1 = __webpack_require__(99);
+const seed_module_1 = __webpack_require__(101);
 const role_module_1 = __webpack_require__(78);
 const admin_module_1 = __webpack_require__(72);
 const cloudinary_module_1 = __webpack_require__(55);
 const category_module_1 = __webpack_require__(56);
 const spendinglimit_module_1 = __webpack_require__(60);
 const spendingnote_module_1 = __webpack_require__(65);
-const incomenote_module_1 = __webpack_require__(101);
+const incomenote_module_1 = __webpack_require__(102);
 const encryption_module_1 = __webpack_require__(84);
-const debt_module_1 = __webpack_require__(110);
-const schedule_module_1 = __webpack_require__(116);
+const debt_module_1 = __webpack_require__(111);
+const schedule_module_1 = __webpack_require__(117);
 const app_controller_1 = __webpack_require__(122);
 const rank_module_1 = __webpack_require__(123);
 const post_module_1 = __webpack_require__(126);
@@ -5781,8 +5781,8 @@ const auth_service_1 = __webpack_require__(88);
 const users_module_1 = __webpack_require__(9);
 const jwt_1 = __webpack_require__(33);
 const config_1 = __webpack_require__(8);
-const mailer_module_1 = __webpack_require__(98);
-const seed_module_1 = __webpack_require__(100);
+const mailer_module_1 = __webpack_require__(99);
+const seed_module_1 = __webpack_require__(101);
 const admin_module_1 = __webpack_require__(72);
 const role_module_1 = __webpack_require__(78);
 let AuthModule = class AuthModule {
@@ -5837,7 +5837,7 @@ exports.AuthController = void 0;
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
 const auth_service_1 = __webpack_require__(88);
-const index_1 = __webpack_require__(92);
+const index_1 = __webpack_require__(93);
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -5960,7 +5960,7 @@ const users_service_1 = __webpack_require__(11);
 const mailer_service_1 = __webpack_require__(89);
 const crypto_1 = __webpack_require__(27);
 const bcrypt = __webpack_require__(44);
-const seeds_service_1 = __webpack_require__(91);
+const seeds_service_1 = __webpack_require__(92);
 const admin_service_1 = __webpack_require__(41);
 const role_service_1 = __webpack_require__(79);
 let AuthService = class AuthService {
@@ -6274,9 +6274,32 @@ let MailerService = class MailerService {
         const info = await this.transporter.sendMail(mailOptions);
         console.log('Message sent: %s', info.messageId, code);
     }
-    async sendEmailNotification(userId, schedule) {
+    async sendEmailNotification(userId, schedules) {
         const user = await this.usersService.findUserByIdService(userId);
         const email = user.email;
+        if (!schedules || schedules.length === 0) {
+            console.error('No schedules to notify for user', userId);
+            return;
+        }
+        const scheduleDetails = schedules.map((schedule) => {
+            return `
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Title:</strong> ${schedule.title}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Location:</strong> ${schedule.location}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Start:</strong> ${new Date(schedule.startDateTime).toUTCString()}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>End:</strong> ${new Date(schedule.endDateTime).toUTCString()}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Note:</strong> ${schedule.note || 'N/A'}
+      </p>
+    `;
+        }).join('<br>');
         const mailOptions = {
             to: email,
             subject: 'DaiQuanGia - Notification',
@@ -6319,21 +6342,7 @@ let MailerService = class MailerService {
             <p style="color: #fff">
               You have a new schedule notification.
             </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Title:</strong> ${schedule[0].title}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Location:</strong> ${schedule[0].location}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Start:</strong> ${new Date(schedule[0].startDateTime).toLocaleString()}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>End:</strong> ${new Date(schedule[0].endDateTime).toLocaleString()}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Note:</strong> ${schedule[0].note}
-            </p>
+            ${scheduleDetails}
             <p style="color: #fff">
               Thank you, DaiQuanGia Support Team
             </p>
@@ -6359,7 +6368,8 @@ exports.MailerService = MailerService = __decorate([
 module.exports = require("nodemailer");
 
 /***/ }),
-/* 91 */
+/* 91 */,
+/* 92 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6428,27 +6438,27 @@ exports.SeedsService = SeedsService = __decorate([
 
 
 /***/ }),
-/* 92 */
+/* 93 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.RefreshTokenDto = exports.LoginDto = exports.RegisterDto = void 0;
-const register_dto_1 = __webpack_require__(93);
+const register_dto_1 = __webpack_require__(94);
 Object.defineProperty(exports, "RegisterDto", ({ enumerable: true, get: function () { return register_dto_1.RegisterDto; } }));
-const login_dto_1 = __webpack_require__(94);
+const login_dto_1 = __webpack_require__(95);
 Object.defineProperty(exports, "LoginDto", ({ enumerable: true, get: function () { return login_dto_1.LoginDto; } }));
-const refreshToken_dto_1 = __webpack_require__(95);
+const refreshToken_dto_1 = __webpack_require__(96);
 Object.defineProperty(exports, "RefreshTokenDto", ({ enumerable: true, get: function () { return refreshToken_dto_1.RefreshTokenDto; } }));
-const forgotPassword_dto_1 = __webpack_require__(96);
+const forgotPassword_dto_1 = __webpack_require__(97);
 Object.defineProperty(exports, "ForgotPasswordDto", ({ enumerable: true, get: function () { return forgotPassword_dto_1.ForgotPasswordDto; } }));
-const resetPassword_dto_1 = __webpack_require__(97);
+const resetPassword_dto_1 = __webpack_require__(98);
 Object.defineProperty(exports, "ResetPasswordDto", ({ enumerable: true, get: function () { return resetPassword_dto_1.ResetPasswordDto; } }));
 
 
 /***/ }),
-/* 93 */
+/* 94 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6522,7 +6532,7 @@ __decorate([
 
 
 /***/ }),
-/* 94 */
+/* 95 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6564,7 +6574,7 @@ __decorate([
 
 
 /***/ }),
-/* 95 */
+/* 96 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6597,7 +6607,7 @@ __decorate([
 
 
 /***/ }),
-/* 96 */
+/* 97 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6632,7 +6642,7 @@ __decorate([
 
 
 /***/ }),
-/* 97 */
+/* 98 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6676,7 +6686,7 @@ __decorate([
 
 
 /***/ }),
-/* 98 */
+/* 99 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6691,7 +6701,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MailerModule = void 0;
 const common_1 = __webpack_require__(6);
 const mailer_service_1 = __webpack_require__(89);
-const mailer_controller_1 = __webpack_require__(99);
+const mailer_controller_1 = __webpack_require__(100);
 const config_1 = __webpack_require__(8);
 const users_module_1 = __webpack_require__(9);
 let MailerModule = class MailerModule {
@@ -6714,7 +6724,7 @@ exports.MailerModule = MailerModule = __decorate([
 
 
 /***/ }),
-/* 99 */
+/* 100 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6746,7 +6756,7 @@ exports.MailerController = MailerController = __decorate([
 
 
 /***/ }),
-/* 100 */
+/* 101 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6760,7 +6770,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SeedModule = void 0;
 const common_1 = __webpack_require__(6);
-const seeds_service_1 = __webpack_require__(91);
+const seeds_service_1 = __webpack_require__(92);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const category_schema_1 = __webpack_require__(18);
@@ -6783,7 +6793,7 @@ exports.SeedModule = SeedModule = __decorate([
 
 
 /***/ }),
-/* 101 */
+/* 102 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6797,12 +6807,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteModule = void 0;
 const common_1 = __webpack_require__(6);
-const incomenote_service_1 = __webpack_require__(102);
-const incomenote_controller_1 = __webpack_require__(104);
+const incomenote_service_1 = __webpack_require__(103);
+const incomenote_controller_1 = __webpack_require__(105);
 const category_module_1 = __webpack_require__(56);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const incomenote_schema_1 = __webpack_require__(103);
+const incomenote_schema_1 = __webpack_require__(104);
 const redis_module_1 = __webpack_require__(64);
 let IncomenoteModule = class IncomenoteModule {
 };
@@ -6825,7 +6835,7 @@ exports.IncomenoteModule = IncomenoteModule = __decorate([
 
 
 /***/ }),
-/* 102 */
+/* 103 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6848,7 +6858,7 @@ exports.IncomenoteService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const incomenote_schema_1 = __webpack_require__(103);
+const incomenote_schema_1 = __webpack_require__(104);
 const category_service_1 = __webpack_require__(17);
 const remove_accents_1 = __webpack_require__(25);
 const redis_service_1 = __webpack_require__(21);
@@ -7126,7 +7136,7 @@ exports.IncomenoteService = IncomenoteService = __decorate([
 
 
 /***/ }),
-/* 103 */
+/* 104 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7184,7 +7194,7 @@ exports.IncomeNoteSchema = mongoose_1.SchemaFactory.createForClass(IncomeNote);
 
 
 /***/ }),
-/* 104 */
+/* 105 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7204,17 +7214,17 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteController = void 0;
-const incomenote_service_1 = __webpack_require__(102);
+const incomenote_service_1 = __webpack_require__(103);
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
 const jwt = __webpack_require__(35);
 const member_gaurd_1 = __webpack_require__(54);
 const express_1 = __webpack_require__(46);
-const CreateIncomeNote_dto_1 = __webpack_require__(105);
-const UpdateIncomeNote_dto_1 = __webpack_require__(106);
-const queryDate_dto_1 = __webpack_require__(107);
-const statisticsincomeNote_1 = __webpack_require__(108);
-const DeleteManyIncome_dto_1 = __webpack_require__(109);
+const CreateIncomeNote_dto_1 = __webpack_require__(106);
+const UpdateIncomeNote_dto_1 = __webpack_require__(107);
+const queryDate_dto_1 = __webpack_require__(108);
+const statisticsincomeNote_1 = __webpack_require__(109);
+const DeleteManyIncome_dto_1 = __webpack_require__(110);
 let IncomenoteController = class IncomenoteController {
     constructor(incomenoteService) {
         this.incomenoteService = incomenoteService;
@@ -7417,7 +7427,7 @@ exports.IncomenoteController = IncomenoteController = __decorate([
 
 
 /***/ }),
-/* 105 */
+/* 106 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7496,7 +7506,7 @@ __decorate([
 
 
 /***/ }),
-/* 106 */
+/* 107 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7575,7 +7585,7 @@ __decorate([
 
 
 /***/ }),
-/* 107 */
+/* 108 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7618,7 +7628,7 @@ __decorate([
 
 
 /***/ }),
-/* 108 */
+/* 109 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7671,7 +7681,7 @@ __decorate([
 
 
 /***/ }),
-/* 109 */
+/* 110 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7701,7 +7711,7 @@ __decorate([
 
 
 /***/ }),
-/* 110 */
+/* 111 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7715,11 +7725,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtModule = void 0;
 const common_1 = __webpack_require__(6);
-const debt_service_1 = __webpack_require__(111);
-const debt_controller_1 = __webpack_require__(113);
+const debt_service_1 = __webpack_require__(112);
+const debt_controller_1 = __webpack_require__(114);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const debt_schema_1 = __webpack_require__(112);
+const debt_schema_1 = __webpack_require__(113);
 const encryption_module_1 = __webpack_require__(84);
 const users_module_1 = __webpack_require__(9);
 const redis_module_1 = __webpack_require__(64);
@@ -7745,7 +7755,7 @@ exports.DebtModule = DebtModule = __decorate([
 
 
 /***/ }),
-/* 111 */
+/* 112 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7766,7 +7776,7 @@ var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtService = void 0;
 const common_1 = __webpack_require__(6);
-const debt_schema_1 = __webpack_require__(112);
+const debt_schema_1 = __webpack_require__(113);
 const mongoose_1 = __webpack_require__(12);
 const mongoose_2 = __webpack_require__(7);
 const encryption_service_1 = __webpack_require__(26);
@@ -7922,7 +7932,7 @@ exports.DebtService = DebtService = __decorate([
 
 
 /***/ }),
-/* 112 */
+/* 113 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7988,7 +7998,7 @@ exports.DebtSchema = mongoose_1.SchemaFactory.createForClass(Debt);
 
 
 /***/ }),
-/* 113 */
+/* 114 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8012,9 +8022,9 @@ const common_1 = __webpack_require__(6);
 const jwt = __webpack_require__(35);
 const swagger_1 = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(54);
-const debt_service_1 = __webpack_require__(111);
-const CreateDebt_dto_1 = __webpack_require__(114);
-const UpdateDebt_dto_1 = __webpack_require__(115);
+const debt_service_1 = __webpack_require__(112);
+const CreateDebt_dto_1 = __webpack_require__(115);
+const UpdateDebt_dto_1 = __webpack_require__(116);
 const redis_service_1 = __webpack_require__(21);
 let DebtController = class DebtController {
     constructor(debtService, redisService) {
@@ -8198,7 +8208,7 @@ exports.DebtController = DebtController = __decorate([
 
 
 /***/ }),
-/* 114 */
+/* 115 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8267,7 +8277,7 @@ __decorate([
 
 
 /***/ }),
-/* 115 */
+/* 116 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8337,7 +8347,7 @@ __decorate([
 
 
 /***/ }),
-/* 116 */
+/* 117 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8351,11 +8361,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleModule = void 0;
 const common_1 = __webpack_require__(6);
-const schedule_service_1 = __webpack_require__(117);
+const schedule_service_1 = __webpack_require__(118);
 const schedule_controller_1 = __webpack_require__(120);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const schedule_schema_1 = __webpack_require__(118);
+const schedule_schema_1 = __webpack_require__(119);
 const users_module_1 = __webpack_require__(9);
 const encryption_module_1 = __webpack_require__(84);
 const redis_module_1 = __webpack_require__(64);
@@ -8382,7 +8392,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
 
 
 /***/ }),
-/* 117 */
+/* 118 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8405,11 +8415,10 @@ exports.ScheduleService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const schedule_schema_1 = __webpack_require__(118);
+const schedule_schema_1 = __webpack_require__(119);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(26);
 const redis_service_1 = __webpack_require__(21);
-const moment = __webpack_require__(119);
 let ScheduleService = class ScheduleService {
     constructor(scheduleModel, encryptionService, usersService, redisService) {
         this.scheduleModel = scheduleModel;
@@ -8560,42 +8569,51 @@ let ScheduleService = class ScheduleService {
     async notifyScheduleService(userId) {
         const TIMEZONE_OFFSET_HOURS = 7;
         const NOTIFICATION_TIME_MINUTES = 15;
-        const nowTime = new Date(new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
+        const TIMEZONE = 'Asia/Ho_Chi_Minh';
+        const nowTime = new Date(Date.now() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
         const notificationTime = new Date(nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000);
         try {
-            const nonLoopedSchedules = await this.scheduleModel.find({
-                userId,
-                isLoop: false,
-                startDateTime: { $gte: nowTime, $lte: notificationTime },
-            });
-            const loopedSchedules = await this.scheduleModel.find({
-                userId,
-                isLoop: true,
-            });
+            const [nonLoopedSchedules, loopedSchedules, user] = await Promise.all([
+                this.scheduleModel.find({
+                    userId,
+                    isLoop: false,
+                    startDateTime: { $gte: nowTime, $lte: notificationTime },
+                }),
+                this.scheduleModel.find({
+                    userId,
+                    isLoop: true,
+                }),
+                this.usersService.findUserByIdService(userId),
+            ]);
+            if (!user) {
+                throw new common_1.BadRequestException('User not found');
+            }
             const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
                 const startDateTime = new Date(schedule.startDateTime);
-                const startHours = startDateTime.getUTCHours();
-                const startMinutes = startDateTime.getUTCMinutes();
-                const nowHours = nowTime.getUTCHours();
-                const nowMinutes = nowTime.getUTCMinutes();
-                const notificationHours = notificationTime.getUTCHours();
-                const notificationMinutes = notificationTime.getUTCMinutes();
-                const nowTotalMinutes = nowHours * 60 + nowMinutes;
-                const notificationTotalMinutes = notificationHours * 60 + notificationMinutes;
-                const startTotalMinutes = startHours * 60 + startMinutes;
-                return (startTotalMinutes >= nowTotalMinutes &&
-                    startTotalMinutes <= notificationTotalMinutes);
+                const startTotalMinutes = startDateTime.getUTCHours() * 60 + startDateTime.getUTCMinutes();
+                const nowTotalMinutes = nowTime.getUTCHours() * 60 + nowTime.getUTCMinutes();
+                const notificationTotalMinutes = notificationTime.getUTCHours() * 60 + notificationTime.getUTCMinutes();
+                return startTotalMinutes >= nowTotalMinutes && startTotalMinutes <= notificationTotalMinutes;
             });
             const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-            const formattedSchedules = schedules.map((schedule) => ({
+            const decryptedSchedules = schedules.map((schedule) => {
+                if (schedule.isEncrypted) {
+                    const decryptedKey = this.encryptionService.decryptEncryptKey(user.encryptKey, user.password);
+                    schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+                    schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+                    schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+                }
+                return schedule;
+            });
+            const formattedSchedules = decryptedSchedules.map((schedule) => ({
                 ...schedule.toObject(),
-                startDateTime: moment(schedule.startDateTime).toISOString(),
-                endDateTime: moment(schedule.endDateTime).toISOString(),
             }));
+            console.log('formattedSchedules:', formattedSchedules);
             return formattedSchedules;
         }
         catch (error) {
-            throw new common_1.InternalServerErrorException(console.error(error), 'Error fetching schedules for notification');
+            console.error('Error fetching schedules for notification:', error);
+            throw new common_1.InternalServerErrorException('Error fetching schedules for notification');
         }
     }
     async enableEncryptionService(scheduleId, userId) {
@@ -8666,7 +8684,7 @@ exports.ScheduleService = ScheduleService = __decorate([
 
 
 /***/ }),
-/* 118 */
+/* 119 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8751,13 +8769,6 @@ exports.ScheduleSchema = mongoose_1.SchemaFactory.createForClass(Schedule);
 
 
 /***/ }),
-/* 119 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("moment");
-
-/***/ }),
 /* 120 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -8779,7 +8790,7 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleController = void 0;
 const common_1 = __webpack_require__(6);
-const schedule_service_1 = __webpack_require__(117);
+const schedule_service_1 = __webpack_require__(118);
 const express_1 = __webpack_require__(46);
 const jwt = __webpack_require__(35);
 const schedule_dto_1 = __webpack_require__(121);
@@ -11875,7 +11886,7 @@ exports.EventGateway = void 0;
 const websockets_1 = __webpack_require__(147);
 const socket_io_1 = __webpack_require__(148);
 const auth_service_1 = __webpack_require__(88);
-const schedule_service_1 = __webpack_require__(117);
+const schedule_service_1 = __webpack_require__(118);
 const story_service_1 = __webpack_require__(149);
 const message_service_1 = __webpack_require__(151);
 const common_1 = __webpack_require__(6);
@@ -12856,7 +12867,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("7689fbb16d974e56c6fd")
+/******/ 		__webpack_require__.h = () => ("4d3e871ece9bd73f68c9")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

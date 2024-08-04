@@ -95,13 +95,39 @@ export class MailerService {
 
     console.log('Message sent: %s', info.messageId, code);
   }
-  async sendEmailNotification(userId: string, schedule: Schedule): Promise<void> {
-    const user = await this.usersService.findUserByIdService(userId);
-    const email = user.email;
-    const mailOptions = {
-      to: email,
-      subject: 'DaiQuanGia - Notification',
-      html: `
+  async sendEmailNotification(userId: string, schedules: Schedule[]): Promise<void> {
+  const user = await this.usersService.findUserByIdService(userId);
+  const email = user.email;
+
+  if (!schedules || schedules.length === 0) {
+    console.error('No schedules to notify for user', userId);
+    return;
+  }
+
+  const scheduleDetails = schedules.map((schedule) => {
+    return `
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Title:</strong> ${schedule.title}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Location:</strong> ${schedule.location}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Start:</strong> ${new Date(schedule.startDateTime).toUTCString()}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>End:</strong> ${new Date(schedule.endDateTime).toUTCString()}
+      </p>
+      <p style="margin-bottom: 10px; color: #fff">
+        <strong>Note:</strong> ${schedule.note || 'N/A'}
+      </p>
+    `;
+  }).join('<br>');
+
+  const mailOptions = {
+    to: email,
+    subject: 'DaiQuanGia - Notification',
+    html: `
       <style>
         * {
           margin: 0;
@@ -140,32 +166,18 @@ export class MailerService {
             <p style="color: #fff">
               You have a new schedule notification.
             </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Title:</strong> ${schedule[0].title}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Location:</strong> ${schedule[0].location}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Start:</strong> ${new Date(schedule[0].startDateTime).toLocaleString()}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>End:</strong> ${new Date(schedule[0].endDateTime).toLocaleString()}
-            </p>
-            <p style="margin-bottom: 10px; color: #fff">
-              <strong>Note:</strong> ${schedule[0].note}
-            </p>
+            ${scheduleDetails}
             <p style="color: #fff">
               Thank you, DaiQuanGia Support Team
             </p>
           </div>
         </div>`,
-    };
+  };
 
-    const info = await this.transporter.sendMail(mailOptions);
-
-    console.log('Message sent: %s', info.messageId);
-  }
+  const info = await this.transporter.sendMail(mailOptions);
+  console.log('Message sent: %s', info.messageId);
 }
+
+  }
 
 

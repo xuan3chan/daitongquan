@@ -9,7 +9,7 @@ import { Schedule } from './schema/schedule.schema';
 import { UsersService } from 'src/users/users.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { RedisService } from 'src/redis/redis.service'; // Assuming you have a RedisService for caching
-import * as moment from 'moment';
+import * as moment from 'moment-timezone';
 
 @Injectable()
 export class ScheduleService {
@@ -234,64 +234,63 @@ export class ScheduleService {
   async notifyScheduleService(userId: string): Promise<any> {
     const TIMEZONE_OFFSET_HOURS = 7;
     const NOTIFICATION_TIME_MINUTES = 15;
-
-    const nowTime = new Date(
-      new Date().getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000,
-    );
+    const TIMEZONE = 'Asia/Ho_Chi_Minh';
+    const nowTime = new Date(Date.now() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
     const notificationTime = new Date(
-      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000,
+      nowTime.getTime() + NOTIFICATION_TIME_MINUTES * 60 * 1000
     );
-
+  
     try {
-      const nonLoopedSchedules = await this.scheduleModel.find({
-        userId,
-        isLoop: false,
-        startDateTime: { $gte: nowTime, $lte: notificationTime },
-      });
-
-      const loopedSchedules = await this.scheduleModel.find({
-        userId,
-        isLoop: true,
-      });
-
+      const [nonLoopedSchedules, loopedSchedules, user] = await Promise.all([
+        this.scheduleModel.find({
+          userId,
+          isLoop: false,
+          startDateTime: { $gte: nowTime, $lte: notificationTime },
+        }),
+        this.scheduleModel.find({
+          userId,
+          isLoop: true,
+        }),
+        this.usersService.findUserByIdService(userId),
+      ]);
+  
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+  
       const filteredLoopedSchedules = loopedSchedules.filter((schedule) => {
         const startDateTime = new Date(schedule.startDateTime);
-        const startHours = startDateTime.getUTCHours();
-        const startMinutes = startDateTime.getUTCMinutes();
-
-        const nowHours = nowTime.getUTCHours();
-        const nowMinutes = nowTime.getUTCMinutes();
-        const notificationHours = notificationTime.getUTCHours();
-        const notificationMinutes = notificationTime.getUTCMinutes();
-
-        const nowTotalMinutes = nowHours * 60 + nowMinutes;
-        const notificationTotalMinutes =
-          notificationHours * 60 + notificationMinutes;
-        const startTotalMinutes = startHours * 60 + startMinutes;
-
-        return (
-          startTotalMinutes >= nowTotalMinutes &&
-          startTotalMinutes <= notificationTotalMinutes
-        );
+        const startTotalMinutes = startDateTime.getUTCHours() * 60 + startDateTime.getUTCMinutes();
+        const nowTotalMinutes = nowTime.getUTCHours() * 60 + nowTime.getUTCMinutes();
+        const notificationTotalMinutes = notificationTime.getUTCHours() * 60 + notificationTime.getUTCMinutes();
+  
+        return startTotalMinutes >= nowTotalMinutes && startTotalMinutes <= notificationTotalMinutes;
       });
-
+  
       const schedules = [...nonLoopedSchedules, ...filteredLoopedSchedules];
-
-      // Format dates using moment
-      const formattedSchedules = schedules.map((schedule) => ({
-        ...schedule.toObject(),
-        startDateTime: moment(schedule.startDateTime).toISOString(),
-        endDateTime: moment(schedule.endDateTime).toISOString(),
+  
+      const decryptedSchedules = schedules.map((schedule) => {
+        if (schedule.isEncrypted) {
+          const decryptedKey = this.encryptionService.decryptEncryptKey(user.encryptKey, user.password);
+  
+          schedule.title = this.encryptionService.decryptData(schedule.title, decryptedKey);
+          schedule.location = this.encryptionService.decryptData(schedule.location, decryptedKey);
+          schedule.note = schedule.note ? this.encryptionService.decryptData(schedule.note, decryptedKey) : undefined;
+        }
+        return schedule;
+      });
+  
+      const formattedSchedules = decryptedSchedules.map((schedule) => ({
+          ...schedule.toObject(),
       }));
+      console.log('formattedSchedules:', formattedSchedules);
       return formattedSchedules;
     } catch (error) {
-      throw new InternalServerErrorException(
-        console.error(error),
-        'Error fetching schedules for notification',
-      );
+      console.error('Error fetching schedules for notification:', error);
+      throw new InternalServerErrorException('Error fetching schedules for notification');
     }
   }
-
+  
   async enableEncryptionService(
     scheduleId: string,
     userId: string,
