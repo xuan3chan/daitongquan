@@ -64,7 +64,11 @@ export class MessageService {
         return JSON.parse(cachedMessages as string);
       }
 
-      const messages = await this.messageModel.find({ $or: [{ senderId: userId }, { receiverId: userId }] });
+      const messages = await this.messageModel
+      .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
+      .populate('senderId', 'name email') // Populate sender details
+      .populate('receiverId', 'name email'); // Populate receiver details
+
       const decryptedMessages = messages.map(message => {
         if (message.content) message.content = this.encryptionService.rsaDecrypt(message.content);
         if (message.image) message.image = this.encryptionService.rsaDecrypt(message.image);

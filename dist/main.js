@@ -195,7 +195,7 @@ const core_1 = __webpack_require__(4);
 const app_module_1 = __webpack_require__(5);
 const swagger_1 = __webpack_require__(34);
 const common_1 = __webpack_require__(6);
-const compression = __webpack_require__(160);
+const compression = __webpack_require__(159);
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors();
@@ -245,27 +245,27 @@ const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const users_module_1 = __webpack_require__(9);
 const auth_module_1 = __webpack_require__(86);
-const mailer_module_1 = __webpack_require__(99);
-const seed_module_1 = __webpack_require__(101);
+const mailer_module_1 = __webpack_require__(98);
+const seed_module_1 = __webpack_require__(100);
 const role_module_1 = __webpack_require__(78);
 const admin_module_1 = __webpack_require__(72);
 const cloudinary_module_1 = __webpack_require__(55);
 const category_module_1 = __webpack_require__(56);
 const spendinglimit_module_1 = __webpack_require__(60);
 const spendingnote_module_1 = __webpack_require__(65);
-const incomenote_module_1 = __webpack_require__(102);
+const incomenote_module_1 = __webpack_require__(101);
 const encryption_module_1 = __webpack_require__(84);
-const debt_module_1 = __webpack_require__(111);
-const schedule_module_1 = __webpack_require__(117);
-const app_controller_1 = __webpack_require__(122);
-const rank_module_1 = __webpack_require__(123);
-const post_module_1 = __webpack_require__(126);
-const comment_module_1 = __webpack_require__(133);
-const report_module_1 = __webpack_require__(137);
-const statistics_module_1 = __webpack_require__(142);
-const event_gateway_1 = __webpack_require__(146);
-const story_module_1 = __webpack_require__(154);
-const message_module_1 = __webpack_require__(158);
+const debt_module_1 = __webpack_require__(110);
+const schedule_module_1 = __webpack_require__(116);
+const app_controller_1 = __webpack_require__(121);
+const rank_module_1 = __webpack_require__(122);
+const post_module_1 = __webpack_require__(125);
+const comment_module_1 = __webpack_require__(132);
+const report_module_1 = __webpack_require__(136);
+const statistics_module_1 = __webpack_require__(141);
+const event_gateway_1 = __webpack_require__(145);
+const story_module_1 = __webpack_require__(153);
+const message_module_1 = __webpack_require__(157);
 const redis_module_1 = __webpack_require__(64);
 const search_module_1 = __webpack_require__(85);
 let AppModule = class AppModule {
@@ -5782,8 +5782,8 @@ const auth_service_1 = __webpack_require__(88);
 const users_module_1 = __webpack_require__(9);
 const jwt_1 = __webpack_require__(33);
 const config_1 = __webpack_require__(8);
-const mailer_module_1 = __webpack_require__(99);
-const seed_module_1 = __webpack_require__(101);
+const mailer_module_1 = __webpack_require__(98);
+const seed_module_1 = __webpack_require__(100);
 const admin_module_1 = __webpack_require__(72);
 const role_module_1 = __webpack_require__(78);
 let AuthModule = class AuthModule {
@@ -5838,7 +5838,7 @@ exports.AuthController = void 0;
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
 const auth_service_1 = __webpack_require__(88);
-const index_1 = __webpack_require__(93);
+const index_1 = __webpack_require__(92);
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
@@ -5961,7 +5961,7 @@ const users_service_1 = __webpack_require__(11);
 const mailer_service_1 = __webpack_require__(89);
 const crypto_1 = __webpack_require__(27);
 const bcrypt = __webpack_require__(44);
-const seeds_service_1 = __webpack_require__(92);
+const seeds_service_1 = __webpack_require__(91);
 const admin_service_1 = __webpack_require__(41);
 const role_service_1 = __webpack_require__(79);
 let AuthService = class AuthService {
@@ -6368,8 +6368,7 @@ exports.MailerService = MailerService = __decorate([
 module.exports = require("nodemailer");
 
 /***/ }),
-/* 91 */,
-/* 92 */
+/* 91 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6438,27 +6437,27 @@ exports.SeedsService = SeedsService = __decorate([
 
 
 /***/ }),
-/* 93 */
+/* 92 */
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.RefreshTokenDto = exports.LoginDto = exports.RegisterDto = void 0;
-const register_dto_1 = __webpack_require__(94);
+const register_dto_1 = __webpack_require__(93);
 Object.defineProperty(exports, "RegisterDto", ({ enumerable: true, get: function () { return register_dto_1.RegisterDto; } }));
-const login_dto_1 = __webpack_require__(95);
+const login_dto_1 = __webpack_require__(94);
 Object.defineProperty(exports, "LoginDto", ({ enumerable: true, get: function () { return login_dto_1.LoginDto; } }));
-const refreshToken_dto_1 = __webpack_require__(96);
+const refreshToken_dto_1 = __webpack_require__(95);
 Object.defineProperty(exports, "RefreshTokenDto", ({ enumerable: true, get: function () { return refreshToken_dto_1.RefreshTokenDto; } }));
-const forgotPassword_dto_1 = __webpack_require__(97);
+const forgotPassword_dto_1 = __webpack_require__(96);
 Object.defineProperty(exports, "ForgotPasswordDto", ({ enumerable: true, get: function () { return forgotPassword_dto_1.ForgotPasswordDto; } }));
-const resetPassword_dto_1 = __webpack_require__(98);
+const resetPassword_dto_1 = __webpack_require__(97);
 Object.defineProperty(exports, "ResetPasswordDto", ({ enumerable: true, get: function () { return resetPassword_dto_1.ResetPasswordDto; } }));
 
 
 /***/ }),
-/* 94 */
+/* 93 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6532,7 +6531,7 @@ __decorate([
 
 
 /***/ }),
-/* 95 */
+/* 94 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6574,7 +6573,7 @@ __decorate([
 
 
 /***/ }),
-/* 96 */
+/* 95 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6607,7 +6606,7 @@ __decorate([
 
 
 /***/ }),
-/* 97 */
+/* 96 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6642,7 +6641,7 @@ __decorate([
 
 
 /***/ }),
-/* 98 */
+/* 97 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6686,7 +6685,7 @@ __decorate([
 
 
 /***/ }),
-/* 99 */
+/* 98 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6701,7 +6700,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MailerModule = void 0;
 const common_1 = __webpack_require__(6);
 const mailer_service_1 = __webpack_require__(89);
-const mailer_controller_1 = __webpack_require__(100);
+const mailer_controller_1 = __webpack_require__(99);
 const config_1 = __webpack_require__(8);
 const users_module_1 = __webpack_require__(9);
 let MailerModule = class MailerModule {
@@ -6724,7 +6723,7 @@ exports.MailerModule = MailerModule = __decorate([
 
 
 /***/ }),
-/* 100 */
+/* 99 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6756,7 +6755,7 @@ exports.MailerController = MailerController = __decorate([
 
 
 /***/ }),
-/* 101 */
+/* 100 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6770,7 +6769,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SeedModule = void 0;
 const common_1 = __webpack_require__(6);
-const seeds_service_1 = __webpack_require__(92);
+const seeds_service_1 = __webpack_require__(91);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const category_schema_1 = __webpack_require__(18);
@@ -6793,7 +6792,7 @@ exports.SeedModule = SeedModule = __decorate([
 
 
 /***/ }),
-/* 102 */
+/* 101 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6807,12 +6806,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteModule = void 0;
 const common_1 = __webpack_require__(6);
-const incomenote_service_1 = __webpack_require__(103);
-const incomenote_controller_1 = __webpack_require__(105);
+const incomenote_service_1 = __webpack_require__(102);
+const incomenote_controller_1 = __webpack_require__(104);
 const category_module_1 = __webpack_require__(56);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const incomenote_schema_1 = __webpack_require__(104);
+const incomenote_schema_1 = __webpack_require__(103);
 const redis_module_1 = __webpack_require__(64);
 let IncomenoteModule = class IncomenoteModule {
 };
@@ -6835,7 +6834,7 @@ exports.IncomenoteModule = IncomenoteModule = __decorate([
 
 
 /***/ }),
-/* 103 */
+/* 102 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -6858,7 +6857,7 @@ exports.IncomenoteService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const incomenote_schema_1 = __webpack_require__(104);
+const incomenote_schema_1 = __webpack_require__(103);
 const category_service_1 = __webpack_require__(17);
 const remove_accents_1 = __webpack_require__(25);
 const redis_service_1 = __webpack_require__(21);
@@ -7136,7 +7135,7 @@ exports.IncomenoteService = IncomenoteService = __decorate([
 
 
 /***/ }),
-/* 104 */
+/* 103 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7194,7 +7193,7 @@ exports.IncomeNoteSchema = mongoose_1.SchemaFactory.createForClass(IncomeNote);
 
 
 /***/ }),
-/* 105 */
+/* 104 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7214,17 +7213,17 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IncomenoteController = void 0;
-const incomenote_service_1 = __webpack_require__(103);
+const incomenote_service_1 = __webpack_require__(102);
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
 const jwt = __webpack_require__(35);
 const member_gaurd_1 = __webpack_require__(54);
 const express_1 = __webpack_require__(46);
-const CreateIncomeNote_dto_1 = __webpack_require__(106);
-const UpdateIncomeNote_dto_1 = __webpack_require__(107);
-const queryDate_dto_1 = __webpack_require__(108);
-const statisticsincomeNote_1 = __webpack_require__(109);
-const DeleteManyIncome_dto_1 = __webpack_require__(110);
+const CreateIncomeNote_dto_1 = __webpack_require__(105);
+const UpdateIncomeNote_dto_1 = __webpack_require__(106);
+const queryDate_dto_1 = __webpack_require__(107);
+const statisticsincomeNote_1 = __webpack_require__(108);
+const DeleteManyIncome_dto_1 = __webpack_require__(109);
 let IncomenoteController = class IncomenoteController {
     constructor(incomenoteService) {
         this.incomenoteService = incomenoteService;
@@ -7427,7 +7426,7 @@ exports.IncomenoteController = IncomenoteController = __decorate([
 
 
 /***/ }),
-/* 106 */
+/* 105 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7506,7 +7505,7 @@ __decorate([
 
 
 /***/ }),
-/* 107 */
+/* 106 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7585,7 +7584,7 @@ __decorate([
 
 
 /***/ }),
-/* 108 */
+/* 107 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7628,7 +7627,7 @@ __decorate([
 
 
 /***/ }),
-/* 109 */
+/* 108 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7681,7 +7680,7 @@ __decorate([
 
 
 /***/ }),
-/* 110 */
+/* 109 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7711,7 +7710,7 @@ __decorate([
 
 
 /***/ }),
-/* 111 */
+/* 110 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7725,11 +7724,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtModule = void 0;
 const common_1 = __webpack_require__(6);
-const debt_service_1 = __webpack_require__(112);
-const debt_controller_1 = __webpack_require__(114);
+const debt_service_1 = __webpack_require__(111);
+const debt_controller_1 = __webpack_require__(113);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const debt_schema_1 = __webpack_require__(113);
+const debt_schema_1 = __webpack_require__(112);
 const encryption_module_1 = __webpack_require__(84);
 const users_module_1 = __webpack_require__(9);
 const redis_module_1 = __webpack_require__(64);
@@ -7755,7 +7754,7 @@ exports.DebtModule = DebtModule = __decorate([
 
 
 /***/ }),
-/* 112 */
+/* 111 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7776,7 +7775,7 @@ var _a, _b, _c, _d;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DebtService = void 0;
 const common_1 = __webpack_require__(6);
-const debt_schema_1 = __webpack_require__(113);
+const debt_schema_1 = __webpack_require__(112);
 const mongoose_1 = __webpack_require__(12);
 const mongoose_2 = __webpack_require__(7);
 const encryption_service_1 = __webpack_require__(26);
@@ -7932,7 +7931,7 @@ exports.DebtService = DebtService = __decorate([
 
 
 /***/ }),
-/* 113 */
+/* 112 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -7998,7 +7997,7 @@ exports.DebtSchema = mongoose_1.SchemaFactory.createForClass(Debt);
 
 
 /***/ }),
-/* 114 */
+/* 113 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8022,9 +8021,9 @@ const common_1 = __webpack_require__(6);
 const jwt = __webpack_require__(35);
 const swagger_1 = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(54);
-const debt_service_1 = __webpack_require__(112);
-const CreateDebt_dto_1 = __webpack_require__(115);
-const UpdateDebt_dto_1 = __webpack_require__(116);
+const debt_service_1 = __webpack_require__(111);
+const CreateDebt_dto_1 = __webpack_require__(114);
+const UpdateDebt_dto_1 = __webpack_require__(115);
 const redis_service_1 = __webpack_require__(21);
 let DebtController = class DebtController {
     constructor(debtService, redisService) {
@@ -8208,7 +8207,7 @@ exports.DebtController = DebtController = __decorate([
 
 
 /***/ }),
-/* 115 */
+/* 114 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8277,7 +8276,7 @@ __decorate([
 
 
 /***/ }),
-/* 116 */
+/* 115 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8347,7 +8346,7 @@ __decorate([
 
 
 /***/ }),
-/* 117 */
+/* 116 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8361,11 +8360,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleModule = void 0;
 const common_1 = __webpack_require__(6);
-const schedule_service_1 = __webpack_require__(118);
-const schedule_controller_1 = __webpack_require__(120);
+const schedule_service_1 = __webpack_require__(117);
+const schedule_controller_1 = __webpack_require__(119);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const schedule_schema_1 = __webpack_require__(119);
+const schedule_schema_1 = __webpack_require__(118);
 const users_module_1 = __webpack_require__(9);
 const encryption_module_1 = __webpack_require__(84);
 const redis_module_1 = __webpack_require__(64);
@@ -8392,7 +8391,7 @@ exports.ScheduleModule = ScheduleModule = __decorate([
 
 
 /***/ }),
-/* 118 */
+/* 117 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8415,7 +8414,7 @@ exports.ScheduleService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const schedule_schema_1 = __webpack_require__(119);
+const schedule_schema_1 = __webpack_require__(118);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(26);
 const redis_service_1 = __webpack_require__(21);
@@ -8708,7 +8707,7 @@ exports.ScheduleService = ScheduleService = __decorate([
 
 
 /***/ }),
-/* 119 */
+/* 118 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8793,7 +8792,7 @@ exports.ScheduleSchema = mongoose_1.SchemaFactory.createForClass(Schedule);
 
 
 /***/ }),
-/* 120 */
+/* 119 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -8814,10 +8813,10 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ScheduleController = void 0;
 const common_1 = __webpack_require__(6);
-const schedule_service_1 = __webpack_require__(118);
+const schedule_service_1 = __webpack_require__(117);
 const express_1 = __webpack_require__(46);
 const jwt = __webpack_require__(35);
-const schedule_dto_1 = __webpack_require__(121);
+const schedule_dto_1 = __webpack_require__(120);
 const swagger_1 = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(54);
 let ScheduleController = class ScheduleController {
@@ -9001,7 +9000,7 @@ exports.ScheduleController = ScheduleController = __decorate([
 
 
 /***/ }),
-/* 121 */
+/* 120 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9157,7 +9156,7 @@ __decorate([
 
 
 /***/ }),
-/* 122 */
+/* 121 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9192,7 +9191,7 @@ exports.AppController = AppController = __decorate([
 
 
 /***/ }),
-/* 123 */
+/* 122 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9206,8 +9205,8 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankModule = void 0;
 const common_1 = __webpack_require__(6);
-const rank_service_1 = __webpack_require__(124);
-const rank_controller_1 = __webpack_require__(125);
+const rank_service_1 = __webpack_require__(123);
+const rank_controller_1 = __webpack_require__(124);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
 const rank_schema_1 = __webpack_require__(29);
@@ -9238,7 +9237,7 @@ exports.RankModule = RankModule = __decorate([
 
 
 /***/ }),
-/* 124 */
+/* 123 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9382,7 +9381,7 @@ exports.RankService = RankService = __decorate([
 
 
 /***/ }),
-/* 125 */
+/* 124 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9405,7 +9404,7 @@ exports.RankController = void 0;
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
 const platform_express_1 = __webpack_require__(36);
-const rank_service_1 = __webpack_require__(124);
+const rank_service_1 = __webpack_require__(123);
 const permission_gaurd_1 = __webpack_require__(37);
 const casl_decorator_1 = __webpack_require__(45);
 let RankController = class RankController {
@@ -9527,7 +9526,7 @@ exports.RankController = RankController = __decorate([
 
 
 /***/ }),
-/* 126 */
+/* 125 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9541,17 +9540,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostModule = void 0;
 const common_1 = __webpack_require__(6);
-const post_service_1 = __webpack_require__(127);
-const post_controller_1 = __webpack_require__(129);
+const post_service_1 = __webpack_require__(126);
+const post_controller_1 = __webpack_require__(128);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const post_schema_1 = __webpack_require__(128);
+const post_schema_1 = __webpack_require__(127);
 const cloudinary_module_1 = __webpack_require__(55);
 const users_module_1 = __webpack_require__(9);
 const abilities_factory_1 = __webpack_require__(38);
 const admin_module_1 = __webpack_require__(72);
-const favoritePost_schema_1 = __webpack_require__(131);
-const comment_schema_1 = __webpack_require__(132);
+const favoritePost_schema_1 = __webpack_require__(130);
+const comment_schema_1 = __webpack_require__(131);
 const redis_module_1 = __webpack_require__(64);
 const search_module_1 = __webpack_require__(85);
 let PostModule = class PostModule {
@@ -9583,7 +9582,7 @@ exports.PostModule = PostModule = __decorate([
 
 
 /***/ }),
-/* 127 */
+/* 126 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -9606,7 +9605,7 @@ exports.PostService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const post_schema_1 = __webpack_require__(128);
+const post_schema_1 = __webpack_require__(127);
 const cloudinary_service_1 = __webpack_require__(14);
 const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(21);
@@ -9961,7 +9960,7 @@ exports.PostService = PostService = __decorate([
 
 
 /***/ }),
-/* 128 */
+/* 127 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10055,7 +10054,7 @@ exports.PostSchema.index({ content: 'text' });
 
 
 /***/ }),
-/* 129 */
+/* 128 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10077,10 +10076,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PostController = void 0;
 const common_1 = __webpack_require__(6);
 const swagger_1 = __webpack_require__(34);
-const post_service_1 = __webpack_require__(127);
+const post_service_1 = __webpack_require__(126);
 const platform_express_1 = __webpack_require__(36);
 const jwt = __webpack_require__(35);
-const post_dto_1 = __webpack_require__(130);
+const post_dto_1 = __webpack_require__(129);
 const member_gaurd_1 = __webpack_require__(54);
 const permission_gaurd_1 = __webpack_require__(37);
 const casl_decorator_1 = __webpack_require__(45);
@@ -10371,7 +10370,7 @@ exports.PostController = PostController = __decorate([
 
 
 /***/ }),
-/* 130 */
+/* 129 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10459,7 +10458,7 @@ __decorate([
 
 
 /***/ }),
-/* 131 */
+/* 130 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10496,7 +10495,7 @@ exports.FavoritePostSchema = mongoose_1.SchemaFactory.createForClass(FavoritePos
 
 
 /***/ }),
-/* 132 */
+/* 131 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10548,7 +10547,7 @@ exports.CommentSchema = mongoose_1.SchemaFactory.createForClass(Comment);
 
 
 /***/ }),
-/* 133 */
+/* 132 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10562,14 +10561,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentModule = void 0;
 const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(134);
-const comment_controller_1 = __webpack_require__(135);
+const comment_service_1 = __webpack_require__(133);
+const comment_controller_1 = __webpack_require__(134);
 const mongoose_1 = __webpack_require__(7);
 const config_1 = __webpack_require__(8);
-const comment_schema_1 = __webpack_require__(132);
-const post_module_1 = __webpack_require__(126);
+const comment_schema_1 = __webpack_require__(131);
+const post_module_1 = __webpack_require__(125);
 const users_module_1 = __webpack_require__(9);
-const post_schema_1 = __webpack_require__(128);
+const post_schema_1 = __webpack_require__(127);
 const redis_module_1 = __webpack_require__(64);
 let CommentModule = class CommentModule {
 };
@@ -10595,7 +10594,7 @@ exports.CommentModule = CommentModule = __decorate([
 
 
 /***/ }),
-/* 134 */
+/* 133 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10618,7 +10617,7 @@ exports.CommentService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const comment_schema_1 = __webpack_require__(132);
+const comment_schema_1 = __webpack_require__(131);
 const users_service_1 = __webpack_require__(11);
 const redis_service_1 = __webpack_require__(21);
 let CommentService = class CommentService {
@@ -10790,7 +10789,7 @@ exports.CommentService = CommentService = __decorate([
 
 
 /***/ }),
-/* 135 */
+/* 134 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10811,9 +10810,9 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommentController = void 0;
 const common_1 = __webpack_require__(6);
-const comment_service_1 = __webpack_require__(134);
+const comment_service_1 = __webpack_require__(133);
 const swagger_1 = __webpack_require__(34);
-const comment_dto_1 = __webpack_require__(136);
+const comment_dto_1 = __webpack_require__(135);
 const jwt = __webpack_require__(35);
 const member_gaurd_1 = __webpack_require__(54);
 let CommentController = class CommentController {
@@ -10940,7 +10939,7 @@ exports.CommentController = CommentController = __decorate([
 
 
 /***/ }),
-/* 136 */
+/* 135 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -10995,7 +10994,7 @@ __decorate([
 
 
 /***/ }),
-/* 137 */
+/* 136 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11009,15 +11008,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportModule = void 0;
 const common_1 = __webpack_require__(6);
-const report_service_1 = __webpack_require__(138);
-const report_controller_1 = __webpack_require__(140);
+const report_service_1 = __webpack_require__(137);
+const report_controller_1 = __webpack_require__(139);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
-const report_schema_1 = __webpack_require__(139);
+const report_schema_1 = __webpack_require__(138);
 const abilities_factory_1 = __webpack_require__(38);
 const admin_module_1 = __webpack_require__(72);
 const user_schema_1 = __webpack_require__(13);
-const post_schema_1 = __webpack_require__(128);
+const post_schema_1 = __webpack_require__(127);
 const redis_module_1 = __webpack_require__(64);
 let ReportModule = class ReportModule {
 };
@@ -11043,7 +11042,7 @@ exports.ReportModule = ReportModule = __decorate([
 
 
 /***/ }),
-/* 138 */
+/* 137 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11066,7 +11065,7 @@ exports.ReportService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const report_schema_1 = __webpack_require__(139);
+const report_schema_1 = __webpack_require__(138);
 const redis_service_1 = __webpack_require__(21);
 let ReportService = class ReportService {
     constructor(reportModel, userModel, postModel, redisService) {
@@ -11192,7 +11191,7 @@ exports.ReportService = ReportService = __decorate([
 
 
 /***/ }),
-/* 139 */
+/* 138 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11241,7 +11240,7 @@ exports.ReportSchema = mongoose_1.SchemaFactory.createForClass(Report);
 
 
 /***/ }),
-/* 140 */
+/* 139 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11262,12 +11261,12 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReportController = void 0;
 const common_1 = __webpack_require__(6);
-const report_service_1 = __webpack_require__(138);
+const report_service_1 = __webpack_require__(137);
 const swagger_1 = __webpack_require__(34);
 const member_gaurd_1 = __webpack_require__(54);
 const express_1 = __webpack_require__(46);
 const jwt = __webpack_require__(35);
-const report_dto_1 = __webpack_require__(141);
+const report_dto_1 = __webpack_require__(140);
 const permission_gaurd_1 = __webpack_require__(37);
 const casl_decorator_1 = __webpack_require__(45);
 let ReportController = class ReportController {
@@ -11378,7 +11377,7 @@ exports.ReportController = ReportController = __decorate([
 
 
 /***/ }),
-/* 141 */
+/* 140 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11420,7 +11419,7 @@ __decorate([
 
 
 /***/ }),
-/* 142 */
+/* 141 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11434,15 +11433,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsModule = void 0;
 const common_1 = __webpack_require__(6);
-const statistics_service_1 = __webpack_require__(143);
-const statistics_controller_1 = __webpack_require__(144);
+const statistics_service_1 = __webpack_require__(142);
+const statistics_controller_1 = __webpack_require__(143);
 const config_1 = __webpack_require__(8);
 const mongoose_1 = __webpack_require__(7);
 const user_schema_1 = __webpack_require__(13);
 const rank_schema_1 = __webpack_require__(29);
 const admin_module_1 = __webpack_require__(72);
 const abilities_factory_1 = __webpack_require__(38);
-const post_schema_1 = __webpack_require__(128);
+const post_schema_1 = __webpack_require__(127);
 const redis_module_1 = __webpack_require__(64);
 let StatisticsModule = class StatisticsModule {
 };
@@ -11470,7 +11469,7 @@ exports.StatisticsModule = StatisticsModule = __decorate([
 
 
 /***/ }),
-/* 143 */
+/* 142 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11688,7 +11687,7 @@ exports.StatisticsService = StatisticsService = __decorate([
 
 
 /***/ }),
-/* 144 */
+/* 143 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11710,11 +11709,11 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StatisticsController = void 0;
 const common_1 = __webpack_require__(6);
-const statistics_service_1 = __webpack_require__(143);
+const statistics_service_1 = __webpack_require__(142);
 const swagger_1 = __webpack_require__(34);
 const permission_gaurd_1 = __webpack_require__(37);
 const casl_decorator_1 = __webpack_require__(45);
-const querydate_dto_1 = __webpack_require__(145);
+const querydate_dto_1 = __webpack_require__(144);
 const redis_service_1 = __webpack_require__(21);
 let StatisticsController = StatisticsController_1 = class StatisticsController {
     constructor(statisticsService, redisService) {
@@ -11873,7 +11872,7 @@ exports.StatisticsController = StatisticsController = StatisticsController_1 = _
 
 
 /***/ }),
-/* 145 */
+/* 144 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11915,7 +11914,7 @@ __decorate([
 
 
 /***/ }),
-/* 146 */
+/* 145 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -11935,14 +11934,14 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.EventGateway = void 0;
-const websockets_1 = __webpack_require__(147);
-const socket_io_1 = __webpack_require__(148);
+const websockets_1 = __webpack_require__(146);
+const socket_io_1 = __webpack_require__(147);
 const auth_service_1 = __webpack_require__(88);
-const schedule_service_1 = __webpack_require__(118);
-const story_service_1 = __webpack_require__(149);
-const message_service_1 = __webpack_require__(151);
+const schedule_service_1 = __webpack_require__(117);
+const story_service_1 = __webpack_require__(148);
+const message_service_1 = __webpack_require__(150);
 const common_1 = __webpack_require__(6);
-const stream_1 = __webpack_require__(153);
+const stream_1 = __webpack_require__(152);
 const users_service_1 = __webpack_require__(11);
 const encryption_service_1 = __webpack_require__(26);
 const mailer_service_1 = __webpack_require__(89);
@@ -12125,21 +12124,21 @@ exports.EventGateway = EventGateway = __decorate([
 
 
 /***/ }),
-/* 147 */
+/* 146 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("@nestjs/websockets");
 
 /***/ }),
-/* 148 */
+/* 147 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("socket.io");
 
 /***/ }),
-/* 149 */
+/* 148 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12162,7 +12161,7 @@ exports.StoryService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const story_schema_1 = __webpack_require__(150);
+const story_schema_1 = __webpack_require__(149);
 const cloudinary_service_1 = __webpack_require__(14);
 let StoryService = class StoryService {
     constructor(storyModel, cloudinaryService) {
@@ -12264,7 +12263,7 @@ exports.StoryService = StoryService = __decorate([
 
 
 /***/ }),
-/* 150 */
+/* 149 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12309,7 +12308,7 @@ exports.StorySchema = mongoose_1.SchemaFactory.createForClass(Story);
 
 
 /***/ }),
-/* 151 */
+/* 150 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12332,7 +12331,7 @@ exports.MessageService = void 0;
 const common_1 = __webpack_require__(6);
 const mongoose_1 = __webpack_require__(7);
 const mongoose_2 = __webpack_require__(12);
-const message_schema_1 = __webpack_require__(152);
+const message_schema_1 = __webpack_require__(151);
 const cloudinary_service_1 = __webpack_require__(14);
 const encryption_service_1 = __webpack_require__(26);
 const redis_service_1 = __webpack_require__(21);
@@ -12384,7 +12383,10 @@ let MessageService = class MessageService {
                 console.log('Messages fetched from cache successfully.');
                 return JSON.parse(cachedMessages);
             }
-            const messages = await this.messageModel.find({ $or: [{ senderId: userId }, { receiverId: userId }] });
+            const messages = await this.messageModel
+                .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
+                .populate('senderId', 'name email')
+                .populate('receiverId', 'name email');
             const decryptedMessages = messages.map(message => {
                 if (message.content)
                     message.content = this.encryptionService.rsaDecrypt(message.content);
@@ -12424,7 +12426,7 @@ exports.MessageService = MessageService = __decorate([
 
 
 /***/ }),
-/* 152 */
+/* 151 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12474,14 +12476,14 @@ exports.MessageSchema = mongoose_1.SchemaFactory.createForClass(Message);
 
 
 /***/ }),
-/* 153 */
+/* 152 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("stream");
 
 /***/ }),
-/* 154 */
+/* 153 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12495,12 +12497,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryModule = void 0;
 const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(149);
-const story_controller_1 = __webpack_require__(155);
+const story_service_1 = __webpack_require__(148);
+const story_controller_1 = __webpack_require__(154);
 const mongoose_1 = __webpack_require__(7);
-const story_schema_1 = __webpack_require__(150);
+const story_schema_1 = __webpack_require__(149);
 const cloudinary_module_1 = __webpack_require__(55);
-const rank_module_1 = __webpack_require__(123);
+const rank_module_1 = __webpack_require__(122);
 let StoryModule = class StoryModule {
 };
 exports.StoryModule = StoryModule;
@@ -12519,7 +12521,7 @@ exports.StoryModule = StoryModule = __decorate([
 
 
 /***/ }),
-/* 155 */
+/* 154 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12540,13 +12542,13 @@ var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.StoryController = void 0;
 const common_1 = __webpack_require__(6);
-const story_service_1 = __webpack_require__(149);
-const story_dto_1 = __webpack_require__(156);
+const story_service_1 = __webpack_require__(148);
+const story_dto_1 = __webpack_require__(155);
 const member_gaurd_1 = __webpack_require__(54);
 const jwt = __webpack_require__(35);
 const swagger_1 = __webpack_require__(34);
 const platform_express_1 = __webpack_require__(36);
-const rank_gaurd_1 = __webpack_require__(157);
+const rank_gaurd_1 = __webpack_require__(156);
 let StoryController = class StoryController {
     constructor(storyService) {
         this.storyService = storyService;
@@ -12646,7 +12648,7 @@ exports.StoryController = StoryController = __decorate([
 
 
 /***/ }),
-/* 156 */
+/* 155 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12680,7 +12682,7 @@ __decorate([
 
 
 /***/ }),
-/* 157 */
+/* 156 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12699,7 +12701,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RankGuard = void 0;
 const common_1 = __webpack_require__(6);
 const jwt_1 = __webpack_require__(33);
-const rank_service_1 = __webpack_require__(124);
+const rank_service_1 = __webpack_require__(123);
 const auth_gaurd_1 = __webpack_require__(32);
 let RankGuard = class RankGuard extends auth_gaurd_1.AuthGuard {
     constructor(jwtService, rankService) {
@@ -12736,7 +12738,7 @@ exports.RankGuard = RankGuard = __decorate([
 
 
 /***/ }),
-/* 158 */
+/* 157 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12750,10 +12752,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageModule = void 0;
 const common_1 = __webpack_require__(6);
-const message_service_1 = __webpack_require__(151);
-const message_controller_1 = __webpack_require__(159);
+const message_service_1 = __webpack_require__(150);
+const message_controller_1 = __webpack_require__(158);
 const mongoose_1 = __webpack_require__(7);
-const message_schema_1 = __webpack_require__(152);
+const message_schema_1 = __webpack_require__(151);
 const cloudinary_module_1 = __webpack_require__(55);
 const encryption_module_1 = __webpack_require__(84);
 const redis_module_1 = __webpack_require__(64);
@@ -12776,7 +12778,7 @@ exports.MessageModule = MessageModule = __decorate([
 
 
 /***/ }),
-/* 159 */
+/* 158 */
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -12797,7 +12799,7 @@ var _a, _b, _c, _d, _e;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.MessageController = void 0;
 const common_1 = __webpack_require__(6);
-const message_service_1 = __webpack_require__(151);
+const message_service_1 = __webpack_require__(150);
 const jwt = __webpack_require__(35);
 const swagger_1 = __webpack_require__(34);
 let MessageController = class MessageController {
@@ -12851,7 +12853,7 @@ exports.MessageController = MessageController = __decorate([
 
 
 /***/ }),
-/* 160 */
+/* 159 */
 /***/ ((module) => {
 
 "use strict";
@@ -12919,7 +12921,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("422eaa6c54dfa47c65d0")
+/******/ 		__webpack_require__.h = () => ("ee75f00afa0733e63f29")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
