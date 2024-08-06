@@ -54,8 +54,7 @@ export class MessageService {
       throw new BadRequestException(error.message);
     }
   }
-
-  async getMessagesForUser(userId: string): Promise<Message[]> {
+  async getMessagesForUser(userId: string): Promise<any> {
     try {
       const cacheKey = `messages:${userId}`;
       const cachedMessages = await this.redisService.getJSON(cacheKey, '$');
@@ -63,25 +62,40 @@ export class MessageService {
         console.log('Messages fetched from cache successfully.');
         return JSON.parse(cachedMessages as string);
       }
-
+  
       const messages = await this.messageModel
-      .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
-      .populate('senderId', 'name email') // Populate sender details
-      .populate('receiverId', 'name email'); // Populate receiver details
-
+        .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
+        .populate('senderId', 'avatar firstname lastname') // Populate sender details
+        .populate('receiverId', 'avatar firstname lastname'); // Populate receiver details
+  
       const decryptedMessages = messages.map(message => {
         if (message.content) message.content = this.encryptionService.rsaDecrypt(message.content);
         if (message.image) message.image = this.encryptionService.rsaDecrypt(message.image);
         return message;
       });
-
-      await this.setCache(cacheKey, decryptedMessages);
-      return decryptedMessages;
+  
+      // Group messages by receiverId
+      const groupedMessages = decryptedMessages.reduce((acc, message) => {
+        const receiverId = message.receiverId.toString();
+        if (!acc[receiverId]) {
+          acc[receiverId] = {
+            receiver: message.receiverId,
+            messages: [],
+          };
+        }
+        acc[receiverId].messages.push(message);
+        return acc;
+      }, {});
+  
+      await this.setCache(cacheKey, groupedMessages);
+      return groupedMessages;
     } catch (error) {
       console.error("Error getting messages:", error);
       throw new BadRequestException(error.message);
     }
   }
+  
+
 
   async deleteMessage(messageId: string, userId: string): Promise<Message> {
     try {

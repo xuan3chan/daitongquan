@@ -793,7 +793,12 @@ let UsersService = class UsersService {
             encryptKey: createEncryptKey,
             refreshToken,
         });
-        this.searchService.indexUser(newUser.toObject());
+        try {
+            this.searchService.indexUser(newUser.toObject());
+        }
+        catch (error) {
+            console.error(`Failed to index user with ID ${newUser._id}`, error);
+        }
         const savedUser = await newUser.save();
         await this.deleteCache(`user:${email}`);
         await this.deleteCache(`user:username:${username}`);
@@ -12385,8 +12390,8 @@ let MessageService = class MessageService {
             }
             const messages = await this.messageModel
                 .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
-                .populate('senderId', 'name email')
-                .populate('receiverId', 'name email');
+                .populate('senderId', 'avatar firstname lastname')
+                .populate('receiverId', 'avatar firstname lastname');
             const decryptedMessages = messages.map(message => {
                 if (message.content)
                     message.content = this.encryptionService.rsaDecrypt(message.content);
@@ -12394,8 +12399,19 @@ let MessageService = class MessageService {
                     message.image = this.encryptionService.rsaDecrypt(message.image);
                 return message;
             });
-            await this.setCache(cacheKey, decryptedMessages);
-            return decryptedMessages;
+            const groupedMessages = decryptedMessages.reduce((acc, message) => {
+                const receiverId = message.receiverId.toString();
+                if (!acc[receiverId]) {
+                    acc[receiverId] = {
+                        receiver: message.receiverId,
+                        messages: [],
+                    };
+                }
+                acc[receiverId].messages.push(message);
+                return acc;
+            }, {});
+            await this.setCache(cacheKey, groupedMessages);
+            return groupedMessages;
         }
         catch (error) {
             console.error("Error getting messages:", error);
@@ -12921,7 +12937,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("ee75f00afa0733e63f29")
+/******/ 		__webpack_require__.h = () => ("7006b528404d3da1ae53")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

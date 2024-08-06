@@ -295,7 +295,6 @@ export class PostService {
         },
       })
       .sort({ createdAt: -1 });
-
     await this.setCache(cacheKey, posts);
     return posts;
   }

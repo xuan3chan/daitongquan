@@ -179,43 +179,47 @@ export class UsersService {
   }
 
   async createUserService(
-    email: string,
-    password: string,
-    username: string,
-    firstname: string,
-    lastname: string,
-    refreshToken: string,
+      email: string,
+      password: string,
+      username: string,
+      firstname: string,
+      lastname: string,
+      refreshToken: string,
   ): Promise<User | { message: string }> {
-    const userExist = await this.userModel
-      .findOne({
-        $or: [{ email: email }, { username: username }],
-      })
-      .exec();
-    if (userExist) {
-      return { message: 'Email or username already exists' };
-    }
-    const createEncryptKey = this.encryptionService.createEncryptKey(
-      password.toString(),
-    );
-    const newUser = new this.userModel({
-      email,
-      password,
-      username,
-      firstname,
-      lastname,
-      encryptKey: createEncryptKey,
-      refreshToken,
-    });
-    
-    // elastic search
-    this.searchService.indexUser(newUser.toObject());
-    
-    const savedUser = await newUser.save();
-    await this.deleteCache(`user:${email}`);
-    await this.deleteCache(`user:username:${username}`);
-    await this.deleteCache(`users:list`);
-
-    return savedUser;
+      const userExist = await this.userModel
+          .findOne({
+              $or: [{ email: email }, { username: username }],
+          })
+          .exec();
+      if (userExist) {
+          return { message: 'Email or username already exists' };
+      }
+      const createEncryptKey = this.encryptionService.createEncryptKey(
+          password.toString(),
+      );
+      const newUser = new this.userModel({
+          email,
+          password,
+          username,
+          firstname,
+          lastname,
+          encryptKey: createEncryptKey,
+          refreshToken,
+      });
+  
+      // elastic search
+      try {
+          this.searchService.indexUser(newUser.toObject());
+      } catch (error) {
+          console.error(`Failed to index user with ID ${newUser._id}`, error);
+      }
+  
+      const savedUser = await newUser.save();
+      await this.deleteCache(`user:${email}`);
+      await this.deleteCache(`user:username:${username}`);
+      await this.deleteCache(`users:list`);
+  
+      return savedUser;
   }
 
   async viewProfileService(_id: string): Promise<User> {
