@@ -12257,12 +12257,14 @@ let StoryService = class StoryService {
         try {
             const checkFileType = await this.checkFile(file);
             let mediaUrl;
+            let thumbnailUrl;
             const uploadService = checkFileType === 'image'
                 ? this.cloudinaryService.uploadImageService
                 : this.cloudinaryService.uploadVideoService;
             const fileUpload = await uploadService.call(this.cloudinaryService, title, file);
             mediaUrl = fileUpload.uploadResult.url;
-            const newStory = new this.storyModel({ userId, title, mediaUrl });
+            thumbnailUrl = fileUpload.thumbnailResult?.url;
+            const newStory = new this.storyModel({ userId, title, mediaUrl, thumbnailUrl });
             return await newStory.save();
         }
         catch (error) {
@@ -12365,6 +12367,10 @@ __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: false, default: 'https://i.pinimg.com/originals/b5/b4/1f/b5b41f6906dff7cb81a654ee63885eb3.jpg' }),
     __metadata("design:type", String)
 ], Story.prototype, "mediaUrl", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: false }),
+    __metadata("design:type", String)
+], Story.prototype, "thumbnailUrl", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: false, default: 'active' }),
     __metadata("design:type", String)
@@ -12999,7 +13005,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("ad8b94a1a60349c594e3")
+/******/ 		__webpack_require__.h = () => ("55cfe1d7bfdb8a2190f8")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

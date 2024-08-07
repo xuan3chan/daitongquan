@@ -38,7 +38,7 @@ export class StoryService {
     try {
       const checkFileType = await this.checkFile(file); // Ensure this method exists and is implemented correctly
       let mediaUrl: string;
-
+      let thumbnailUrl: string;
       // Determine the upload service based on file type
       const uploadService =
         checkFileType === 'image'
@@ -52,9 +52,10 @@ export class StoryService {
         file,
       );
       mediaUrl = fileUpload.uploadResult.url;
+      thumbnailUrl = fileUpload.thumbnailResult?.url;
 
       // Create and save the new story
-      const newStory = new this.storyModel({ userId, title, mediaUrl });
+      const newStory = new this.storyModel({ userId, title, mediaUrl, thumbnailUrl });
       return await newStory.save();
     } catch (error) {
       console.error('Error in createStoryService:', error);
