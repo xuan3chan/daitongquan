@@ -44,6 +44,7 @@ export class RankController {
         numberOfComment: { type: 'number' },
         numberOfBlog: { type: 'number' },
         numberOfLike: { type: 'number' },
+        action: { type: 'array', items: { type: 'string' } },
         image: { type: 'string', format: 'binary' },
       },
     },
@@ -57,6 +58,7 @@ export class RankController {
       numberOfComment: number;
       numberOfBlog: number;
       numberOfLike: number;
+      action?: string[];
     },
     @UploadedFile() file: Express.Multer.File,
   ) {
@@ -70,6 +72,7 @@ export class RankController {
       Number(body.numberOfBlog),
       Number(body.numberOfLike),
       file,
+      body.action,
     );
   }
   @UseGuards(PermissionGuard)
@@ -86,6 +89,7 @@ export class RankController {
         numberOfComment: { type: 'number' },
         numberOfBlog: { type: 'number' },
         numberOfLike: { type: 'number' },
+        action: { type: 'array', items: { type: 'string' } },
         image: { type: 'string', format: 'binary' },
       },
     },
@@ -102,6 +106,7 @@ export class RankController {
       numberOfBlog?: number;
       numberOfLike?: number;
       image?: string;
+      action?: string[];
     },
     @Param('rankId') rankId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -113,6 +118,7 @@ export class RankController {
       body.numberOfComment,
       body.numberOfBlog,
       body.numberOfLike,
+      body.action,
       file,
     );
   }

@@ -2480,6 +2480,10 @@ __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_3.default.Schema.Types.String, required: true }),
     __metadata("design:type", String)
 ], Rank.prototype, "rankIcon", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: [mongoose_3.default.Schema.Types.String] }),
+    __metadata("design:type", Array)
+], Rank.prototype, "action", void 0);
 exports.Rank = Rank = __decorate([
     (0, mongoose_1.Schema)()
 ], Rank);
@@ -9283,7 +9287,7 @@ let RankService = class RankService {
     async plushCache() {
         await this.redisService.flushAll();
     }
-    async createRankService(rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
+    async createRankService(rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file, action) {
         const existedRank = await this.RankModel.findOne({ rankName });
         if (existedRank) {
             throw new common_1.BadRequestException('Rank existed');
@@ -9295,6 +9299,7 @@ let RankService = class RankService {
             rankScoreGoal,
             score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
             rankIcon,
+            action,
         });
         const savedRank = await rank.save();
         await this.deleteCache('ranks:all');
@@ -9302,7 +9307,7 @@ let RankService = class RankService {
         await this.plushCache();
         return savedRank;
     }
-    async updateRankService(rankId, rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, file) {
+    async updateRankService(rankId, rankName, attendanceScore, numberOfComment, numberOfBlog, numberOfLike, action, file) {
         const existedRank = await this.RankModel.findOne({ _id: rankId });
         if (!existedRank) {
             throw new common_1.BadRequestException('Rank not found');
@@ -9313,6 +9318,7 @@ let RankService = class RankService {
             numberOfComment,
             numberOfBlog,
             numberOfLike,
+            action
         });
         if (file) {
             await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
@@ -9375,6 +9381,8 @@ let RankService = class RankService {
             rank.score.numberOfBlog = details.numberOfBlog;
         if (details.numberOfLike)
             rank.score.numberOfLike = details.numberOfLike;
+        if (details.action)
+            rank.action = details.action;
     }
 };
 exports.RankService = RankService;
@@ -9420,10 +9428,10 @@ let RankController = class RankController {
         if (!file) {
             throw new common_1.BadRequestException('Image is required');
         }
-        return this.rankService.createRankService(body.rankName, Number(body.attendanceScore), Number(body.numberOfComment), Number(body.numberOfBlog), Number(body.numberOfLike), file);
+        return this.rankService.createRankService(body.rankName, Number(body.attendanceScore), Number(body.numberOfComment), Number(body.numberOfBlog), Number(body.numberOfLike), file, body.action);
     }
     async updateRankController(body, rankId, file) {
-        return this.rankService.updateRankService(rankId, body.rankName, body.attendanceScore, body.numberOfComment, body.numberOfBlog, body.numberOfLike, file);
+        return this.rankService.updateRankService(rankId, body.rankName, body.attendanceScore, body.numberOfComment, body.numberOfBlog, body.numberOfLike, body.action, file);
     }
     async deleteRankController(rankId) {
         return this.rankService.deleteRankService(rankId);
@@ -9451,6 +9459,7 @@ __decorate([
                 numberOfComment: { type: 'number' },
                 numberOfBlog: { type: 'number' },
                 numberOfLike: { type: 'number' },
+                action: { type: 'array', items: { type: 'string' } },
                 image: { type: 'string', format: 'binary' },
             },
         },
@@ -9477,6 +9486,7 @@ __decorate([
                 numberOfComment: { type: 'number' },
                 numberOfBlog: { type: 'number' },
                 numberOfLike: { type: 'number' },
+                action: { type: 'array', items: { type: 'string' } },
                 image: { type: 'string', format: 'binary' },
             },
         },
@@ -12736,8 +12746,7 @@ let RankGuard = class RankGuard extends auth_gaurd_1.AuthGuard {
         }
         try {
             const rank = await this.rankService.getRankDetailService(rankID);
-            if (rank.rankName !== 'Gold') {
-                throw new common_1.UnauthorizedException('Access restricted: Gold membership required.');
+            if (!rank.action.includes('story')) {
             }
         }
         catch (error) {
@@ -12937,7 +12946,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("7006b528404d3da1ae53")
+/******/ 		__webpack_require__.h = () => ("3bfe13febfbd45e06605")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

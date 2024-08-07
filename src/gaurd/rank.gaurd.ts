@@ -32,8 +32,8 @@ import {
 
       try {
         const rank = await this.rankService.getRankDetailService(rankID);
-        if (rank.rankName !== 'Gold') {
-          throw new UnauthorizedException('Access restricted: Gold membership required.');
+        if (!rank.action.includes('story')) {
+          
         }
       } catch (error) {
         throw new UnauthorizedException('Access denied: Unable to verify user rank.');

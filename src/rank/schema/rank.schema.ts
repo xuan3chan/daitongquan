@@ -27,6 +27,9 @@ export class Rank extends Document {
   @Prop({ type: mongoose.Schema.Types.String, required: true })
   rankIcon: string;
 
+  @Prop({ type: [mongoose.Schema.Types.String] })
+  action: string[];
+
 }
 
 export const RankSchema = SchemaFactory.createForClass(Rank);

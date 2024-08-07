@@ -26,37 +26,39 @@ export class RankService {
   }
 
   async createRankService(
-    rankName: string,
-    attendanceScore: number,
-    numberOfComment: number,
-    numberOfBlog: number,
-    numberOfLike: number,
-    file: Express.Multer.File,
-  ): Promise<Rank> {
-    const existedRank = await this.RankModel.findOne({ rankName });
-    if (existedRank) {
-      throw new BadRequestException('Rank existed');
+      rankName: string,
+      attendanceScore: number,
+      numberOfComment: number,
+      numberOfBlog: number,
+      numberOfLike: number,
+      file: Express.Multer.File,
+      action?: string[],
+    ): Promise<Rank> {
+      const existedRank = await this.RankModel.findOne({ rankName });
+      if (existedRank) {
+        throw new BadRequestException('Rank existed');
+      }
+      const rankScoreGoal = this.calculateRankScoreGoal(
+        attendanceScore,
+        numberOfComment,
+        numberOfBlog,
+        numberOfLike,
+      );
+      const rankIcon = await this.uploadRankIcon(rankName, file);
+      const rank = new this.RankModel({
+        rankName,
+        rankScoreGoal,
+        score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
+        rankIcon,
+        action, // Add the action parameter here
+      });
+      const savedRank = await rank.save();
+  
+      await this.deleteCache('ranks:all');
+      await this.setCache(`ranks:detail:${savedRank._id}`, savedRank);
+      await this.plushCache();
+      return savedRank;
     }
-    const rankScoreGoal = this.calculateRankScoreGoal(
-      attendanceScore,
-      numberOfComment,
-      numberOfBlog,
-      numberOfLike,
-    );
-    const rankIcon = await this.uploadRankIcon(rankName, file);
-    const rank = new this.RankModel({
-      rankName,
-      rankScoreGoal,
-      score: { attendanceScore, numberOfComment, numberOfBlog, numberOfLike },
-      rankIcon,
-    });
-    const savedRank = await rank.save();
-
-    await this.deleteCache('ranks:all');
-    await this.setCache(`ranks:detail:${savedRank._id}`, savedRank);
-    await this.plushCache();
-    return savedRank;
-  }
 
   async updateRankService(
     rankId: string,
@@ -65,6 +67,7 @@ export class RankService {
     numberOfComment?: number,
     numberOfBlog?: number,
     numberOfLike?: number,
+    action?: string[],
     file?: Express.Multer.File,
   ): Promise<Rank> {
     const existedRank = await this.RankModel.findOne({ _id: rankId });
@@ -77,6 +80,7 @@ export class RankService {
       numberOfComment,
       numberOfBlog,
       numberOfLike,
+      action
     });
     if (file) {
       await this.cloudinaryService.deleteMediaService(existedRank.rankIcon);
@@ -85,7 +89,7 @@ export class RankService {
         file,
       );
     }
-    existedRank.rankScoreGoal = this.calculateRankScoreGoal(
+      existedRank.rankScoreGoal = this.calculateRankScoreGoal(
       existedRank.score.attendanceScore,
       existedRank.score.numberOfComment,
       existedRank.score.numberOfBlog,
@@ -169,6 +173,7 @@ export class RankService {
       numberOfComment?: number;
       numberOfBlog?: number;
       numberOfLike?: number;
+      action?: string[];
     },
   ) {
     if (details.rankName) rank.rankName = details.rankName;
@@ -178,5 +183,6 @@ export class RankService {
       rank.score.numberOfComment = details.numberOfComment;
     if (details.numberOfBlog) rank.score.numberOfBlog = details.numberOfBlog;
     if (details.numberOfLike) rank.score.numberOfLike = details.numberOfLike;
+    if (details.action) rank.action = details.action;
   }
 }

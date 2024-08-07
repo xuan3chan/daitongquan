@@ -1,5 +1,4 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import e from 'express';
 import { Document } from 'mongoose';
 import mongoose from 'mongoose';
 
