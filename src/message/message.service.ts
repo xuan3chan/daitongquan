@@ -55,45 +55,68 @@ export class MessageService {
     }
   }
   async getMessagesForUser(userId: string): Promise<any> {
-    try {
-      const cacheKey = `messages:${userId}`;
-      const cachedMessages = await this.redisService.getJSON(cacheKey, '$');
-      if (cachedMessages) {
-        console.log('Messages fetched from cache successfully.');
-        return JSON.parse(cachedMessages as string);
-      }
-  
-      const messages = await this.messageModel
-        .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
-        .populate('senderId', 'avatar firstname lastname') // Populate sender details
-        .populate('receiverId', 'avatar firstname lastname'); // Populate receiver details
-  
-      const decryptedMessages = messages.map(message => {
-        if (message.content) message.content = this.encryptionService.rsaDecrypt(message.content);
-        if (message.image) message.image = this.encryptionService.rsaDecrypt(message.image);
-        return message;
-      });
-  
-      // Group messages by receiverId
-      const groupedMessages = decryptedMessages.reduce((acc, message) => {
-        const receiverId = message.receiverId.toString();
-        if (!acc[receiverId]) {
-          acc[receiverId] = {
-            receiver: message.receiverId,
-            messages: [],
-          };
-        }
-        acc[receiverId].messages.push(message);
-        return acc;
-      }, {});
-  
-      await this.setCache(cacheKey, groupedMessages);
-      return groupedMessages;
-    } catch (error) {
-      console.error("Error getting messages:", error);
-      throw new BadRequestException(error.message);
+  try {
+    const cacheKey = `messages:${userId}`;
+    const cachedMessages = await this.redisService.getJSON(cacheKey, '$');
+    
+    if (cachedMessages) {
+      console.log('Messages fetched from cache successfully.');
+      return JSON.parse(cachedMessages as string);
     }
+
+    const messages = await this.messageModel
+      .find({ $or: [{ senderId: userId }, { receiverId: userId }] })
+      .populate('senderId', 'avatar firstname lastname')
+      .populate('receiverId', 'avatar firstname lastname');
+
+    const decryptedMessages = messages.map(message => {
+      if (message.content) message.content = this.encryptionService.rsaDecrypt(message.content);
+      if (message.image) message.image = this.encryptionService.rsaDecrypt(message.image);
+      return message;
+    });
+
+    const groupedMessages = decryptedMessages.reduce((acc, message) => {
+      const otherUserId = message.senderId.toString() === userId ? message.receiverId.toString() : message.senderId.toString();
+
+      if (!acc[otherUserId]) {
+        acc[otherUserId] = {
+          messages: [],
+        };
+      }
+
+      acc[otherUserId].messages.push({
+        [userId]: {
+          content: message.content,
+          image: message.image,
+          createdAt: message.createdAt,
+        },
+        [otherUserId]: {
+          content: message.content,
+          image: message.image,
+          createdAt: message.createdAt,
+        }
+      });
+
+      return acc;
+    }, {});
+
+    const transformedMessages = {
+      [userId]: Object.keys(groupedMessages).map(otherUserId => ({
+        [otherUserId]: groupedMessages[otherUserId]
+      }))
+    };
+
+    await this.redisService.setJSON(cacheKey, '$', JSON.stringify(transformedMessages));
+
+    console.log('Messages fetched from database and cached successfully.');
+    return transformedMessages;
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    throw new BadRequestException('Failed to fetch messages');
   }
+}
+
+  
   
 
 

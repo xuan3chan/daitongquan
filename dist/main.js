@@ -1276,7 +1276,7 @@ let CloudinaryService = class CloudinaryService {
         const thumbnailPath = await this.extractFirstFrame(file);
         const thumbnailBuffer = (0, fs_1.readFileSync)(thumbnailPath);
         const thumbnailPublicId = `daitongquan/videos/thumbnails/${videoName}`;
-        const thumbnailResult = await this.uploadFile({ buffer: thumbnailBuffer }, { public_id: thumbnailPublicId, resource_type: 'image' });
+        const thumbnailResult = await this.uploadFile({ buffer: thumbnailBuffer, mimetype: 'image/png' }, { public_id: thumbnailPublicId, resource_type: 'image' });
         (0, fs_1.unlinkSync)(thumbnailPath);
         return { uploadResult, thumbnailResult };
     }
@@ -1287,10 +1287,17 @@ let CloudinaryService = class CloudinaryService {
                 (0, fs_1.mkdirSync)(tmpDir);
             }
             const thumbnailPath = (0, path_1.join)(tmpDir, `${file.originalname}-thumbnail.png`);
-            ffmpeg(streamifier.createReadStream(file.buffer))
-                .on('end', () => resolve(thumbnailPath))
+            const tempVideoPath = (0, path_1.join)(tmpDir, `${file.originalname}`);
+            (0, fs_1.writeFileSync)(tempVideoPath, file.buffer);
+            ffmpeg(tempVideoPath)
+                .on('end', () => {
+                console.log('Thumbnail extraction completed:', thumbnailPath);
+                (0, fs_1.unlinkSync)(tempVideoPath);
+                resolve(thumbnailPath);
+            })
                 .on('error', (err) => {
                 console.error('ffmpeg error:', err);
+                (0, fs_1.unlinkSync)(tempVideoPath);
                 reject(new common_1.BadRequestException('Failed to extract thumbnail'));
             })
                 .screenshots({
@@ -9365,6 +9372,12 @@ let RankService = class RankService {
         if (!existedRank) {
             throw new common_1.BadRequestException('Rank not found');
         }
+        if (rankName) {
+            const existedRankName = await this.RankModel.findOne({ rankName });
+            if (existedRankName && existedRankName._id.toString() !== rankId) {
+                throw new common_1.BadRequestException('Rank name existed');
+            }
+        }
         this.updateRankDetails(existedRank, {
             rankName,
             attendanceScore,
@@ -12469,22 +12482,38 @@ let MessageService = class MessageService {
                 return message;
             });
             const groupedMessages = decryptedMessages.reduce((acc, message) => {
-                const receiverId = message.receiverId.toString();
-                if (!acc[receiverId]) {
-                    acc[receiverId] = {
-                        receiver: message.receiverId,
+                const otherUserId = message.senderId.toString() === userId ? message.receiverId.toString() : message.senderId.toString();
+                if (!acc[otherUserId]) {
+                    acc[otherUserId] = {
                         messages: [],
                     };
                 }
-                acc[receiverId].messages.push(message);
+                acc[otherUserId].messages.push({
+                    [userId]: {
+                        content: message.content,
+                        image: message.image,
+                        createdAt: message.createdAt,
+                    },
+                    [otherUserId]: {
+                        content: message.content,
+                        image: message.image,
+                        createdAt: message.createdAt,
+                    }
+                });
                 return acc;
             }, {});
-            await this.setCache(cacheKey, groupedMessages);
-            return groupedMessages;
+            const transformedMessages = {
+                [userId]: Object.keys(groupedMessages).map(otherUserId => ({
+                    [otherUserId]: groupedMessages[otherUserId]
+                }))
+            };
+            await this.redisService.setJSON(cacheKey, '$', JSON.stringify(transformedMessages));
+            console.log('Messages fetched from database and cached successfully.');
+            return transformedMessages;
         }
         catch (error) {
-            console.error("Error getting messages:", error);
-            throw new common_1.BadRequestException(error.message);
+            console.error('Error fetching messages:', error);
+            throw new common_1.BadRequestException('Failed to fetch messages');
         }
     }
     async deleteMessage(messageId, userId) {
@@ -13005,7 +13034,7 @@ module.exports = require("compression");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("55cfe1d7bfdb8a2190f8")
+/******/ 		__webpack_require__.h = () => ("edc0884eaf1318581f87")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

@@ -5,7 +5,7 @@ import * as ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import * as ffprobePath from '@ffprobe-installer/ffprobe';
 import { join } from 'path';
-import { readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 
 @Injectable()
 export class CloudinaryService {
@@ -88,12 +88,13 @@ export class CloudinaryService {
     const thumbnailBuffer = readFileSync(thumbnailPath);
     const thumbnailPublicId = `daitongquan/videos/thumbnails/${videoName}`;
     const thumbnailResult = await this.uploadFile(
-      { buffer: thumbnailBuffer } as Express.Multer.File,
+      { buffer: thumbnailBuffer, mimetype: 'image/png' } as Express.Multer.File,
       { public_id: thumbnailPublicId, resource_type: 'image' },
     );
 
     // Clean up the temporary thumbnail file
     unlinkSync(thumbnailPath);
+
     return { uploadResult, thumbnailResult };
   }
 
@@ -105,10 +106,19 @@ export class CloudinaryService {
       }
       const thumbnailPath = join(tmpDir, `${file.originalname}-thumbnail.png`);
 
-      ffmpeg(streamifier.createReadStream(file.buffer))
-        .on('end', () => resolve(thumbnailPath))
+      // Save the buffer to a temporary file
+      const tempVideoPath = join(tmpDir, `${file.originalname}`);
+      writeFileSync(tempVideoPath, file.buffer);
+
+      ffmpeg(tempVideoPath)
+        .on('end', () => {
+          console.log('Thumbnail extraction completed:', thumbnailPath);
+          unlinkSync(tempVideoPath); // Clean up the temporary video file
+          resolve(thumbnailPath);
+        })
         .on('error', (err) => {
           console.error('ffmpeg error:', err);
+          unlinkSync(tempVideoPath); // Clean up the temporary video file on error
           reject(new BadRequestException('Failed to extract thumbnail'));
         })
         .screenshots({

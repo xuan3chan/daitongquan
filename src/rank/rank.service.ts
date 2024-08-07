@@ -74,6 +74,11 @@ export class RankService {
     if (!existedRank) {
       throw new BadRequestException('Rank not found');
     }
+    if (rankName) {
+      const existedRankName = await this.RankModel.findOne({ rankName });
+      if (existedRankName && existedRankName._id.toString() !== rankId) {
+        throw new BadRequestException('Rank name existed');
+      }}
     this.updateRankDetails(existedRank, {
       rankName,
       attendanceScore,
