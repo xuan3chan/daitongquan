@@ -1,4 +1,3 @@
-declare const module: any;
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -7,25 +6,31 @@ import * as compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  
+  // Cấu hình CORS
+  app.enableCors({
+    origin: 'http://localhost:5173',  // Thay thế bằng URL của frontend của bạn
+    credentials: true,  // Cho phép credentials (như cookies)
+  });
+
   app.setGlobalPrefix('api');
   app.use(compression());
-    app.useGlobalPipes(new ValidationPipe());
-  if (module.hot) {
-    module.hot.accept();
-    module.hot.dispose(() => app.close());
-  }
-  
+  app.useGlobalPipes(new ValidationPipe());
+
+ 
   const config = new DocumentBuilder()
-  .setTitle('DaiQuanGia API')
-  .setDescription('The cats API description')
-  .setVersion('1.0')
-  .addBearerAuth(
-    {type: 'http', scheme: 'bearer', bearerFormat: 'JWT'},
-  )
-  .build();
-const document = SwaggerModule.createDocument(app, config);
-SwaggerModule.setup('api', app, document);
-await app.listen(process.env.PORT_SERVER,"0.0.0.0");
+    .setTitle('DaiQuanGia API')
+    .setDescription('The API description')
+    .setVersion('1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+    )
+    .build();
+    
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
+  await app.listen(process.env.PORT_SERVER || 3000, "0.0.0.0");
 }
+
 bootstrap();
