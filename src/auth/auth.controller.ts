@@ -51,8 +51,9 @@ export class AuthController {
       user.account,
       user.password,
     );
-      // Thiết lập cookie
-      response.cookie('token', loginResult.access_token);
+    response.cookie('token', loginResult.access_token, {
+      maxAge: 3600000, // Thời gian sống của cookie (1 giờ = 3600000 ms)
+  });
     return { message: 'successfully', data: loginResult };
   }
 
