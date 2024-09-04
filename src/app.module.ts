@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
@@ -27,10 +26,8 @@ import { EventGateway } from './event.gateway';
 import { StoryModule } from './story/story.module';
 import { MessageModule } from './message/message.module';
 import { RedisCacheModule } from './redis/redis.module';
-import { SearchModule } from './search/search.module';
 @Module({
   imports: [
-    
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -58,7 +55,6 @@ import { SearchModule } from './search/search.module';
     StoryModule,
     MessageModule,
     RedisCacheModule,
-    SearchModule,
   ],
   controllers: [
     AppController

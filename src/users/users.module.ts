@@ -11,13 +11,11 @@ import { AdminModule } from 'src/admin/admin.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { Rank, RankSchema } from 'src/rank/schema/rank.schema';
 import { RedisCacheModule } from 'src/redis/redis.module';
-import { SearchModule } from 'src/search/search.module';
 
 @Module({
   imports: [
     forwardRef(() => EncryptionModule),
     AdminModule,
-    SearchModule,
     RedisCacheModule,
     CategoryModule,
     CloudinaryModule,

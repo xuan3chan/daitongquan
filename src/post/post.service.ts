@@ -6,7 +6,6 @@ import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 import { UsersService } from 'src/users/users.service';
 import { FavoritePost } from './schema/favoritePost.schema';
 import { RedisService } from 'src/redis/redis.service';
-import { SearchService } from '../search/search.service';
 
 @Injectable()
 export class PostService {
@@ -16,7 +15,6 @@ export class PostService {
     private cloudinaryService: CloudinaryService,
     private usersService: UsersService,
     private redisService: RedisService,
-    private searchService: SearchService,
   ) {}
 
   private async deleteCache(key: string | string[]) {
@@ -46,8 +44,7 @@ export class PostService {
     await this.usersService.updateScoreRankService(userId, true);
     const savedPost = await post.save();
 
-    // Index the new post in Elasticsearch
-    await this.searchService.indexPost(savedPost.toObject());
+    
 
     await this.deleteCache(`posts:user:${userId}`);
     return savedPost;
@@ -76,20 +73,8 @@ export class PostService {
 
     const updatedPost = await post.save();
 
-    // Update the post in Elasticsearch
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost.toObject());
-    } else {
-      // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost.toObject());
-    }
-    await this.deleteCache([
-      `posts:user:${userId}`,
-      `posts:detail:${postId}`,
-      `posts:favorites:${userId}`,
-    ]);
+  
+    ;
     return updatedPost;
   }
 
@@ -100,18 +85,7 @@ export class PostService {
     if (post.postImage)
       await this.cloudinaryService.deleteMediaService(post.postImage);
 
-    // Delete the post from Elasticsearch
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.deletePost(postId);
-    }
 
-    await this.deleteCache([
-      `posts:user:${userId}`,
-      `posts:detail:${postId}`,
-      `posts:favorites:${userId}`,
-    ]);
     return post;
   }
 
@@ -148,17 +122,7 @@ export class PostService {
     }
     await this.postModel.deleteMany({ _id: { $in: postIds } });
 
-    // Delete the posts from Elasticsearch
-    await Promise.all(
-      postIds.map((postId) => this.searchService.deletePost(postId)),
-    );
-
-    await this.deleteCache([
-      `posts:user:${userId}`,
-      `posts:favorites:${userId}`,
-      ...postIds.map((id) => `posts:detail:${id}`),
-    ]);
-
+  
     return posts;
   }
 
@@ -173,21 +137,6 @@ export class PostService {
     post.status = status;
     const updatedPost = await post.save();
 
-    // Update the post in Elasticsearch
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost.toObject());
-    } else {
-      // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost.toObject());
-    }
-
-    await this.deleteCache([
-      `posts:user:${userId}`,
-      `posts:detail:${postId}`,
-      `posts:favorites:${userId}`,
-    ]);
     return updatedPost;
   }
 
@@ -202,22 +151,6 @@ export class PostService {
     post.isApproved = isApproved;
     post.status = isApproved ? 'active' : 'inactive';
     const updatedPost = await post.save();
-
-    // Update the post in Elasticsearch
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost.toObject());
-    } else {
-      // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost.toObject());
-    }
-
-    await this.deleteCache([
-      `posts:detail:${postId}`,
-      `posts:user:${post.userId}`,
-      `posts:favorites:${post.userId}`,
-    ]);
     return updatedPost;
   }
 
@@ -228,14 +161,6 @@ export class PostService {
     post.status = 'rejected';
     const updatedPost = await post.save();
 
-    // Update the post in Elasticsearch
-    await this.searchService.updatePost(postId, updatedPost.toObject());
-
-    await this.deleteCache([
-      `posts:detail:${postId}`,
-      `posts:user:${post.userId}`,
-      `posts:favorites:${post.userId}`,
-    ]);
     return updatedPost;
   }
 
@@ -302,9 +227,8 @@ export class PostService {
   
   
   async searchPostService(searchKey: string): Promise<any> {
-    const searchResult = await this.searchService.searchPosts(searchKey);
-    // Filter posts where status is 'active' and isShow is true
-    const result = searchResult.filter(post => post.status === 'active' && post.isShow === true);
+    const result = 'code đã bị xóa'
+    
     return result;
   }
 
@@ -351,19 +275,7 @@ export class PostService {
       );
     }
 
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.updatePost(postId, updatedPost.toObject());
-    } else {
-      // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(updatedPost.toObject());
-    }
-    await this.deleteCache([
-      `posts:detail:${postId}`,
-      `posts:user:${userId}`,
-      `posts:favorites:${userId}`,
-    ]);
+
     return { message };
   }
 
@@ -383,20 +295,6 @@ export class PostService {
     if (!post)
       throw new BadRequestException('You have not reacted to this post');
 
-    const documentExists = await this.searchService.checkDocumentExists(postId);
-    if (documentExists) {
-      // If the document exists, update it
-      await this.searchService.updatePost(postId, post.toObject());
-    } else {
-      // If the document does not exist, index it as a new document
-      await this.searchService.indexPost(post.toObject());
-    }
-
-    await this.deleteCache([
-      `posts:detail:${postId}`,
-      `posts:user:${userId}`,
-      `posts:favorites:${userId}`,
-    ]);
     return post;
   }
 
