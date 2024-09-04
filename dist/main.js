@@ -5637,12 +5637,7 @@ let AuthController = class AuthController {
     }
     async loginController(user, response) {
         const loginResult = await this.authService.loginService(user.account, user.password);
-        response.cookie('token', loginResult.access_token, {
-            maxAge: 3600000,
-            httpOnly: true,
-            secure: false,
-            path: '/',
-        });
+        response.cookie('token', loginResult.access_token);
         return { message: 'successfully', data: loginResult };
     }
     async refreshTokenController(refreshToken) {
@@ -12682,7 +12677,7 @@ module.exports = require("cookie-parser");
 /******/ 	
 /******/ 	/* webpack/runtime/getFullHash */
 /******/ 	(() => {
-/******/ 		__webpack_require__.h = () => ("333975955a719955b386")
+/******/ 		__webpack_require__.h = () => ("8a507265da12c5ecfbbd")
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */

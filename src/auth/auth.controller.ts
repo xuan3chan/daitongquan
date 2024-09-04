@@ -51,13 +51,7 @@ export class AuthController {
       user.account,
       user.password,
     );
-    response.cookie('token', loginResult.access_token, {
-      maxAge: 3600000, 
-      httpOnly: true, 
-      secure: false, // false trong môi trường phát triển
-      path: '/',
-  });
-  
+    response.cookie('token', loginResult.access_token);
     return { message: 'successfully', data: loginResult };
   }
 
