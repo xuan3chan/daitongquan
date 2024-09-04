@@ -52,10 +52,7 @@ export class AuthController {
       user.password,
     );
       // Thiết lập cookie
-      response.cookie('token', loginResult.access_token, {
-        httpOnly: true, // Cookie chỉ có thể được truy cập bởi các yêu cầu HTTP, không thể truy cập bởi JavaScript trong trình duyệt
-        maxAge: 3600000, // Thời gian sống của cookie (ví dụ: 1 giờ)
-      });
+      response.cookie('token', loginResult.access_token);
     return { message: 'successfully', data: loginResult };
   }
 
