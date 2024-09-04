@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import * as compression from 'compression';
-
+import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
@@ -16,7 +16,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(compression());
   app.useGlobalPipes(new ValidationPipe());
-
+  app.use(cookieParser());
  
   const config = new DocumentBuilder()
     .setTitle('DaiQuanGia API')
