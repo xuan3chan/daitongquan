@@ -52,8 +52,12 @@ export class AuthController {
       user.password,
     );
     response.cookie('token', loginResult.access_token, {
-      maxAge: 3600000, // Thời gian sống của cookie (1 giờ = 3600000 ms)
+      maxAge: 3600000, 
+      httpOnly: true, 
+      secure: false, // false trong môi trường phát triển
+      path: '/',
   });
+  
     return { message: 'successfully', data: loginResult };
   }
 
