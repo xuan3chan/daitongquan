@@ -9,10 +9,10 @@ async function bootstrap() {
   
   // Cấu hình CORS
   app.enableCors({
-    origin: 'http://localhost:5173',  // Thay thế bằng URL của frontend của bạn
+    origin: ['http://localhost:5173', 'https://daitongquanv2.thaitamdev.id.vn'],
     credentials: true,  // Cho phép credentials (như cookies)
   });
-
+  
   app.setGlobalPrefix('api');
   app.use(compression());
   app.useGlobalPipes(new ValidationPipe());
